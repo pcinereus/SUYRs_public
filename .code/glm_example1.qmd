@@ -1,0 +1,3039 @@
+---
+title: GLM Example 1 
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../public/resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(glmmTMB)       #for model fitting
+library(car)           #for regression diagnostics
+library(broom)         #for tidy output
+library(ggfortify)     #for model diagnostics
+library(DHARMa)        #for residual diagnostics
+library(see)           #for plotting residuals
+library(knitr)         #for kable
+library(effects)       #for partial effects plots
+library(ggeffects)     #for partial effects plots
+library(emmeans)       #for estimating marginal means
+library(modelr)        #for auxillary modelling functions
+library(tidyverse)     #for data wrangling
+library(lindia)        #for diagnostics of lm and glm
+library(performance)   #for residuals diagnostics
+library(sjPlot)        #for outputs
+library(report)        #for reporting methods/results
+library(easystats)     #framework for stats, modelling and visualisation
+```
+
+# Scenario
+ 
+Here is an example from @Fowler-1998-1998. An agriculturalist was
+interested in the effects of fertiliser load on the yield of grass.
+Grass seed was sown uniformly over an area and different quantities of
+commercial fertiliser were applied to each of ten 1 m² randomly
+located plots.  Two months later the grass from each plot was
+harvested, dried and weighed.  The data are in the file
+**fertilizer.csv** in the **data** folder.
+
+![Field of grass](../public/resources/turf.jpg){#fig-fertilizer width=70%}
+
+:::: {.columns}
+::: {.column width="30%"}
+
+| FERTILIZER   | YIELD   |
+| ------------ | ------- |
+| 25           | 84      |
+| 50           | 80      |
+| 75           | 90      |
+| 100          | 154     |
+| 125          | 148     |
+| \...         | \...    |
+
+: Format of the fertilizer.csv data file {#tbl-fertilizer .table-condensed}
+
+:::
+::: {.column width="70%"}
+---------------- ---------------------------------------------------
+**FERTILIZER**:  Mass of fertiliser (g/m²) - Predictor variable
+**YIELD**:       Yield of grass (g/m²) - Response variable
+---------------- ---------------------------------------------------
+
+: Description of the variables in the fertilizer data file {#tbl-fertilizer1 .table-condensed}
+
+:::
+::::
+  
+The aim of the analysis is to investigate the relationship between
+fertiliser concentration and grass yield.
+
+# Read in the data
+ 
+<!-- START_PRIVATE-->
+We will start off by reading in the Fertiliser
+data.  There are many functions in R that can read in a CSV file.  We
+will use a the `read_csv()` function as it is part of the tidyverse
+ecosystem. 
+<!-- END_PRIVATE-->
+
+```{r}
+#| label: readData
+#| output: true
+#| eval: true
+fert <- read_csv("../public/data/fertilizer.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+After reading in a dataset, it is always a good
+idea to quickly explore a few summaries in order to ascertain whether
+the imported data are correctly transcribed. In particular, we should
+pay attention to whether there are any unexpected missing values and
+ensure that each variable (column) has the expected class (e.g. that
+variables we expected to be considered numbers are indeed listed as
+either `<dbl>` or `<int>` and not `<char>`).
+<!-- END_PRIVATE-->
+
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(fert)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(fert)
+```
+
+## str
+```{r}
+str(fert)
+```
+
+## Easystats (datawizard)
+```{r}
+fert |> datawizard::data_codebook()
+```
+:::
+
+# Exploratory data analysis
+
+<!-- START_PRIVATE-->
+The individual responses ($y_i$, observed yields) are each expected to
+have been **independently** drawn from normal (**Gaussian**)
+distributions ($\mathcal{N}$). These distributions represent all the
+possible yields we could have obtained at the specific ($i^{th}$) level
+of Fertiliser.  Hence the $i^{th}$ yield observation is expected to have
+been drawn from a normal distribution with a mean of $\mu_i$.
+
+Although each distribution is expected to come from populations that
+differ in their means, we assume that all of these distributions have
+the **same variance** ($\sigma^2$).
+<!-- END_PRIVATE-->
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &= \beta_0 + \beta_1 x_i
+\end{align}
+$$
+
+where $y_i$ represents the $i$ observed values, $\beta_0$ and $\beta_1$
+represent the intercept and slope respectively, and $\sigma^2$ represents the
+estimated variance.
+
+
+
+<!-- START_PRIVATE-->
+We intend to explore the relationship between
+Yield and Fertiliser using simple linear regression.  Such an analysis
+assumes:
+
+- **Normality**: each population is assumed to be normally
+  distributed. This can be initially assessed by exploring the
+  distribution of the response via either boxplots, violin plots or
+  histograms (depending on sample size).
+- **Homogeneity of variance**: each population is assumed to be
+  equally varied.  This can be initially assessed by exploring the
+  distribution of observed values around an imaginary line of best fit
+  through the cloud of data formed by a scatterplot of Yield against
+  Fertiliser. If the spread of points increases (or decreases) along
+  the trend line, it is likely that the populations are not equally
+  varied.
+- **Linearity**: in fitting a straight line through the cloud of data,
+  we are assuming that a linear trend is appropriate. If the trend is
+  not linear, then the inferred relationship may be
+  miss-representative of the true relationship.  In addition to an
+  imaginary line, we could fit either a loess or linear smoother
+  through the cloud to help us assess the likelihood of non-linearity.
+- **Independence**: to help ensure that the estimates are unbiased, we
+  must assume that all observations are independent. In this case, we
+  assume that the observations were collected from a randomised design
+  in which the level of Fertiliser was applied randomly to the
+  different patches of the field. If however, the researchers had
+  simply moved along the field applying progressively higher
+  Fertiliser concentrations, then there is a chance that they have
+  introduced additional biases or confounding factors. Similarly, if
+  the Fertiliser levels were applied in increasing doses over time,
+  there might also be biases. In the absence of any spatial or
+  temporal information associated with the collection of data, we
+  cannot directly assess this assumption. 
+
+
+::: {.panel-tabset}
+
+## scatterplot
+
+```{r}
+#| label: EDA1
+#| message: false
+
+ggplot(fert, aes(y = YIELD, x = FERTILIZER)) +
+  geom_point() +
+  geom_smooth()
+```
+
+## linear smoother
+```{r}
+#| label: EDA2
+#| message: false
+
+ggplot(fert, aes(y = YIELD, x = FERTILIZER)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+## boxplots
+```{r}
+#| label: EDA3
+#| message: false
+
+ggplot(fert, aes(y = YIELD)) +
+    geom_boxplot(aes(x = 1))
+```
+
+## violin plots
+```{r}
+#| label: EDA4
+#| message: false
+
+ggplot(fert, aes(y = YIELD)) +
+  geom_violin(aes(x = 1))
+```
+
+## histogram
+```{r}
+#| label: EDA5
+#| message: false
+
+ggplot(fert, aes(x = YIELD)) +
+  geom_histogram()
+```
+
+## density plots
+```{r}
+#| label: EDA6
+#| message: false
+
+ggplot(fert, aes(x = YIELD)) +
+  geom_density()
+```
+
+:::
+
+**Conclusions**:
+
+- there is no evidence of non-normality, non-homogeneity of variance
+  or non-linearity
+- we have no initial reason to suspect that the assumptions will not
+  be satisfied and thus it is reasonable to assume that the results
+  will be reliable.
+
+<!-- END_PRIVATE-->
+
+# Fit the model
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## lm
+
+```{r, mhidden=TRUE}
+#| label: fitModel
+
+fert_lm <- lm(YIELD ~ 1 + FERTILIZER, data = fert)
+fert_lm <- lm(YIELD ~ FERTILIZER, data = fert)
+```
+
+The `lm()` function returns a list comprising the estimated coefficients, the
+residuals, the data used to fit the model and various other attributes
+associated with the model fitting procedure.
+```{r summaryModel, results='markdown', eval=TRUE, echo=TRUE}
+## Get the name of the attributes within the lm model
+attributes(fert_lm)
+## Explore all the conttents of the fitted model
+str(fert_lm)
+## Return the data used to fit the model 
+fert_lm$model
+## Return the estimated coefficients
+fert_lm$coefficients
+```
+Rather than directly access these attributes (which may have different names in
+different modelling functions), there are **extraction** functions that reach
+into the model output and extract the information in a convenient way.
+```{r summaryModel1, results='markdown', eval=TRUE, echo=TRUE}
+## Extract the estimated coefficients
+coef(fert_lm)
+## Extract the fitted (predicted) values
+fitted(fert_lm)
+## Extract the residules
+resid(fert_lm)
+args(residuals.lm)
+```
+## lm centered
+
+```{r, mhidden=TRUE}
+#| label: fitModel1
+
+fert_lm1 <- lm(YIELD ~ center(FERTILIZER), data = fert)
+```
+
+The `lm()` function returns a list comprising the estimated coefficients, the
+residuals, the data used to fit the model and various other attributes
+associated with the model fitting procedure.
+```{r summaryModela, results='markdown', eval=TRUE, echo=TRUE}
+## Get the name of the attributes within the lm model
+attributes(fert_lm1)
+## Explore all the conttents of the fitted model
+str(fert_lm1)
+## Return the data used to fit the model 
+fert_lm1$model
+## Return the estimated coefficients
+fert_lm1$coefficients
+```
+Rather than directly access these attributes (which may have different names in
+different modelling functions), there are **extraction** functions that reach
+into the model output and extract the information in a convenient way.
+```{r summaryModel1a, results='markdown', eval=TRUE, echo=TRUE}
+## Extract the estimated coefficients
+coef(fert_lm1)
+## Extract the fitted (predicted) values
+fitted(fert_lm1)
+## Extract the residules
+resid(fert_lm1)
+args(residuals.lm)
+```
+
+## glmmTMB
+
+```{r, mhidden=TRUE}
+#| label: fitModelglmmTMB
+
+fert_glmmTMB <- glmmTMB::glmmTMB(YIELD ~ 1 + FERTILIZER, data = fert)
+fert_glmmTMB <- glmmTMB::glmmTMB(YIELD ~ FERTILIZER, data = fert)
+```
+
+<!-- START_PRIVATE-->
+The `glmmTMB()` function returns a list comprising the estimated coefficients, the
+residuals, the data used to fit the model and various other attributes
+associated with the model fitting procedure.
+```{r summaryModelglmmTMB, results='markdown', eval=TRUE, echo=TRUE}
+## Get the name of the attributes within the glmmTMB model
+attributes(fert_glmmTMB)
+## Explore all the conttents of the fitted model
+str(fert_glmmTMB)
+## Return the data used to fit the model 
+fert_glmmTMB$frame
+## Return the estimated coefficients
+fert_glmmTMB$fit
+```
+Rather than directly access these attributes (which may have different names in
+different modelling functions), there are **extraction** functions that reach
+into the model output and extract the information in a convenient way.
+```{r summaryModel1glmmTMB, results='markdown', eval=TRUE, echo=TRUE}
+## Extract the estimated coefficients
+fixef(fert_glmmTMB)
+## Extract the fitted (predicted) values
+fitted(fert_glmmTMB)
+## Extract the residules
+resid(fert_glmmTMB)
+args(glmmTMB:::residuals.glmmTMB)
+```
+
+## glmmTMB centered
+
+```{r, mhidden=TRUE}
+#| label: fitModelglmmTMB1
+
+fert_glmmTMB1 <- glmmTMB::glmmTMB(YIELD ~ 1 + center(FERTILIZER), data = fert)
+fert_glmmTMB1 <- glmmTMB::glmmTMB(YIELD ~ center(FERTILIZER), data = fert)
+```
+
+<!-- START_PRIVATE-->
+The `glmmTMB()` function returns a list comprising the estimated coefficients, the
+residuals, the data used to fit the model and various other attributes
+associated with the model fitting procedure.
+```{r summaryModelglmmTMB1, results='markdown', eval=TRUE, echo=TRUE}
+## Get the name of the attributes within the glmmTMB model
+attributes(fert_glmmTMB1)
+## Explore all the conttents of the fitted model
+str(fert_glmmTMB1)
+## Return the data used to fit the model 
+fert_glmmTMB1$frame
+## Return the estimated coefficients
+fert_glmmTMB1$fit
+```
+Rather than directly access these attributes (which may have different names in
+different modelling functions), there are **extraction** functions that reach
+into the model output and extract the information in a convenient way.
+```{r summaryModel1glmmTMB1, results='markdown', eval=TRUE, echo=TRUE}
+## Extract the estimated coefficients
+fixef(fert_glmmTMB1)
+## Extract the fitted (predicted) values
+fitted(fert_glmmTMB1)
+## Extract the residules
+resid(fert_glmmTMB1)
+args(glmmTMB:::residuals.glmmTMB)
+```
+
+## First principles
+
+Lets performing Ordinary Least Squares (OLS) regression by first
+principles.
+
+To do so, we expresses the response as a vector ($Y$), the
+deterministic (linear predictor) as a matrix ($\boldsymbol{X}$)
+comprising of a column of 1's (for multiplying the intercept
+parameter) and the predictor variable (for multiplying the slope
+parameter).  We then also have a vector of beta parameters ($\beta_0$
+and $\beta$ representing the intercept and slope respectively).
+
+$$
+y_i = \beta_0\times 1 + \beta_1\times x_i
+$$
+
+$$
+\underbrace{\begin{bmatrix}
+y_1\\
+y_2\\
+y_3\\
+...\\
+y_i
+\end{bmatrix}}_{Y} = 
+\underbrace{\begin{bmatrix}
+1&x_1\\
+1&x_2\\
+1&x_3\\
+...\\
+1&x_i
+\end{bmatrix}}_{\boldsymbol{X}}
+\underbrace{\vphantom{\begin{bmatrix}
+y_1\\
+y_2\\
+y_3\\
+...\\
+y_i
+\end{bmatrix}}\begin{bmatrix}
+\beta_0&\beta
+\end{bmatrix}}_{\boldsymbol{\beta}}
+$$
+
+
+In OLS we estimate the parameters ($\beta_0$ and $\beta$) by minimising the sum
+of the squared residuals ($\boldsymbol{\varepsilon}$).
+
+$$
+\begin{align}
+Y =& \boldsymbol{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}\\
+\boldsymbol{\varepsilon} =& Y - \boldsymbol{X}\boldsymbol{\beta}
+\end{align}
+$$
+
+We can then minimise the sum of squares residuals.  This is essentially
+$\boldsymbol{\varepsilon}^T\boldsymbol{\varepsilon}$, where
+$\boldsymbol{\varepsilon}$ is $\boldsymbol{\varepsilon}$ transposed.
+
+$$
+\small
+\begin{bmatrix}
+\varepsilon_1&\varepsilon_2&\varepsilon_3&...&\varepsilon_n
+\end{bmatrix}
+\begin{bmatrix}
+\varepsilon_1\\
+\varepsilon_2\\
+\varepsilon_3\\
+...\\
+\varepsilon_n\\
+\end{bmatrix} = 
+\begin{bmatrix}
+\varepsilon_1\times\varepsilon_1 + \varepsilon_2\times\varepsilon_2 + \varepsilon_3\times\varepsilon_3 + ... + \varepsilon_n\times\varepsilon_n
+\end{bmatrix}
+$$
+
+
+$$
+\begin{align}
+\boldsymbol{\varepsilon}^T\boldsymbol{\varepsilon} =& (Y - \boldsymbol{X}\boldsymbol{\beta})^T(Y - \boldsymbol{X}\boldsymbol{\beta})\\
+\boldsymbol{\beta} =& (\boldsymbol{X}^T\boldsymbol{X})^{-1} \boldsymbol{X}^T Y
+\end{align}
+$$
+
+```{r name, results='markdown', eval=TRUE}
+## Generate the model matrix
+X <- model.matrix(~FERTILIZER, data = fert)
+## Solve for beta
+beta <- solve(t(X) %*% X) %*% t(X) %*% fert$YIELD
+beta
+```
+
+The above simple linear regression model can be fit using the `lm()`
+function.  This function, uses Ordinary Least Squares (OLS).  The full
+model formula would include a 1 (for the intercept) and the predictor
+values (for the slope).  In R, models generally always include an
+intercept by default and thus we can abbreviate the formula a little
+by omitting the 1.
+
+:::
+
+<!-- END_PRIVATE-->
+
+# Model validation 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+After fitting a model, it is important to explore a range of diagnostics to
+confirm that all the assumptions were satisfied.
+
+## lm
+
+:::: {.panel-tabset .nav-pills}
+
+### autoplot
+
+When supplied with a fitted linear model, the `autoplot()` function
+generates a set of standard diagnostic regression plots:
+
+- the top left plot is a residual plot: Ideally, there should not be
+  any patterns in the residual plot.  Of particular concern would be
+  if there was a wedge (funnel) shape (indicative of unequal
+  variances) or some curved shape (indicative of having fit a linear
+  trend through non-linear data).
+- the top right plot is a Q-Q normal plot: This figure plots the
+  quantiles of the residuals against the quantiles that would be
+  expected if the data were drawn from a normal distribution.
+  Ideally, the points should be close to the dashed line.  Deviations
+  from this line at the tails signify potential non-normality.
+- the middle left plot is a standardised residual plot.  This has a
+  similar interpretation to the residual plot.
+- the middle right plot displays the cooks distance values associated
+  with each observation.  Cook's distance is a measure of the
+  influence of each point on the estimated parameter values.  This is
+  a combination of residuals (measure of outlierness along the y-axis)
+  and leverage (measure of outlierness along the x-axis). Essentially,
+  it estimates variations in regression coefficients after removing
+  each observation (one by one). Ideally, all the values should be
+  under 0.8.  Numbers above the bars indicate the observation number -
+  this can be useful to identify which observations are influential.
+- the bottom left plot displays the trend between residuals and
+  leverage.  In the event of large Cook's distance, this can help
+  identify whether the issues are due to residuals or leverage.
+- the bottom right plot displays the trend between Cook's distance and
+  leverage.
+
+```{r validateModel, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, message=FALSE, warning=FALSE}
+fert_lm |> autoplot(which = 1:6, ncol = 2, label.size = 3)
+fert_lm |> lindia::gg_diagnose()
+```
+
+**Conclusions**:
+
+- there are no alarming signs from any of the diagnostics.
+- the estimated parameters are likely to be reliable.
+
+
+### Influence measures
+Cook's distance (`cook.d`) and leverage (`hat`) are displayed in tabular form.
+
+```{r validateModela, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6}
+fert_lm |> influence.measures()
+fert_lm |> fortify()
+```
+
+### Easystats (performance model checking)
+
+The `performance` package provides a similar set of visual diagnostics:
+
+- the top left plot is a Q-Q normal plot.
+- the top right plot compares the distribution (density) of the observed data
+  (blue) with a normal (or other nominated) distribution (green)
+- the middle two plots are residual and standard residual plots.  Ideally, these
+  should show no patterns in the residuals
+- the bottom left plot provides a frequency bar chart of Cook's distance values.
+
+```{r validateModela1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+fert_lm |> performance::check_model()
+fert_lm |> performance::check_outliers()
+fert_lm |> performance::check_outliers() |> plot()
+## These are probabilities of exceedance rather than actual Cook's D values
+#https://easystats.github.io/performance/reference/check_outliers.html
+```
+
+**Conclusions**:
+
+- there are no alarming signs from any of the diagnostics
+
+
+### DHARMa simulated residuals
+
+Although an exploration of model residuals can provide important
+insights into the goodness of fit and conformity of a model to the
+underlying assumptions, diagnosing issues is a bit of a fine art.
+This difficulty is exacerbated when the residuals are being calculated
+from some models (e.g logistic regression models) where it is
+difficult to separate out nefarious patterns from the specific
+patterns expected of the specific model.
+
+The `DHARMa` package generates standardised residuals via simulation
+and uses these as the basis of a range of tools to diagnose common
+modelling issues including outliers, heterogeneity, over-dispersion,
+autocorrelation.
+
+New observations simulated from the fitted model are used to calculate
+a cumulative density function (CDF) that describes the probability
+profile of each observation. Thereafter, the residual of an
+observation is calculated as the value of the CDF that corresponds to
+the actual observed value:
+
+- a value of 0 indicates that the observed value was less than all
+  simulated values
+- a value of 1 indicates that the observed value was greater than all
+  simulated values
+- a value of 0.5 indicates that have the observed value were greater
+  than all simulated values from a correctly specified model, these
+  quantile residuals should be uniformly distributed
+
+This approach ensures that all residuals have the same interpretation
+irrespective of the model and distribution selected.
+
+Exploring DHARMa residuals begins with running the
+`simulateResiduals()` function. If this is done with `plot=TRUE`, a
+pair of diagnostic plots with a range of diagnostic tests will be
+provided as side effects.
+
+- the left hand plot is a Q-Q plot (ideally all points should be close
+  to the red line) the KS (Kolmogorov-Smirnov) test tests whether the
+  (in this case simulated) are likely to have been drawn from the
+  nominated distribution (in this case Gaussian).
+- the Dispersion test tests whether the standard deviation of the data
+  is equal to that of the simulated data
+- the Outlier test tests for the prevalence of outliers (when observed
+  values are outside the simulated range)
+- the right hand plot is a residual plot. Ideally, there should be no
+  patterns in the residuals. To help identify any patterns, quantile
+  trends are overlayed. Ideally, there should be a flat black line at
+  each of the quantiles of 0.25, 0.5 and 0.75.
+
+```{r validateModelb, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=6}
+fert_resid <- fert_lm %>% simulateResiduals(plot = TRUE)
+```
+
+```{r validateModelc, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=4}
+## To run tests of KS (uniformity),  dispersion and outliers
+fert_resid |> testResiduals()
+```
+
+```{r validateModeld, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+## OR individually
+fert_resid |> testUniformity()
+fert_resid |> testDispersion()
+fert_resid |> testOutliers()
+## Other useful tests
+fert_resid |> testZeroInflation()
+fert_resid |> testQuantiles()
+## The above fits quantile gams at 0.25,  0.5 and 0.75
+## testSpatialAutocorrelation(fert.resid,  x=,  y=) # needs x and y coordinates
+## testTemporalAutocorrelation(fert.resid,  time=) # needs time
+```
+
+### augment
+
+The `broom` package has an `augment` method that adds information
+generated from a fitted model to the modelled data.
+
+```{r validateModele, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm %>% augment()
+## we could then pipe these to ggplot in order to look at residuals
+## etc
+fert_lm |>
+    augment() |>
+    ggplot() +
+    geom_point(aes(y = .resid, x = .fitted))
+```
+
+### plot_grid
+
+The `sjPlot` package also has plotting methods associated with fitted
+models, some of which focus on model diagnostics.
+
+```{r validateModelf, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8,message=FALSE,warning=FALSE}
+library(sjPlot)
+fert_lm |> plot_model(type='diag') |> sjPlot::plot_grid()
+```
+
+::::
+
+## lm centered
+
+:::: {.panel-tabset .nav-pills}
+
+### autoplot
+
+When supplied with a fitted linear model, the `autoplot()` function
+generates a set of standard diagnostic regression plots:
+
+- the top left plot is a residual plot: Ideally, there should not be
+  any patterns in the residual plot.  Of particular concern would be
+  if there was a wedge (funnel) shape (indicative of unequal
+  variances) or some curved shape (indicative of having fit a linear
+  trend through non-linear data).
+- the top right plot is a Q-Q normal plot: This figure plots the
+  quantiles of the residuals against the quantiles that would be
+  expected if the data were drawn from a normal distribution.
+  Ideally, the points should be close to the dashed line.  Deviations
+  from this line at the tails signify potential non-normality.
+- the middle left plot is a standardised residual plot.  This has a
+  similar interpretation to the residual plot.
+- the middle right plot displays the cooks distance values associated
+  with each observation.  Cook's distance is a measure of the
+  influence of each point on the estimated parameter values.  This is
+  a combination of residuals (measure of outlierness along the y-axis)
+  and leverage (measure of outlierness along the x-axis). Essentially,
+  it estimates variations in regression coefficients after removing
+  each observation (one by one). Ideally, all the values should be
+  under 0.8.  Numbers above the bars indicate the observation number -
+  this can be useful to identify which observations are influential.
+- the bottom left plot displays the trend between residuals and
+  leverage.  In the event of large Cook's distance, this can help
+  identify whether the issues are due to residuals or leverage.
+- the bottom right plot displays the trend between Cook's distance and
+  leverage.
+
+```{r validateModelcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, message=FALSE, warning=FALSE}
+fert_lm1 |> autoplot(which = 1:6, ncol = 2, label.size = 3)
+fert_lm1 |> lindia::gg_diagnose()
+```
+
+**Conclusions**:
+
+- there are no alarming signs from any of the diagnostics.
+- the estimated parameters are likely to be reliable.
+
+
+### Influence measures
+Cook's distance (`cook.d`) and leverage (`hat`) are displayed in tabular form.
+
+```{r validateModelacenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6}
+fert_lm1 |> influence.measures()
+fert_lm1 |> fortify()
+```
+
+### Easystats (performance model checking)
+
+The `performance` package provides a similar set of visual diagnostics:
+
+- the top left plot is a Q-Q normal plot.
+- the top right plot compares the distribution (density) of the observed data
+  (blue) with a normal (or other nominated) distribution (green)
+- the middle two plots are residual and standard residual plots.  Ideally, these
+  should show no patterns in the residuals
+- the bottom left plot provides a frequency bar chart of Cook's distance values.
+
+```{r validateModela1center, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+fert_lm1 |> performance::check_model()
+fert_lm1 |> performance::check_outliers()
+fert_lm1 |> performance::check_outliers() |> plot()
+## These are probabilities of exceedance rather than actual Cook's D values
+#https://easystats.github.io/performance/reference/check_outliers.html
+```
+
+**Conclusions**:
+
+- there are no alarming signs from any of the diagnostics
+
+
+### DHARMa simulated residuals
+
+Although an exploration of model residuals can provide important
+insights into the goodness of fit and conformity of a model to the
+underlying assumptions, diagnosing issues is a bit of a fine art.
+This difficulty is exacerbated when the residuals are being calculated
+from some models (e.g logistic regression models) where it is
+difficult to separate out nefarious patterns from the specific
+patterns expected of the specific model.
+
+The `DHARMa` package generates standardised residuals via simulation
+and uses these as the basis of a range of tools to diagnose common
+modelling issues including outliers, heterogeneity, over-dispersion,
+autocorrelation.
+
+New observations simulated from the fitted model are used to calculate
+a cumulative density function (CDF) that describes the probability
+profile of each observation. Thereafter, the residual of an
+observation is calculated as the value of the CDF that corresponds to
+the actual observed value:
+
+- a value of 0 indicates that the observed value was less than all
+  simulated values
+- a value of 1 indicates that the observed value was greater than all
+  simulated values
+- a value of 0.5 indicates that have the observed value were greater
+  than all simulated values from a correctly specified model, these
+  quantile residuals should be uniformly distributed
+
+This approach ensures that all residuals have the same interpretation
+irrespective of the model and distribution selected.
+
+Exploring DHARMa residuals begins with running the
+`simulateResiduals()` function. If this is done with `plot=TRUE`, a
+pair of diagnostic plots with a range of diagnostic tests will be
+provided as side effects.
+
+- the left hand plot is a Q-Q plot (ideally all points should be close
+  to the red line) the KS (Kolmogorov-Smirnov) test tests whether the
+  (in this case simulated) are likely to have been drawn from the
+  nominated distribution (in this case Gaussian).
+- the Dispersion test tests whether the standard deviation of the data
+  is equal to that of the simulated data
+- the Outlier test tests for the prevalence of outliers (when observed
+  values are outside the simulated range)
+- the right hand plot is a residual plot. Ideally, there should be no
+  patterns in the residuals. To help identify any patterns, quantile
+  trends are overlayed. Ideally, there should be a flat black line at
+  each of the quantiles of 0.25, 0.5 and 0.75.
+
+```{r validateModelbcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=6}
+fert_resid1 <- fert_lm1 %>% simulateResiduals(plot = TRUE)
+```
+
+```{r validateModelccenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=4}
+## To run tests of KS (uniformity),  dispersion and outliers
+fert_resid1 |> testResiduals()
+```
+
+```{r validateModeldcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+## OR individually
+fert_resid1 |> testUniformity()
+fert_resid1 |> testDispersion()
+fert_resid1 |> testOutliers()
+## Other useful tests
+fert_resid1 |> testZeroInflation()
+fert_resid1 |> testQuantiles()
+## The above fits quantile gams at 0.25,  0.5 and 0.75
+## testSpatialAutocorrelation(fert.resid,  x=,  y=) # needs x and y coordinates
+## testTemporalAutocorrelation(fert.resid,  time=) # needs time
+```
+
+### augment
+
+The `broom` package has an `augment` method that adds information
+generated from a fitted model to the modelled data.
+
+```{r validateModelecenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm1 %>% augment()
+## we could then pipe these to ggplot in order to look at residuals
+## etc
+fert_lm1 |>
+    augment() |>
+    ggplot() +
+    geom_point(aes(y = .resid, x = .fitted))
+```
+
+### plot_grid
+
+The `sjPlot` package also has plotting methods associated with fitted
+models, some of which focus on model diagnostics.
+
+```{r validateModelfcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8,message=FALSE,warning=FALSE}
+library(sjPlot)
+fert_lm1 |> plot_model(type='diag') |> sjPlot::plot_grid()
+```
+::::
+
+## glmmTMB
+
+:::: {.panel-tabset .nav-pills}
+### Influence measures
+Cook's distance (`cook.d`) and leverage (`hat`) are displayed in tabular form.
+
+The `influences.measures()` function does not have a method for
+`glmmTMB`.  On the surface, there are two options.
+
+1. if the `glmmTMB` model has random effects, we can use a function
+   within the `glmmTMB` package.  Note, at the time of writing, an
+   influence measures method for `glmmTMB` was not exported as a
+   method.  However, if the following is issued, then it is available.
+   `source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))`. 
+   Whilst this might change at some time down
+   the track, for now, the only way to access this method is to first
+   source it from
+   the package itself.  
+2. importantly, the above experimental method is not available for
+   models that do not have random effects.  Nevertheless, given that
+   it is such a simple model, we can just convert it to a `lm`.
+
+```{r validateModelaglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6}
+fert_glmmTMB |> lm() |> influence.measures()
+fert_glmmTMB |> lm() |> fortify()
+```
+
+### Easystats (performance model checking)
+	
+The `performance` package provides a similar set of visual diagnostics:
+
+- the top left plot is a Q-Q normal plot.
+- the top right plot compares the distribution (density) of the observed data
+  (blue) with a normal (or other nominated) distribution (green)
+- the middle two plots are residual and standard residual plots.  Ideally, these
+  should show no patterns in the residuals
+- the bottom left plot provides a frequency bar chart of Cook's distance values.
+
+```{r validateModela1glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+fert_glmmTMB |> performance::check_model()
+##fert_glmmTMB |> performance::check_outliers()
+## fert_glmmTMB |> performance::check_outliers() |> plot()
+## These are probabilities of exceedance rather than actual Cook's D values
+#https://easystats.github.io/performance/reference/check_outliers.html
+```
+
+**Conclusions**:
+
+- there are no alarming signs from any of the diagnostics
+
+
+### DHARMa simulated residuals
+
+Although an exploration of model residuals can provide important
+insights into the goodness of fit and conformity of a model to the
+underlying assumptions, diagnosing issues is a bit of a fine art.
+This difficulty is exacerbated when the residuals are being calculated
+from some models (e.g logistic regression models) where it is
+difficult to separate out nefarious patterns from the specific
+patterns expected of the specific model.
+
+The `DHARMa` package generates standardised residuals via simulation
+and uses these as the basis of a range of tools to diagnose common
+modelling issues including outliers, heterogeneity, over-dispersion,
+autocorrelation.
+
+New observations simulated from the fitted model are used to calculate
+a cumulative density function (CDF) that describes the probability
+profile of each observation. Thereafter, the residual of an
+observation is calculated as the value of the CDF that corresponds to
+the actual observed value:
+
+- a value of 0 indicates that the observed value was less than all
+  simulated values
+- a value of 1 indicates that the observed value was greater than all
+  simulated values
+- a value of 0.5 indicates that have the observed value were greater
+  than all simulated values from a correctly specified model, these
+  quantile residuals should be uniformly distributed
+
+This approach ensures that all residuals have the same interpretation
+irrespective of the model and distribution selected.
+
+Exploring DHARMa residuals begins with running the
+`simulateResiduals()` function. If this is done with `plot=TRUE`, a
+pair of diagnostic plots with a range of diagnostic tests will be
+provided as side effects.
+
+- the left hand plot is a Q-Q plot (ideally all points should be close
+  to the red line) the KS (Kolmogorov-Smirnov) test tests whether the
+  (in this case simulated) are likely to have been drawn from the
+  nominated distribution (in this case Gaussian).
+- the Dispersion test tests whether the standard deviation of the data
+  is equal to that of the simulated data
+- the Outlier test tests for the prevalence of outliers (when observed
+  values are outside the simulated range)
+- the right hand plot is a residual plot. Ideally, there should be no
+  patterns in the residuals. To help identify any patterns, quantile
+  trends are overlayed. Ideally, there should be a flat black line at
+  each of the quantiles of 0.25, 0.5 and 0.75.
+
+```{r validateModelbglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=6}
+fert_resid <- fert_glmmTMB %>% simulateResiduals(plot = TRUE)
+```
+
+```{r validateModelcglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=4}
+## To run tests of KS (uniformity),  dispersion and outliers
+fert_resid |> testResiduals()
+```
+
+```{r validateModeldglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+## OR individually
+fert_resid |> testUniformity()
+fert_resid |> testDispersion()
+fert_resid |> testOutliers()
+## Other useful tests
+fert_resid |> testZeroInflation()
+fert_resid |> testQuantiles()
+## The above fits quantile gams at 0.25,  0.5 and 0.75
+## testSpatialAutocorrelation(fert.resid,  x=,  y=) # needs x and y coordinates
+## testTemporalAutocorrelation(fert.resid,  time=) # needs time
+```
+
+### augment
+
+The `broom` package has an `augment` method that adds information
+generated from a fitted model to the modelled data.
+
+```{r validateModeleglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB |> lm() |> augment()
+## we could then pipe these to ggplot in order to look at residuals
+## etc
+fert_glmmTMB |>
+    lm() |>
+    augment() |>
+    ggplot() +
+    geom_point(aes(y = .resid, x = .fitted))
+```
+
+### plot_grid
+
+The `sjPlot` package also has plotting methods associated with fitted
+models, some of which focus on model diagnostics.
+
+```{r validateModelfglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8,message=FALSE,warning=FALSE}
+library(sjPlot)
+fert_glmmTMB |>
+    lm() |>
+    sjPlot::plot_model(type='diag') |>
+    sjPlot::plot_grid()
+```
+
+::::
+
+## glmmTMB centered
+
+:::: {.panel-tabset .nav-pills}
+### Influence measures
+Cook's distance (`cook.d`) and leverage (`hat`) are displayed in tabular form.
+
+The `influences.measures()` function does not have a method for
+`glmmTMB`.  On the surface, there are two options.
+
+1. if the `glmmTMB` model has random effects, we can use a function
+   within the `glmmTMB` package.  Note, at the time of writing, an
+   influence measures method for `glmmTMB` was not exported as a
+   method.  However, if the following is issued, then it is available.
+   `source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))`. 
+   Whilst this might change at some time down
+   the track, for now, the only way to access this method is to first
+   source it from
+   the package itself.  
+2. importantly, the above experimental method is not available for
+   models that do not have random effects.  Nevertheless, given that
+   it is such a simple model, we can just convert it to a `lm`.
+
+```{r validateModelaglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6}
+fert_glmmTMB1 |> lm() |> influence.measures()
+fert_glmmTMB1 |> lm() |> fortify()
+```
+
+### Easystats (performance model checking)
+	
+The `performance` package provides a similar set of visual diagnostics:
+
+- the top left plot is a Q-Q normal plot.
+- the top right plot compares the distribution (density) of the observed data
+  (blue) with a normal (or other nominated) distribution (green)
+- the middle two plots are residual and standard residual plots.  Ideally, these
+  should show no patterns in the residuals
+- the bottom left plot provides a frequency bar chart of Cook's distance values.
+
+```{r validateModela1glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+fert_glmmTMB1 |> performance::check_model()
+##fert_glmmTMB |> performance::check_outliers()
+## fert_glmmTMB |> performance::check_outliers() |> plot()
+## These are probabilities of exceedance rather than actual Cook's D values
+#https://easystats.github.io/performance/reference/check_outliers.html
+```
+
+**Conclusions**:
+
+- there are no alarming signs from any of the diagnostics
+
+
+### DHARMa simulated residuals
+
+Although an exploration of model residuals can provide important
+insights into the goodness of fit and conformity of a model to the
+underlying assumptions, diagnosing issues is a bit of a fine art.
+This difficulty is exacerbated when the residuals are being calculated
+from some models (e.g logistic regression models) where it is
+difficult to separate out nefarious patterns from the specific
+patterns expected of the specific model.
+
+The `DHARMa` package generates standardised residuals via simulation
+and uses these as the basis of a range of tools to diagnose common
+modelling issues including outliers, heterogeneity, over-dispersion,
+autocorrelation.
+
+New observations simulated from the fitted model are used to calculate
+a cumulative density function (CDF) that describes the probability
+profile of each observation. Thereafter, the residual of an
+observation is calculated as the value of the CDF that corresponds to
+the actual observed value:
+
+- a value of 0 indicates that the observed value was less than all
+  simulated values
+- a value of 1 indicates that the observed value was greater than all
+  simulated values
+- a value of 0.5 indicates that have the observed value were greater
+  than all simulated values from a correctly specified model, these
+  quantile residuals should be uniformly distributed
+
+This approach ensures that all residuals have the same interpretation
+irrespective of the model and distribution selected.
+
+Exploring DHARMa residuals begins with running the
+`simulateResiduals()` function. If this is done with `plot=TRUE`, a
+pair of diagnostic plots with a range of diagnostic tests will be
+provided as side effects.
+
+- the left hand plot is a Q-Q plot (ideally all points should be close
+  to the red line) the KS (Kolmogorov-Smirnov) test tests whether the
+  (in this case simulated) are likely to have been drawn from the
+  nominated distribution (in this case Gaussian).
+- the Dispersion test tests whether the standard deviation of the data
+  is equal to that of the simulated data
+- the Outlier test tests for the prevalence of outliers (when observed
+  values are outside the simulated range)
+- the right hand plot is a residual plot. Ideally, there should be no
+  patterns in the residuals. To help identify any patterns, quantile
+  trends are overlayed. Ideally, there should be a flat black line at
+  each of the quantiles of 0.25, 0.5 and 0.75.
+
+```{r validateModelbglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=6}
+fert_resid1 <- fert_glmmTMB1 %>% simulateResiduals(plot = TRUE)
+```
+
+```{r validateModelcglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=4}
+## To run tests of KS (uniformity),  dispersion and outliers
+fert_resid1 |> testResiduals()
+```
+
+```{r validateModeldglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+## OR individually
+fert_resid1 |> testUniformity()
+fert_resid1 |> testDispersion()
+fert_resid1 |> testOutliers()
+## Other useful tests
+fert_resid1 |> testZeroInflation()
+fert_resid1 |> testQuantiles()
+## The above fits quantile gams at 0.25,  0.5 and 0.75
+## testSpatialAutocorrelation(fert.resid,  x=,  y=) # needs x and y coordinates
+## testTemporalAutocorrelation(fert.resid,  time=) # needs time
+```
+
+### augment
+
+The `broom` package has an `augment` method that adds information
+generated from a fitted model to the modelled data.
+
+```{r validateModeleglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB1 |> lm() |> augment()
+## we could then pipe these to ggplot in order to look at residuals
+## etc
+fert_glmmTMB1 |>
+    lm() |>
+    augment() |>
+    ggplot() +
+    geom_point(aes(y = .resid, x = .fitted))
+```
+
+### plot_grid
+
+The `sjPlot` package also has plotting methods associated with fitted
+models, some of which focus on model diagnostics.
+
+```{r validateModelfglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8,message=FALSE,warning=FALSE}
+library(sjPlot)
+fert_glmmTMB1 |>
+    lm() |>
+    sjPlot::plot_model(type='diag') |>
+    sjPlot::plot_grid()
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model outputs 
+
+<!-- START_PRIVATE-->
+
+Prior to examining the estimated coefficients and any associated
+hypothesis tests, it is a good idea to explore the fitted trends.  Not
+only does this give you a sense for the overall outcomes (and help you
+interpret the model summaries etc), it also provides an opportunity to
+reflect on whether the model has yielded sensible patterns.
+
+There are numerous ways to explore the fitted trends and these are
+largely based on two types of effects:
+
+- **conditional effects**: predictions that are conditioned on certain
+  levels (typically the reference level) of factors.  For example, the
+  trend/effects of one predictor at the first level (or first
+  combination) of other categorical predictor(s).
+- **marginal effects**: predictions that are marginalised (= averaged)
+  over all levels of the factors.  For example, the trend/effects of
+  one predictor averaged across all levels (or combinations) of other
+  predictors.
+
+There are also numerous routines and packages to support these fitted
+trends (partial plots).
+
+| Package     | Function                   | Type              | Notes             |
+|-------------|----------------------------|-------------------|-------------------|
+| `sjPlot`    | `plot_model(type = 'eff')` | Marginal means    |                   |
+| `effects`   | `allEffects()`             | Marginal means    |                   |
+| `ggeffects` | `ggeffects()`              | Marginal means    | calls `effects()` |
+| `ggeffects` | `ggpredict()`              | Conditional means | calls `predict()` |
+| `ggeffects` | `ggemmeans()`              | Marginal means    | calls `emmeans()` |
+|             |                            |                   |                   |
+
+Note, in the absence of categorical predictors, they will all yield the same...
+
+
+::: {.panel-tabset}
+
+## lm
+
+:::: {.panel-tabset .nav-pills}
+
+### plot_model (sjPlot)
+```{r validateModel2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm |> plot_model(type = "eff", show.data = TRUE)
+```
+
+### allEffects (effects)
+
+```{r validateModel4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+plot(allEffects(fert_lm, residuals = TRUE))
+```
+
+### ggpredict (ggeffects)
+```{r validateModel6, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm |> ggpredict() |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### ggemmeans (ggeffects)
+```{r validateModel7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm |> ggemmeans(~FERTILIZER) |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### estimate_expectation (easystats)
+```{r validateModel8, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm |> estimate_expectation() |> plot()
+fert_lm |> estimate_expectation(data =  "grid", length =  100) |> plot()
+fert_lm |> estimate_relation(length =  100) |> plot()
+fert_lm |> estimate_prediction() |> plot()
+fert_lm |> estimate_link() |> plot()
+```
+
+::::
+
+## lm centered
+
+:::: {.panel-tabset .nav-pills}
+
+### plot_model (sjPlot)
+```{r validateModel2center, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm1 |> plot_model(type = "eff", show.data = TRUE)
+```
+
+### allEffects (effects)
+
+```{r validateModel4center, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+plot(allEffects(fert_lm1, residuals = TRUE))
+```
+
+### ggpredict (ggeffects)
+```{r validateModel6center, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm1 |> ggpredict() |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### ggemmeans (ggeffects)
+```{r validateModel7center, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm1 |> ggemmeans(~FERTILIZER) |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### estimate_expectation (easystats)
+```{r validateModel8center, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_lm1 |> estimate_expectation() |> plot()
+fert_lm1 |> estimate_expectation(data =  "grid", length =  100) |> plot()
+fert_lm1 |> estimate_relation(length =  100) |> plot()
+fert_lm1 |> estimate_prediction() |> plot()
+fert_lm1 |> estimate_link() |> plot()
+```
+
+::::
+## glmmTMB
+
+:::: {.panel-tabset .nav-pills}
+
+### plot_model (sjPlot)
+```{r validateModel2glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB |> plot_model(type = "eff", show.data = TRUE)
+```
+
+### allEffects (effects)
+
+```{r validateModel4glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+plot(allEffects(fert_glmmTMB, residuals = TRUE))
+```
+
+### ggpredict (ggeffects)
+```{r validateModel6glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB |> ggpredict() |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### ggemmeans (ggeffects)
+```{r validateModel7glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB |> ggemmeans(~FERTILIZER) |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### estimate_expectation (easystats)
+```{r validateModel8glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB |> estimate_expectation() |> plot()
+fert_glmmTMB |> estimate_expectation(data =  "grid", length =  100) |> plot()
+fert_glmmTMB |> estimate_relation(length =  100) |> plot()
+fert_glmmTMB |> estimate_prediction() |> plot()
+fert_glmmTMB |> estimate_link() |> plot()
+```
+::::
+
+## glmmTMB centered
+
+:::: {.panel-tabset .nav-pills}
+
+### plot_model (sjPlot)
+```{r validateModel2glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB1 |> plot_model(type = "eff", show.data = TRUE)
+```
+
+### allEffects (effects)
+
+```{r validateModel4glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+plot(allEffects(fert_glmmTMB1, residuals = TRUE))
+```
+
+### ggpredict (ggeffects)
+```{r validateModel6glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB1 |> ggpredict() |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### ggemmeans (ggeffects)
+```{r validateModel7glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB1 |> ggemmeans(~FERTILIZER) |> plot(add.data = TRUE, jitter=FALSE)
+```
+
+### estimate_expectation (easystats)
+```{r validateModel8glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+fert_glmmTMB1 |> estimate_expectation() |> plot()
+fert_glmmTMB1 |> estimate_expectation(data =  "grid", length =  100) |> plot()
+fert_glmmTMB1 |> estimate_relation(length =  100) |> plot()
+fert_glmmTMB1 |> estimate_prediction() |> plot()
+fert_glmmTMB1 |> estimate_link() |> plot()
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation / hypothesis testing 
+    
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## lm
+
+:::: {.panel-tabset .nav-pills}
+
+### summary
+```{r summaryModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm |> summary()
+```
+**Conclusions**:
+
+- the estimated y-intercept (value of Yield when Fertiliser level is 0) 
+  is `r round(coef(fert_lm)[1],2)`.  Note, as a Fertiliser value of
+  0 is outside the range of the collected data, this intercept does
+  not really have any useful interpretation (unless we are happy to
+  extrapolate).  If we had centred the Fertiliser predictor (either
+  before modelling or as part of the model -
+  `lm(YIELD~scale(FERTILIZER,scale=FALSE), data=fert)`), then the
+  y-intercept would have had a sensible interpretation.  It would have
+  been the expected Yield at the average Fertiliser level.
+  Nevertheless, either way, the hypothesis test associated with the
+  intercept is rarely of any value.
+- the estimated slope is `r round(coef(fert_lm)[2], 2)`.  For every
+  one unit increase in Fertiliser concentration, Yield is expected to
+  increase by `r round(coef(fert_lm)[2], 2)` units.
+- the estimated slope divided by the estimated uncertainty in the
+  slope (Std.  Error) gives a t-value of `r
+  round(summary(fert_lm)$coefficients[2, 3],2)`.  If we compare that
+  to a t-distribution for `r df.residual(fert_lm)`, we get a p-value <
+  0.05.  Hence we would reject the null hypothesis of no relationship
+  between Fertiliser concentration and Yield.
+- the $R^2$ value is `r round(summary(fert_lm)$r.squared, 2)`. Hence,
+  `r 100*round(summary(fert_lm)$r.squared, 2)` percent of the
+  variation in Yield is explained by its relationship to Fertiliser.
+
+### confint
+
+Arguably, the confidence intervals associated with each of the
+estimates is more useful than the p-values.  P-values purely indicate
+the probability of detecting an effect if an effect occurs.  They **do
+not** provide a measure of the magnitude (or importance) of the
+effect.  The slope is the point estimate of the magnitude of the
+effect.  Confidence intervals then provide insights into the broader
+range of effects.  For example, in addition to describing the
+estimated effect size (slope), we could discuss the implications of
+slope with a magnitude as low as the lower confidence limit or as high
+as the upper confidence limit.
+
+```{r summaryModel2b, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm |> confint()
+```
+**Conclusions**:
+
+- we are 95% confident that an interval the size of
+(`r paste(round(confint(fert_lm)[2, ], 2), collapse = ', ')`) would include the true
+mean slope.
+
+### tidy
+
+Each modelling routine (and package) may store and present its results in a
+different structure and format.  In an attempt to unify the output, the `broom`
+package includes a `tidy()` method that produces more consistent outputs
+(structure and names) across modelling routines.
+
+```{r summaryModel2c, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm |> tidy(conf.int=TRUE)
+```
+We can pipe this to `kable` if we want more formatted output.
+
+```{r summaryModel2d, results='asis', eval=TRUE, mhidden=TRUE}
+fert_lm |> tidy(conf.int = TRUE) |> kable()
+```
+### model_parameters (easystats)
+
+```{r summaryModel4, results='asis', eval=TRUE, mhidden=TRUE}
+fert_lm |>
+  model_parameters() |>
+  display()
+```
+```{r summaryModel4a, results='asis', eval=TRUE, mhidden=TRUE}
+fert_lm |>
+  model_performance() |>
+  display()
+```
+### tab_model
+
+For HTML output, the `sjPlot` package has a method for producing comparable and
+nicely formatted outputs across different modelling routines.
+
+```{r summaryModel3, results='markdown', eval=TRUE, mhidden=TRUE}
+# warning this is only appropriate for html output
+fert_lm |> sjPlot::tab_model(show.se = TRUE, show.aic = TRUE)
+```
+
+::::
+
+## lm centered
+
+:::: {.panel-tabset .nav-pills}
+
+### summary
+```{r summaryModel2acenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm1 |> summary()
+```
+**Conclusions**:
+
+- the estimated y-intercept (value of Yield when Fertiliser level is 0) 
+  is `r round(coef(fert_lm1)[1],2)`.  Note, as a Fertiliser value of
+  0 is outside the range of the collected data, this intercept does
+  not really have any useful interpretation (unless we are happy to
+  extrapolate).  If we had centred the Fertiliser predictor (either
+  before modelling or as part of the model -
+  `lm(YIELD~center(FERTILIZER), data=fert)`), then the
+  y-intercept would have had a sensible interpretation.  It would have
+  been the expected Yield at the average Fertiliser level.
+  Nevertheless, either way, the hypothesis test associated with the
+  intercept is rarely of any value.
+- the estimated slope is `r round(coef(fert_lm1)[2], 2)`.  For every
+  one unit increase in Fertiliser concentration, Yield is expected to
+  increase by `r round(coef(fert_lm1)[2], 2)` units.
+- the estimated slope divided by the estimated uncertainty in the
+  slope (Std.  Error) gives a t-value of `r
+  round(summary(fert_lm1)$coefficients[2, 3],2)`.  If we compare that
+  to a t-distribution for `r df.residual(fert_lm1)`, we get a p-value <
+  0.05.  Hence we would reject the null hypothesis of no relationship
+  between Fertiliser concentration and Yield.
+- the $R^2$ value is `r round(summary(fert_lm1)$r.squared, 2)`. Hence,
+  `r 100*round(summary(fert_lm1)$r.squared, 2)` percent of the
+  variation in Yield is explained by its relationship to Fertiliser.
+
+### confint
+
+Arguably, the confidence intervals associated with each of the
+estimates is more useful than the p-values.  P-values purely indicate
+the probability of detecting an effect if an effect occurs.  They **do
+not** provide a measure of the magnitude (or importance) of the
+effect.  The slope is the point estimate of the magnitude of the
+effect.  Confidence intervals then provide insights into the broader
+range of effects.  For example, in addition to describing the
+estimated effect size (slope), we could discuss the implications of
+slope with a magnitude as low as the lower confidence limit or as high
+as the upper confidence limit.
+
+```{r summaryModel2bcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm1 |> confint()
+```
+**Conclusions**:
+
+- we are 95% confident that an interval the size of
+(`r paste(round(confint(fert_lm1)[2, ], 2), collapse = ', ')`) would include the true
+mean slope.
+
+### tidy
+
+Each modelling routine (and package) may store and present its results in a
+different structure and format.  In an attempt to unify the output, the `broom`
+package includes a `tidy()` method that produces more consistent outputs
+(structure and names) across modelling routines.
+
+```{r summaryModel2ccener, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm1 |> tidy(conf.int=TRUE)
+```
+We can pipe this to `kable` if we want more formatted output.
+
+```{r summaryModel2dcenter, results='asis', eval=TRUE, mhidden=TRUE}
+fert_lm1 |> tidy(conf.int = TRUE) |> kable()
+```
+### model_parameters (easystats)
+
+```{r summaryModel4center, results='asis', eval=TRUE, mhidden=TRUE}
+fert_lm1 |>
+  model_parameters() |>
+  display()
+```
+```{r summaryModel4acenter, results='asis', eval=TRUE, mhidden=TRUE}
+fert_lm1 |>
+  model_performance() |>
+  display()
+```
+### tab_model
+
+For HTML output, the `sjPlot` package has a method for producing comparable and
+nicely formatted outputs across different modelling routines.
+
+```{r summaryModel3center, results='markdown', eval=TRUE, mhidden=TRUE}
+# warning this is only appropriate for html output
+fert_lm1 |> sjPlot::tab_model(show.se = TRUE, show.aic = TRUE)
+```
+
+::::
+## glmmTMB
+
+:::: {.panel-tabset .nav-pils}
+
+### summary
+```{r summaryModel2aglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> summary()
+```
+ 
+**Conclusions**:
+
+- the estimated y-intercept (value of Yield when Fertiliser level is 0) is 
+  `r round(fixef(fert_glmmTMB)[[1]],2)`.
+  Note, as a Fertiliser value of 0 is outside the range of the collected data,
+  this intercept does not really have any useful interpretation (unless we are
+  happy to extrapolate).  If we had centred the Fertiliser predictor (either
+  before modelling or as part of the model -
+  `glmmTMB(YIELD~scale(FERTILIZER,scale=FALSE), data=fert)`), then the y-intercept
+  would have had a sensible interpretation.  It would have been the expected
+  Yield at the average Fertiliser level.  Nevertheless, either way, the
+  hypothesis test associated with the intercept is rarely of any value.
+- the estimated slope is `r round(fixef(fert_glmmTMB)[[2]], 2)`.  For every one unit
+  increase in Fertiliser concentration, Yield is expected to increase by 
+  `r round(fixef(fert_glmmTMB)[[2]], 2)` units.
+- the estimated slope divided by the estimated uncertainty in the slope (Std.
+Error) gives a t-value of `r round(summary(fert_glmmTMB)$coefficients[[1]][2, 3],2)`.  If
+we compare that to a t-distribution for `r df.residual(fert_glmmTMB)`, we get a
+p-value < 0.05.  Hence we would reject the null hypothesis of no relationship
+between Fertiliser concentration and Yield.
+- the $R^2$ value is `r round(MuMIn::r.squaredGLMM(fert_glmmTMB)[1], 2)`. Hence,
+`r 100*round(MuMIn::r.squaredGLMM(fert_glmmTMB)[1], 2)` percent of the variation in Yield
+is explained by its relationship to Fertiliser.
+
+### confint
+Arguably, the confidence intervals associated with each of the estimates is more
+useful than the p-values.  P-values purely indicate the probability of detecting
+an effect if an effect occurs.  They **do not** provide a measure of the
+magnitude (or importance) of the effect.  The slope is the point estimate of the
+magnitude of the effect.  Confidence intervals then provide insights into the
+broader range of effects.  For example, in addition to describing the estimated
+effect size (slope), we could discuss the implications of slope with a magnitude
+as low as the lower confidence limit or as high as the upper confidence limit.
+
+```{r summaryModel2bglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> confint()
+```
+
+
+- we are 95% confident that an interval the size of
+(`r paste(round(confint(fert_glmmTMB)[2, ], 2), collapse = ', ')`) would include the true
+mean slope.
+
+### tidy
+
+Each modelling routine (and package) may store and present its results
+in a different structure and format.  In an attempt to unify the
+output, the `broom` package includes a `tidy()` method that produces
+more consistent outputs (structure and names) across modelling
+routines.
+
+```{r summaryModel2cglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> broom.mixed::tidy(conf.int = TRUE)
+```
+We can pipe this to `kable` if we want more formatted output.
+
+```{r summaryModel2dglmmTMB, results='asis', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> broom.mixed::tidy(conf.int = TRUE) %>% kable
+```
+
+### model_parameters (easystats)
+
+```{r summaryModel4glmmTMB, results='markown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> model_parameters() 
+```
+```{r summaryModel4aglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> model_performance() 
+```
+
+### tab_model
+
+For HTML output, the `sjPlot` package has a method for producing comparable and
+nicely formatted outputs across different modelling routines.
+
+```{r summaryModel3glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+# warning this is only appropriate for html output
+fert_glmmTMB |> sjPlot::tab_model(show.se = TRUE, show.aic = TRUE)
+```
+
+::::
+
+## glmmTMB center
+
+:::: {.panel-tabset .nav-pills}
+
+### summary
+```{r summaryModel2aglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> summary()
+```
+ 
+**Conclusions**:
+
+- the estimated y-intercept (value of Yield when Fertiliser level is 0) is 
+  `r round(fixef(fert_glmmTMB1)[[1]],2)`.
+  Note, as a Fertiliser value of 0 is outside the range of the collected data,
+  this intercept does not really have any useful interpretation (unless we are
+  happy to extrapolate).  If we had centred the Fertiliser predictor (either
+  before modelling or as part of the model -
+  `glmmTMB(YIELD~center(FERTILIZER), data=fert)`), then the y-intercept
+  would have had a sensible interpretation.  It would have been the expected
+  Yield at the average Fertiliser level.  Nevertheless, either way, the
+  hypothesis test associated with the intercept is rarely of any value.
+- the estimated slope is `r round(fixef(fert_glmmTMB1)[[2]], 2)`.  For every one unit
+  increase in Fertiliser concentration, Yield is expected to increase by 
+  `r round(fixef(fert_glmmTMB1)[[2]], 2)` units.
+- the estimated slope divided by the estimated uncertainty in the slope (Std.
+Error) gives a t-value of `r round(summary(fert_glmmTMB1)$coefficients[[1]][2, 3],2)`.  If
+we compare that to a t-distribution for `r df.residual(fert_glmmTMB1)`, we get a
+p-value < 0.05.  Hence we would reject the null hypothesis of no relationship
+between Fertiliser concentration and Yield.
+- the $R^2$ value is `r round(MuMIn::r.squaredGLMM(fert_glmmTMB1)[1], 2)`. Hence,
+`r 100*round(MuMIn::r.squaredGLMM(fert_glmmTMB1)[1], 2)` percent of the variation in Yield
+is explained by its relationship to Fertiliser.
+
+### confint
+Arguably, the confidence intervals associated with each of the estimates is more
+useful than the p-values.  P-values purely indicate the probability of detecting
+an effect if an effect occurs.  They **do not** provide a measure of the
+magnitude (or importance) of the effect.  The slope is the point estimate of the
+magnitude of the effect.  Confidence intervals then provide insights into the
+broader range of effects.  For example, in addition to describing the estimated
+effect size (slope), we could discuss the implications of slope with a magnitude
+as low as the lower confidence limit or as high as the upper confidence limit.
+
+```{r summaryModel2bglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> confint()
+```
+
+
+- we are 95% confident that an interval the size of
+(`r paste(round(confint(fert_glmmTMB1)[2, ], 2), collapse = ', ')`) would include the true
+mean slope.
+
+### tidy
+
+Each modelling routine (and package) may store and present its results
+in a different structure and format.  In an attempt to unify the
+output, the `broom` package includes a `tidy()` method that produces
+more consistent outputs (structure and names) across modelling
+routines.
+
+```{r summaryModel2cglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> broom.mixed::tidy(conf.int = TRUE)
+```
+We can pipe this to `kable` if we want more formatted output.
+
+```{r summaryModel2dglmmTMBcenter, results='asis', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> broom.mixed::tidy(conf.int = TRUE) %>% kable
+```
+
+### model_parameters (easystats)
+
+```{r summaryModel4glmmTMBcenter, results='markown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> model_parameters() 
+```
+```{r summaryModel4aglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> model_performance() 
+```
+
+### tab_model
+
+For HTML output, the `sjPlot` package has a method for producing comparable and
+nicely formatted outputs across different modelling routines.
+
+```{r summaryModel3glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+# warning this is only appropriate for html output
+fert_glmmTMB1 |> sjPlot::tab_model(show.se = TRUE, show.aic = TRUE)
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Predictions
+
+<!-- START_PRIVATE-->
+For simple models prediction is essentially taking the model formula
+complete with parameter (coefficient) estimates and solving for new
+values of the predictor.  To explore this, we will use the fitted
+model to predict Yield for a Fertiliser concentration of 110.
+
+::: {.panel-tabset}
+
+## lm
+
+:::: {.panel-tabset .nav-pills}
+
+### predict
+
+```{r predictModel2, results='markdown', eval=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110)
+## using the predict function
+fert_lm |> predict(newdata = newdata)
+## include confidence intervals
+fert_lm |> predict(newdata = newdata,  interval = "confidence")
+```
+
+**Conclusions**:
+
+- we expect (predict) a Yield of `r round(predict(fert_lm, newdata=newdata), 2)` associated with
+a Fertiliser level of 110.
+- confidence intervals represent the interval in which we are 95% confident the
+true **Mean** value of the population falls.
+- prediction intervals (not show, but described for comparison) represent the
+interval in which we are 95% confident a single observation drawn from the
+population mean will fall.
+
+### manual calculations
+
+```{r predictModel, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110)
+## Establish an appropriate model matrix
+Xmat <- model.matrix(~FERTILIZER, data = newdata)
+## Perform matrix multiplication
+(pred <- coef(fert_lm) %*% t(Xmat))
+## Calculate the standard error
+se <- sqrt(diag(Xmat %*% vcov(fert_lm) %*% t(Xmat)))
+## Calculate the confidence intervals
+as.numeric(pred) + outer(se, qt(df = df.residual(fert_lm),  c(0.025, 0.975)))
+```
+
+### emmeans
+
+The `emmeans` package has a set of routines for estimating marginal means from
+fitted models.
+
+```{r predictModel3, results='markdown', eval=TRUE, mhidden=TRUE}
+## using emmeans
+newdata <- list(FERTILIZER = 110)
+fert_lm |> emmeans(~FERTILIZER, at = newdata)
+```
+Note, the above outputs are rounded only for the purpose of constructing the
+printed table on screen.  If we were to capture the output of the `emmeans()` function, the values
+would not be rounded.
+
+### estimate_expectation (easystats)
+
+```{r predictModel3a, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm |> estimate_expectation(data = "grid", at = list(FERTILIZER = 110))
+## OR
+newdata <- fert_lm |> insight::get_datagrid(at = list(FERTILIZER = 110))
+newdata |> estimate_expectation()
+```
+
+::::
+
+## lm centered
+
+:::: {.panel-tabset .nav-pills}
+
+### predict
+
+```{r predictModel2center, results='markdown', eval=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110)
+## using the predict function
+fert_lm1 |> predict(newdata = newdata)
+## include confidence intervals
+fert_lm1 |> predict(newdata = newdata,  interval = "confidence")
+```
+
+**Conclusions**:
+
+- we expect (predict) a Yield of `r round(predict(fert_lm1, newdata=newdata), 2)` associated with
+a Fertiliser level of 110.
+- confidence intervals represent the interval in which we are 95% confident the
+true **Mean** value of the population falls.
+- prediction intervals (not show, but described for comparison) represent the
+interval in which we are 95% confident a single observation drawn from the
+population mean will fall.
+
+### manual calculations
+
+```{r predictModelcenter, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110 - mean(fert$FERTILIZER))
+## Establish an appropriate model matrix
+Xmat <- model.matrix(~FERTILIZER, data = newdata)
+## Perform matrix multiplication
+(pred <- coef(fert_lm1) %*% t(Xmat))
+## Calculate the standard error
+se <- sqrt(diag(Xmat %*% vcov(fert_lm1) %*% t(Xmat)))
+## Calculate the confidence intervals
+as.numeric(pred) + outer(se, qt(df = df.residual(fert_lm1),  c(0.025, 0.975)))
+```
+
+### emmeans
+
+The `emmeans` package has a set of routines for estimating marginal means from
+fitted models.
+
+```{r predictModel3center, results='markdown', eval=TRUE, mhidden=TRUE}
+## using emmeans
+newdata <- list(FERTILIZER = 110)
+fert_lm1 |> emmeans(~FERTILIZER, at = newdata)
+```
+Note, the above outputs are rounded only for the purpose of constructing the
+printed table on screen.  If we were to capture the output of the `emmeans()` function, the values
+would not be rounded.
+
+### estimate_expectation (easystats)
+
+```{r predictModel3acenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm1 |> estimate_expectation(data = "grid", at = list(FERTILIZER = 110))
+## OR
+newdata <- fert_lm1 |> insight::get_datagrid(at = list(FERTILIZER = 110))
+newdata |> estimate_expectation()
+```
+
+::::
+## glmmTMB
+
+:::: {.panel-tabset .nav-pils}
+
+### predict
+
+```{r predictModel2glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110)
+## using the predict function
+fert_glmmTMB |> predict(newdata = newdata)
+## include confidence intervals
+fert_glmmTMB |> predict(newdata = newdata,  se.fit = TRUE)
+```
+
+**Conclusions**:
+
+- we expect (predict) a Yield of `r round(predict(fert_glmmTMB, newdata=newdata), 2)` associated with
+a Fertiliser level of 110.
+- confidence intervals represent the interval in which we are 95% confident the
+true **Mean** value of the population falls.
+- prediction intervals (not show, but described for comparison) represent the
+interval in which we are 95% confident a single observation drawn from the
+population mean will fall.
+
+### manual calculations
+
+```{r predictModelglmmTMB, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110)
+## Establish an appropriate model matrix
+Xmat <- model.matrix(~FERTILIZER, data = newdata)
+## Perform matrix multiplication
+(pred <- fixef(fert_glmmTMB)[[1]] %*% t(Xmat))
+## Calculate the standard error
+se <- sqrt(diag(Xmat %*% vcov(fert_glmmTMB)[[1]] %*% t(Xmat)))
+## Calculate the confidence intervals
+as.numeric(pred) + outer(se, qt(df = df.residual(fert_glmmTMB),  c(0.025, 0.975)))
+```
+
+### emmeans
+
+The `emmeans` package has a set of routines for estimating marginal means from
+fitted models.
+
+```{r predictModel3glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+## using emmeans
+newdata <- list(FERTILIZER = 110)
+fert_glmmTMB |> emmeans(~FERTILIZER, at = newdata)
+```
+Note, the above outputs are rounded only for the purpose of constructing the
+printed table on screen.  If we were to capture the output of the `emmeans()` function, the values
+would not be rounded.
+
+### estimate_expectation (easystats)
+
+```{r predictModel3aglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> estimate_expectation(data = "grid", at = list(FERTILIZER = 110))
+fert_glmmTMB |> estimate_relation(data = "grid", at = list(FERTILIZER = 110))
+## OR
+newdata <- fert_glmmTMB |> insight::get_datagrid(at = list(FERTILIZER = 110))
+newdata |> estimate_expectation()
+```
+
+::::
+
+## glmmTMB centered
+
+:::: {.panel-tabset .nav-pils}
+
+### predict
+
+```{r predictModel2glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110)
+## using the predict function
+fert_glmmTMB1 |> predict(newdata = newdata)
+## include confidence intervals
+fert_glmmTMB1 |> predict(newdata = newdata,  se.fit = TRUE)
+```
+
+**Conclusions**:
+
+- we expect (predict) a Yield of `r round(predict(fert_glmmTMB1, newdata=newdata), 2)` associated with
+a Fertiliser level of 110.
+- confidence intervals represent the interval in which we are 95% confident the
+true **Mean** value of the population falls.
+- prediction intervals (not show, but described for comparison) represent the
+interval in which we are 95% confident a single observation drawn from the
+population mean will fall.
+
+### manual calculations
+
+```{r predictModelglmmTMBcenter, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110 - mean(fert$FERTILIZER))
+## Establish an appropriate model matrix
+Xmat <- model.matrix(~FERTILIZER, data = newdata)
+## Perform matrix multiplication
+(pred <- fixef(fert_glmmTMB1)[[1]] %*% t(Xmat))
+## Calculate the standard error
+se <- sqrt(diag(Xmat %*% vcov(fert_glmmTMB1)[[1]] %*% t(Xmat)))
+## Calculate the confidence intervals
+as.numeric(pred) + outer(se, qt(df = df.residual(fert_glmmTMB1),  c(0.025, 0.975)))
+```
+
+### emmeans
+
+The `emmeans` package has a set of routines for estimating marginal means from
+fitted models.
+
+```{r predictModel3glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## using emmeans
+newdata <- list(FERTILIZER = 110)
+fert_glmmTMB1 |> emmeans(~FERTILIZER, at = newdata)
+```
+Note, the above outputs are rounded only for the purpose of constructing the
+printed table on screen.  If we were to capture the output of the `emmeans()` function, the values
+would not be rounded.
+
+### estimate_expectation (easystats)
+
+```{r predictModel3aglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> estimate_expectation(data = "grid", at = list(FERTILIZER = 110))
+fert_glmmTMB1 |> estimate_relation(data = "grid", at = list(FERTILIZER = 110))
+## OR
+newdata <- fert_glmmTMB1 |> insight::get_datagrid(at = list(FERTILIZER = 110))
+newdata |> estimate_expectation()
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Additional analyses
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+Having fitted the simple linear model, we can further interrogate the model to
+explore additional facets.
+
+## lm
+
+:::: {.panel-tabset .nav-pills}
+
+### glht
+```{r predictModel4, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_lm |> multcomp::glht(linfct = c("FERTILIZER == 1")) |> summary()
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_lm |> multcomp::glht(linfct = c("FERTILIZER >= 0.9")) |> summary()
+```
+
+### hypothesis
+
+```{r predictModel4a, results='markdown', eval=TRUE, echo=TRUE, eval=0, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_lm |> brms::hypothesis("FERTILIZER = 1")
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_lm |> brms::hypothesis("FERTILIZER > 0.9")
+```
+
+### emmeans
+We could explore the expected change in Yield associated with a specific
+increase in Fertiliser.  For example, how much do we expect Yield to increase
+when increasing Fertiliser concentration from 100 to 200.
+
+```{r predictModel5a, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+newdata <- list(FERTILIZER = c(200, 100))
+fert_lm |> emmeans(~FERTILIZER, at = newdata) 
+fert_lm |> emmeans(~FERTILIZER, at = newdata) |> pairs() 
+fert_lm |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> confint() 
+fert_lm |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> summary(infer=TRUE)
+fert_lm |> emmeans(pairwise~FERTILIZER, at = newdata)
+## or with confidence intervals
+fert_lm |> emmeans(pairwise~FERTILIZER, at = newdata) |> confint()
+## What if we wanted to calculate the percentage increase in yield associated with this change
+## Lets consider what a percentage change is:
+## If a value changed from 15 to 20, what percentage change is this?
+## 20/15 = 1.333 therefore, a 33.3% increase
+## But when working with model parameters, can only work with + -, not * and /
+## To do this in a frequentist model, we need to use a log law trick
+## log(A-B) = log(A)/log(B)
+## So what we need to do is:
+## - take out cell means
+## - log them
+## - subtract them
+## - them back-transform (exp)
+fert_lm |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+## And if we wanted to express it as a decline from FERTILIZER 200 to 100
+fert_lm |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs(reverse = TRUE) |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+```
+
+### estimate_expectation (easystats)
+
+```{r predictModel5b, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm |> estimate_expectation(data = "grid", at = list(FERTILIZER = c(200, 100)))
+fert_lm |>
+  estimate_contrasts("FERTILIZER",
+    at = list(FERTILIZER = c(200, 100)))
+## OR
+fert_grid <- fert_lm |>
+  insight::get_datagrid(at = list(FERTILIZER = c(200, 100)))
+fert_lm |> estimate_contrasts("FERTILIZER", fert_grid)
+## Express as percentage change - not possible
+```
+::::
+
+## lm centered
+
+:::: {.panel-tabset .nav-pills}
+
+### glht
+```{r predictModel4center, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_lm1 |> multcomp::glht(linfct = c("`center(FERTILIZER)` == 1")) |> summary()
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_lm1 |> multcomp::glht(linfct = c("`center(FERTILIZER)` >= 0.9")) |> summary()
+```
+
+### hypothesis
+
+```{r predictModel4acenter, results='markdown', eval=TRUE, echo=TRUE, eval=0, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_lm1 |> brms::hypothesis("FERTILIZER = 1")
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_lm1 |> brms::hypothesis("FERTILIZER > 0.9")
+```
+
+### emmeans
+We could explore the expected change in Yield associated with a specific
+increase in Fertiliser.  For example, how much do we expect Yield to increase
+when increasing Fertiliser concentration from 100 to 200.
+
+```{r predictModel5acenter, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+newdata <- list(FERTILIZER = c(200, 100))
+fert_lm1 |> emmeans(~FERTILIZER, at = newdata) 
+fert_lm1 |> emmeans(~FERTILIZER, at = newdata) |> pairs() 
+fert_lm1 |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> confint() 
+fert_lm1 |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> summary(infer=TRUE)
+fert_lm1 |> emmeans(pairwise~FERTILIZER, at = newdata)
+## or with confidence intervals
+fert_lm1 |> emmeans(pairwise~FERTILIZER, at = newdata) |> confint()
+## What if we wanted to calculate the percentage increase in yield associated with this change
+## Lets consider what a percentage change is:
+## If a value changed from 15 to 20, what percentage change is this?
+## 20/15 = 1.333 therefore, a 33.3% increase
+## But when working with model parameters, can only work with + -, not * and /
+## To do this in a frequentist model, we need to use a log law trick
+## log(A-B) = log(A)/log(B)
+## So what we need to do is:
+## - take out cell means
+## - log them
+## - subtract them
+## - them back-transform (exp)
+fert_lm1 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+## And if we wanted to express it as a decline from FERTILIZER 200 to 100
+fert_lm1 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs(reverse = TRUE) |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+```
+
+### estimate_expectation (easystats)
+
+```{r predictModel5bcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_lm1 |> estimate_expectation(data = "grid", at = list(FERTILIZER = c(200, 100)))
+fert_lm1 |>
+  estimate_contrasts("FERTILIZER",
+    at = list(FERTILIZER = c(200, 100)))
+## OR
+fert_grid <- fert_lm1 |>
+  insight::get_datagrid(at = list(FERTILIZER = c(200, 100)))
+fert_lm1 |> estimate_contrasts("FERTILIZER", fert_grid)
+## Express as percentage change - not possible
+```
+::::
+## glmmTMB
+
+:::: {.panel-tabset .nav-pills}
+
+### glht
+```{r predictModel4glmmTMB, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_glmmTMB |> multcomp::glht(linfct = c("FERTILIZER == 1")) |> summary()
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_glmmTMB |> multcomp::glht(linfct = c("FERTILIZER >= 0.9")) |> summary()
+```
+
+### hypothesis
+
+```{r predictModel4aglmmTMB, results='markdown', eval=TRUE, echo=TRUE, error=0, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_lm |> brms::hypothesis("FERTILIZER = 1")
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_lm |> brms::hypothesis("FERTILIZER > 0.9")
+```
+
+### emmeans
+We could explore the expected change in Yield associated with a specific
+increase in Fertiliser.  For example, how much do we expect Yield to increase
+when increasing Fertiliser concentration from 100 to 200.
+
+```{r predictModel5aglmmTMB, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+newdata <- list(FERTILIZER = c(200, 100))
+fert_glmmTMB |> emmeans(~FERTILIZER, at = newdata)
+fert_glmmTMB |> emmeans(~FERTILIZER, at = newdata) |> pairs()
+fert_glmmTMB |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> confint()
+fert_glmmTMB |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> summary(infer = TRUE)
+fert_glmmTMB |> emmeans(pairwise~FERTILIZER, at = newdata)
+## or with confidence intervals
+fert_glmmTMB |> emmeans(pairwise~FERTILIZER, at = newdata) |> confint()
+## What if we wanted to calculate the percentage increase in yield associated with this change
+## Lets consider what a percentage change is:
+## If a value changed from 15 to 20, what percentage change is this?
+## 20/15 = 1.333 therefore, a 33.3% increase
+## But when working with model parameters, can only work with + -, not * and /
+## To do this in a frequentist model, we need to use a log law trick
+## log(A-B) = log(A)/log(B)
+## So what we need to do is:
+## - take out cell means
+## - log them
+## - subtract them
+## - them back-transform (exp)
+fert_glmmTMB |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+## And if we wanted to express it as a decline from FERTILIZER 200 to 100
+fert_glmmTMB |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs(reverse = TRUE) |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+```
+### estimate_expectation (easystats)
+
+```{r predictModel5bglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB |> estimate_expectation(data = "grid", at = list(FERTILIZER = c(200, 100)))
+fert_glmmTMB |>
+  estimate_contrasts("FERTILIZER",
+    at = list(FERTILIZER = c(200, 100)))
+## OR
+fert_grid <- fert_glmmTMB |>
+  insight::get_datagrid(at = list(FERTILIZER = c(200, 100)))
+fert_glmmTMB |> estimate_contrasts("FERTILIZER", fert_grid)
+## Express as percentage change - not possible
+```
+::::
+
+## glmmTMB center
+
+:::: {.panel-tabset .nav-pills}
+
+### glht
+```{r predictModel4glmmTMBcenter, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_glmmTMB1 |> multcomp::glht(linfct = c("`center(FERTILIZER)` == 1")) |> summary()
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_glmmTMB1 |> multcomp::glht(linfct = c("`center(FERTILIZER)` >= 0.9")) |> summary()
+```
+
+### hypothesis
+
+```{r predictModel4aglmmTMBcenter, results='markdown', eval=TRUE, echo=TRUE, error=0, mhidden=TRUE}
+## testing a specific hypothesis
+## Probabiliy of getting our estimate if slope was 1
+fert_lm1 |> brms::hypothesis("FERTILIZER = 1")
+## Cant ask probability that the slope is equal to something in frequentist
+## If we wanted to know the probability that the slope was greater than
+## 1, the closest we could get is
+fert_lm1 |> brms::hypothesis("FERTILIZER > 0.9")
+```
+
+### emmeans
+We could explore the expected change in Yield associated with a specific
+increase in Fertiliser.  For example, how much do we expect Yield to increase
+when increasing Fertiliser concentration from 100 to 200.
+
+```{r predictModel5aglmmTMBcenter, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+newdata <- list(FERTILIZER = c(200, 100))
+fert_glmmTMB1 |> emmeans(~FERTILIZER, at = newdata)
+fert_glmmTMB1 |> emmeans(~FERTILIZER, at = newdata) |> pairs()
+fert_glmmTMB1 |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> confint()
+fert_glmmTMB1 |> emmeans(~FERTILIZER, at = newdata) |> pairs() |> summary(infer = TRUE)
+fert_glmmTMB1 |> emmeans(pairwise~FERTILIZER, at = newdata)
+## or with confidence intervals
+fert_glmmTMB1 |> emmeans(pairwise~FERTILIZER, at = newdata) |> confint()
+## What if we wanted to calculate the percentage increase in yield associated with this change
+## Lets consider what a percentage change is:
+## If a value changed from 15 to 20, what percentage change is this?
+## 20/15 = 1.333 therefore, a 33.3% increase
+## But when working with model parameters, can only work with + -, not * and /
+## To do this in a frequentist model, we need to use a log law trick
+## log(A-B) = log(A)/log(B)
+## So what we need to do is:
+## - take out cell means
+## - log them
+## - subtract them
+## - them back-transform (exp)
+fert_glmmTMB1 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+## And if we wanted to express it as a decline from FERTILIZER 200 to 100
+fert_glmmTMB1 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs(reverse = TRUE) |>
+    summary(infer = TRUE) |>
+    mutate(across(c(estimate, lower.CL, upper.CL), exp)) |>
+    as.data.frame()
+```
+### estimate_expectation (easystats)
+
+```{r predictModel5bglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_glmmTMB1 |> estimate_expectation(data = "grid", at = list(FERTILIZER = c(200, 100)))
+fert_glmmTMB1 |>
+  estimate_contrasts("FERTILIZER",
+    at = list(FERTILIZER = c(200, 100)))
+## OR
+fert_grid <- fert_glmmTMB1 |>
+  insight::get_datagrid(at = list(FERTILIZER = c(200, 100)))
+fert_glmmTMB1 |> estimate_contrasts("FERTILIZER", fert_grid)
+## Express as percentage change - not possible
+```
+::::
+:::
+
+<!-- END_PRIVATE-->
+
+# Summary figures
+
+<!-- START_PRIVATE-->
+Although there are numerous easy to use routines that will generate partial
+plots (see above), it is also useful to be able to produce the data behind the
+figures yourself.  That way, you can have more control over the type and style of
+the figures.
+
+Producing a summary figure is essentially plotting the results of predictions.
+In the case of a trend, we want a series of predictions associated with a
+sequence of predictor values.  Hence, we establish a prediction grid that
+contains the sequence of values for the predictor we would like to display.
+
+There are a number of functions we can use to generate different sequences of
+prediction values.  For example, we may want a sequence of values from the
+lowest to the highest observed predictor value.  Alternatively, we may just want
+to explore predictions at the first, third and fifth quantiles.  The following
+table indicates some of the functions that are helpful for these purposes.
+
+| Function                   | Values returned                                         |
+|----------------------------|---------------------------------------------------------|
+| `modelr::seq_range()`      | equal increment values from smallest to largest         |
+| `Hmisc::smean_sdl()`       | mean as well as mean plus/minus one standard deviation  |
+| `Hmisc::smedian_hilow()`   | median as well as min and max                           |
+| `Hmisc::smean.cl.normal()` | mean as well as lower and upper 95% confidence interval |
+
+::: {.panel-tabset}
+    
+## lm
+
+:::: {.panel-tabset .nav-pills}
+
+### emmeans
+
+```{r figureModel, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid <- with(fert, list(FERTILIZER = seq_range(FERTILIZER, n = 100)))
+## OR
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_lm |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_lm |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3)), breaks=c(100,150,200,250))+
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1)))+
+    theme_classic()
+```
+
+### emmeans with partial residuals
+
+For more complex models that include additional covariates, the partial plot
+represents the expected trend between the response and focal predictor holding
+all other predictors constant.  This is akin to plotting the trend between the
+response and focal predictor after standardising first for the other
+covariate(s).
+
+When this is the case, it is not always appropriate to overlay a partial plot
+with raw data (as this data has not been standardised and will not necessarily
+represent the partial effects).  Arguably a more appropriate way to represent
+the data points, is to calculate standardised version of the points by adding
+the residuals onto the fitted values associated with each of the observed values
+of the focal predictor.  When there is only a single predictor, as is the case
+here, the result will be identical to just overlaying the raw data.
+
+We can either do this by leveraging completely off the `ggemmeans()`
+function (or `ggpredict()` if we want conditional predictions).
+
+```{r figureModelA, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_lm |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_lm |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+
+## Now generate partial residuals
+fitted_grid <- fert
+fit <- fert_lm |> emmeans(~FERTILIZER, at = fitted_grid) |> as.data.frame() |>
+    pull(emmean)
+resid_newdata <- fert |>
+    mutate(Fit = fit,
+           Resid = resid(fert_lm),
+           Partial.obs = Fit + Resid)
+resid_newdata |>  head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+### estimate_expectations (easystats)
+```{r figureModelB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_grid <- fert_lm |>
+  insight::get_datagrid(at =  "FERTILIZER", length = 100)
+newdata <- fert_lm |>
+  estimate_expectation(data = fert_grid) |>
+  as.data.frame()
+newdata |> head()
+## Now generate partial residuals
+resid_grid <- fert |>
+  insight::get_data()
+resid_newdata <- fert_lm |>
+  estimate_expectation(data = resid_grid) |>
+  as.data.frame() |> 
+    mutate(Partial.obs = Predicted + Residuals)
+
+ggplot(newdata, aes(y = Predicted, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = CI_low, ymax = CI_high), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+### manually
+
+```{r figureModel1, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+newdata <- with(fert, data.frame(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len = 100)))
+Xmat <- model.matrix(~FERTILIZER,  data = newdata)
+coefs <- coef(fert_lm)
+preds <- coefs %*% t(Xmat)
+se <- sqrt(diag(Xmat %*% vcov(fert_lm) %*% t(Xmat)))
+fert_df <- df.residual(fert_lm)
+newdata <- newdata |>
+  mutate(fit = as.vector(preds),
+         lower = fit - qt(0.975, df = fert_df) * se,
+         upper = fit + qt(0.975,  df = fert_df) * se)
+ggplot(newdata, aes(y = fit, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+::::
+
+## lm centered
+
+:::: {.panel-tabset .nav-pills}
+
+### emmeans
+
+```{r figureModelcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid1 <- with(fert, list(FERTILIZER = seq_range(FERTILIZER, n = 100)))
+## OR
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_lm1 |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_lm1 |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3)), breaks=c(100,150,200,250))+
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1)))+
+    theme_classic()
+```
+
+### emmeans with partial residuals
+
+For more complex models that include additional covariates, the partial plot
+represents the expected trend between the response and focal predictor holding
+all other predictors constant.  This is akin to plotting the trend between the
+response and focal predictor after standardising first for the other
+covariate(s).
+
+When this is the case, it is not always appropriate to overlay a partial plot
+with raw data (as this data has not been standardised and will not necessarily
+represent the partial effects).  Arguably a more appropriate way to represent
+the data points, is to calculate standardised version of the points by adding
+the residuals onto the fitted values associated with each of the observed values
+of the focal predictor.  When there is only a single predictor, as is the case
+here, the result will be identical to just overlaying the raw data.
+
+We can either do this by leveraging completely off the `ggemmeans()`
+function (or `ggpredict()` if we want conditional predictions).
+
+```{r figureModelAcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_lm1 |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_lm1 |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+
+## Now generate partial residuals
+fitted_grid <- fert
+fit <- fert_lm1 |> emmeans(~FERTILIZER, at = fitted_grid) |> as.data.frame() |>
+    pull(emmean)
+resid_newdata <- fert |>
+    mutate(Fit = fit,
+           Resid = resid(fert_lm1),
+           Partial.obs = Fit + Resid)
+resid_newdata |>  head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+### estimate_expectations (easystats)
+```{r figureModelBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_grid <- fert_lm1 |>
+  insight::get_datagrid(at =  "FERTILIZER", length = 100)
+newdata <- fert_lm1 |>
+  estimate_expectation(data = fert_grid) |>
+  as.data.frame()
+newdata |> head()
+## Now generate partial residuals
+resid_grid <- fert |>
+  insight::get_data()
+resid_newdata <- fert_lm1 |>
+  estimate_expectation(data = resid_grid) |>
+  as.data.frame() |> 
+    mutate(Partial.obs = Predicted + Residuals)
+
+ggplot(newdata, aes(y = Predicted, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = CI_low, ymax = CI_high), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+### manually
+
+```{r figureModel1center, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+newdata <- fert |>
+  reframe(nFERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len = 100),
+    cFERTILIZER =  nFERTILIZER - mean(FERTILIZER)) |>
+  rename(FERTILIZER = nFERTILIZER)
+
+Xmat <- model.matrix(~cFERTILIZER,  data = newdata)
+coefs <- coef(fert_lm1)
+preds <- coefs %*% t(Xmat)
+se <- sqrt(diag(Xmat %*% vcov(fert_lm1) %*% t(Xmat)))
+fert_df <- df.residual(fert_lm1)
+newdata <- newdata |>
+  mutate(fit = as.vector(preds),
+         lower = fit - qt(0.975, df = fert_df) * se,
+         upper = fit + qt(0.975,  df = fert_df) * se)
+ggplot(newdata, aes(y = fit, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+::::
+## glmmTMB
+
+:::: {.panel-tabset .nav-pills}
+
+### emmeans
+
+```{r figureModelglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid <- with(fert, list(FERTILIZER = seq_range(FERTILIZER, n = 100)))
+## OR
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_glmmTMB |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_glmmTMB |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3)), breaks = c(100, 150, 200, 250)) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+### emmeans with partial residuals
+
+For more complex models that include additional covariates, the partial plot
+represents the expected trend between the response and focal predictor holding
+all other predictors constant.  This is akin to plotting the trend between the
+response and focal predictor after standardising first for the other
+covariate(s).
+
+When this is the case, it is not always appropriate to overlay a partial plot
+with raw data (as this data has not been standardised and will not necessarily
+represent the partial effects).  Arguably a more appropriate way to represent
+the data points, is to calculate standardised version of the points by adding
+the residuals onto the fitted values associated with each of the observed values
+of the focal predictor.  When there is only a single predictor, as is the case
+here, the result will be identical to just overlaying the raw data.
+
+We can either do this by leveraging completely off the `ggemmeans()`
+function (or `ggpredict()` if we want conditional predictions).
+
+```{r figureModelAglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_glmmTMB |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_glmmTMB |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+
+## Now generate partial residuals
+fitted_grid <- fert
+fit <- fert_glmmTMB |> emmeans(~FERTILIZER, at = fitted_grid) |> as.data.frame() |>
+    pull(emmean)
+resid_newdata <- fert |>
+    mutate(Fit = fit,
+           Resid = resid(fert_glmmTMB),
+           Partial.obs = Fit + Resid)
+resid_newdata |>  head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) +
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+### estimate_expectations (easystats)
+```{r figureModelBglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_grid <- fert_glmmTMB |>
+  insight::get_datagrid(at =  "FERTILIZER", length = 100)
+newdata <- fert_glmmTMB |>
+  estimate_expectation(data = fert_grid) |>
+  as.data.frame()
+newdata |> head()
+## Now generate partial residuals
+resid_grid <- fert |>
+  insight::get_data()
+resid_newdata <- fert_glmmTMB |>
+  estimate_expectation(data = resid_grid) |>
+  as.data.frame() |> 
+    mutate(Partial.obs = Predicted + Residuals)
+
+ggplot(newdata, aes(y = Predicted, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = CI_low, ymax = CI_high), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+### manually
+
+```{r figureModel1glmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+newdata <- with(fert, data.frame(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len = 100)))
+Xmat <- model.matrix(~FERTILIZER,  data = newdata)
+coefs <- fixef(fert_glmmTMB)[[1]]
+preds <- coefs %*% t(Xmat)
+se <- sqrt(diag(Xmat %*% vcov(fert_glmmTMB)[[1]] %*% t(Xmat)))
+fert_df <- df.residual(fert_glmmTMB)
+newdata <- newdata |>
+  mutate(fit = as.vector(preds),
+         lower = fit - qt(0.975, df = fert_df) * se,
+         upper = fit + qt(0.975,  df = fert_df) * se)
+ggplot(newdata, aes(y = fit, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3)))+
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+::::
+
+## glmmTMB centered
+
+:::: {.panel-tabset .nav-pils}
+
+### emmeans
+
+```{r figureModelglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid <- with(fert, list(FERTILIZER = seq_range(FERTILIZER, n = 100)))
+## OR
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_glmmTMB1 |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_glmmTMB1 |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3)), breaks = c(100, 150, 200, 250)) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+### emmeans with partial residuals
+
+For more complex models that include additional covariates, the partial plot
+represents the expected trend between the response and focal predictor holding
+all other predictors constant.  This is akin to plotting the trend between the
+response and focal predictor after standardising first for the other
+covariate(s).
+
+When this is the case, it is not always appropriate to overlay a partial plot
+with raw data (as this data has not been standardised and will not necessarily
+represent the partial effects).  Arguably a more appropriate way to represent
+the data points, is to calculate standardised version of the points by adding
+the residuals onto the fitted values associated with each of the observed values
+of the focal predictor.  When there is only a single predictor, as is the case
+here, the result will be identical to just overlaying the raw data.
+
+We can either do this by leveraging completely off the `ggemmeans()`
+function (or `ggpredict()` if we want conditional predictions).
+
+```{r figureModelAglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+fert_grid <- fert |> data_grid(FERTILIZER = seq_range(FERTILIZER, n = 100))
+newdata <- fert_glmmTMB1 |>
+  emmeans(~FERTILIZER,  at = fert_grid) |>
+  as.data.frame()
+newdata <- fert_glmmTMB1 |> emmeans(~FERTILIZER, at = fert_grid) |> as.data.frame()
+newdata |> head()
+
+## Now generate partial residuals
+fitted_grid <- fert
+fit <- fert_glmmTMB1 |> emmeans(~FERTILIZER, at = fitted_grid) |> as.data.frame() |>
+    pull(emmean)
+resid_newdata <- fert |>
+    mutate(Fit = fit,
+           Resid = resid(fert_glmmTMB1),
+           Partial.obs = Fit + Resid)
+resid_newdata |>  head()
+ggplot(newdata, aes(y = emmean, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL), fill = "blue", alpha = 0.3) +
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+### estimate_expectations (easystats)
+```{r figureModelBglmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_grid <- fert_glmmTMB1 |>
+  insight::get_datagrid(at =  "FERTILIZER", length = 100)
+newdata <- fert_glmmTMB1 |>
+  estimate_expectation(data = fert_grid) |>
+  as.data.frame()
+newdata |> head()
+## Now generate partial residuals
+resid_grid <- fert |>
+  insight::get_data()
+resid_newdata <- fert_glmmTMB1 |>
+  estimate_expectation(data = resid_grid) |>
+  as.data.frame() |> 
+    mutate(Partial.obs = Predicted + Residuals)
+
+ggplot(newdata, aes(y = Predicted, x = FERTILIZER)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = CI_low, ymax = CI_high), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3))) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+### manually
+
+```{r figureModel1glmmTMBcenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+newdata <- fert |>
+  reframe(nFERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len = 100),
+    cFERTILIZER =  nFERTILIZER - mean(FERTILIZER)) |>
+  rename(FERTILIZER = nFERTILIZER)
+
+Xmat <- model.matrix(~cFERTILIZER,  data = newdata)
+coefs <- fixef(fert_glmmTMB1)[[1]]
+preds <- coefs %*% t(Xmat)
+se <- sqrt(diag(Xmat %*% vcov(fert_glmmTMB1)[[1]] %*% t(Xmat)))
+fert_df <- df.residual(fert_glmmTMB1)
+newdata <- newdata |>
+  mutate(fit = as.vector(preds),
+         lower = fit - qt(0.975, df = fert_df) * se,
+         upper = fit + qt(0.975,  df = fert_df) * se)
+ggplot(newdata, aes(y = fit, x = FERTILIZER)) +
+    geom_point(data = fert, aes(y = YIELD)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Grass~yield~(g.m^-3)))+
+    scale_x_continuous(expression(Fertilizer~concentration~(g.ml^-1))) +
+    theme_classic()
+```
+
+::::
+:::
+
+<!-- END_PRIVATE-->
+
+# Reporting
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## lm
+
+:::: {.panel-tabset}
+### Report
+
+```{r report, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report(fert_lm)
+```
+### Report text
+
+```{r reportText, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_text(fert_lm)
+```
+### Report model
+
+```{r reportModel, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_model(fert_lm)
+```
+### Report parameters
+
+```{r reportParameters, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_parameters(fert_lm)
+```
+### Report statistics
+
+```{r reportStatistics, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_statistics(fert_lm)
+```
+### Report info
+
+```{r reportInfo, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_info(fert_lm)
+```
+### Report performance
+
+```{r reportPerformance, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_performance(fert_lm)
+```
+### Report system
+
+```{r reportSystem, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_system()
+```
+### Report session
+
+```{r reportSession, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report(sessionInfo())
+```
+::::
+
+## glmmTMB
+
+:::: {.panel-tabset}
+### Report
+
+```{r reportglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report(fert_glmmTMB)
+```
+### Report text
+
+```{r reportTextglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_text(fert_glmmTMB)
+```
+### Report model
+
+```{r reportModelglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_model(fert_glmmTMB)
+```
+### Report parameters
+
+```{r reportParametersglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_parameters(fert_glmmTMB)
+```
+### Report statistics
+
+```{r reportStatisticsglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_statistics(fert_glmmTMB)
+```
+### Report info
+
+```{r reportInfoglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_info(fert_glmmTMB)
+```
+### Report performance
+
+```{r reportPerformanceglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_performance(fert_glmmTMB)
+```
+### Report system
+
+```{r reportSystemglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_system()
+```
+### Report session
+
+```{r reportSessionglmmTMB, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report(sessionInfo())
+```
+::::
+:::

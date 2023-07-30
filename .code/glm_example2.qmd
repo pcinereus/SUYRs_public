@@ -1,0 +1,949 @@
+---
+title: "GLM Part2"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../public/resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+ 
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(glmmTMB)       #for model fitting
+library(car)           #for regression diagnostics
+library(broom)         #for tidy output
+library(ggfortify)     #for model diagnostics
+library(DHARMa)        #for residual diagnostics
+library(see)           #for plotting residuals
+library(knitr)         #for kable
+library(effects)       #for partial effects plots
+library(ggeffects)     #for partial effects plots
+library(emmeans)       #for estimating marginal means
+library(modelr)        #for auxillary modelling functions
+library(tidyverse)     #for data wrangling
+library(lindia)        #for diagnostics of lm and glm
+library(performance)   #for residuals diagnostics
+library(sjPlot)        #for outputs
+library(report)        #for reporting methods/results
+library(easystats)     #framework for stats, modelling and visualisation
+```
+
+# Scenario
+
+@Polis-1998-490 were interested in modelling the presence/absence of
+lizards (_Uta sp._) against the perimeter to area ratio of 19
+islands in the Gulf of California.
+
+![Uta lizard](../public/resources/uta.jpg){#fig-polis width="200" height="137"}
+
+:::: {.columns}
+::: {.column width="30%"}
+
+
+ISLAND       RATIO   PA
+------------ ------- ----
+Bota         15.41   1
+Cabeza       5.63    1
+Cerraja      25.92   1
+Coronadito   15.17   0
+..           ..      ..
+
+: Format of polis.csv data file {#tbl-polis .table-condensed}
+
+:::
+::: {.column width="70%"}
+
+------------ -----------------------------------------------------------------------------------------
+**ISLAND**   Categorical listing of the name of the 19 islands used - variable not used in analysis.
+**RATIO**    Ratio of perimeter to area of the island.
+**PA**       Presence (1) or absence (0) of *Uta* lizards on island.
+------------ -----------------------------------------------------------------------------------------
+
+: Description of the variables in the polis data file {#tbl-polis1 .table-condensed}
+
+:::
+::::
+
+The aim of the analysis is to investigate the relationship between island
+perimeter to area ratio and the presence/absence of Uta lizards.
+
+# Read in the data
+
+```{r}
+#| label: readData
+#| output: true
+#| eval: true
+polis = read_csv('../public/data/polis.csv', trim_ws=TRUE)
+```
+
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(polis)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(polis)
+```
+
+## str
+```{r}
+str(polis)
+```
+
+## Easystats (datawizard)
+```{r}
+polis |> datawizard::data_codebook()
+```
+:::
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{Bin}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_i}\right) = \beta_0 + \beta_1 x_i
+$$
+
+where $y_i$ represents the $i$ observed values, $n$ represents the number of
+trials (in the case of logistic, this is always 1), $p_i$ represents the
+probability of lizards being present in the $i^{th}$ population, and $\beta_0$
+and $\beta_1$ represent the intercept and slope respectively.
+
+<!-- START_PRIVATE-->
+```{r EDA, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(polis, aes(y=PA, x=RATIO))+
+  geom_point()
+ggplot(polis, aes(y=PA, x=RATIO))+
+  geom_point()+
+  geom_smooth(method='glm', formula=y~x,
+              method.args=list(family='binomial'))
+```
+<!-- END_PRIVATE-->
+
+# Fit the model 
+<!-- START_PRIVATE-->
+
+::: {.panel-tabset}
+## Option 1
+```{r fitModel, results='markdown', eval=TRUE, mhidden=TRUE}
+polis_glm <- glm(PA ~ RATIO,
+  family = binomial(link = "logit"),
+  data = polis)
+```
+
+## Option 2
+```{r fitModel1, results='markdown', eval=FALSE, echo=TRUE, mhidden=TRUE}
+polis$Total <- 1
+polis_glm1 <- glm(PA ~ RATIO,
+  family = binomial(link = 'logit'),
+  data = polis, weights = Total)
+```
+## Option 3
+```{r fitModel2, results='markdown', eval=FALSE, echo=TRUE, mhidden=TRUE}
+polis$Total <- 1
+polis_glm1 <- glm(cbind(PA, Total-PA) ~ RATIO,
+  family = binomial(link = 'logit'),
+  data = polis)
+```
+
+## Option 4 centered
+```{r fitModel4, results='markdown', eval=TRUE, mhidden=TRUE}
+polis_glm4 <- glm(PA ~ center(RATIO),
+  family = binomial(link = "logit"),
+  data = polis)
+```
+:::
+<!-- END_PRIVATE-->
+# Model validation 
+<!-- START_PRIVATE-->
+Model validation routines draw heavily upon patterns in residuals.
+For OLS models, the residuals are fairly straight forward.  They are
+the difference between the observed and predicted and are the property
+that are minimised during optimisation (least squares refers to
+minimising the sum of square residuals).
+
+This is not the case for models based on maximum likelihood.  Rather
+than minimising the sum of residuals, GLM's maximise likelihood.
+Hence residuals are not directly calculated as part of the
+optimisation process.  Nevertheless, residual patterns are useful
+diagnostics.
+
+For GLM's there are numerous different residual formulations:
+
+| Residual type | Description                                                 | Function                     |
+|---------------|-------------------------------------------------------------|------------------------------|
+| Working       | Residuals on the link scale transformed back to link scale. | `residuals(mod, "working")`  |
+|               | `(y - mu)/mu.eta(eta)`                                      |                              |
+| Deviance      | Signed square-root of the deviance due to each observation. | `residuals(mod, "deviance")` |
+|               | The sum of the deviance residuals is the total deviance.    |                              |
+| Pearson       | The difference between observed and expected scaled by the  | `residuals(mod, "pearson")`  |
+|               | standard deviation so they are on the response scale        |                              |
+| Partial       | Working residuals added to the fitted values. Vector per    | `residuals(mod, "partial")`  |
+|               | Predictor                                                   |                              |
+| Response      | Raw residuals - difference between observed and expected    | `residuals(mod, "response")` |
+|               | These are only appropriate for Gaussian                     |                              |
+
+::: {.panel-tabset}
+## autoplot
+
+```{r validateModel, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+polis_glm |> autoplot(which=1:6, label.repel=TRUE)
+## there does seem to be an outlier that is influential - obs #3
+## Perhaps we should redo the scatterplot but with text so that we can see which obs is #3
+```
+**Conclusions**:
+
+- there does appear to be an outlier that is influential - observation #3 has a
+  Cook's D value greater than 0.8.  Note, small data sets often yield outliers
+  (influential values).
+- residuals (both raw and std deviation residuals are very difficult to
+  interpret from logistic models)
+
+```{r EDA2, results='markdown', eval=TRUE, mhidden=TRUE}
+polis |>
+  mutate(n=1:n()) |>
+  ggplot(aes(y=PA, x=RATIO)) +
+  geom_text(aes(label=n))
+## it seems that Uta lizards were present on this island dispite it having
+## a relatively large surface area to volume ratio.
+## Perhaps this island:
+## - was a long way from other islands (isolated)
+## - not inhabited
+## - was very large
+## - some other reason why it was not typical of the population.
+## If no,  then we cannot simply exclude the point.
+## In anycase,  if anything,  this obs is going to result in greater variability and
+## a more concervative test - so it is not really harming to leave it in.
+```
+
+## Influence measures
+
+```{r validateModela1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, message=FALSE, warning=FALSE}
+polis_glm |> influence.measures()
+```
+
+## Performance model checking (easystats)
+```{r validateModela1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6, message=FALSE, warning=FALSE}
+polis_glm |> performance::check_model()
+```
+
+```{r validateModela1a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=3, message=FALSE, warning=FALSE}
+polis_glm |> performance::check_outliers()
+polis_glm |>
+  performance::check_outliers() |>
+  plot()
+## These are probabilities of exceedance rather than actual Cook's D values
+#https://easystats.github.io/performance/reference/check_outliers.html
+polis_glm |> performance::check_heteroscedasticity()
+```
+**Conclusions**
+
+- the homogeneity of variance plot is not particularly a flat, horizontal line.
+  This might be due to an outlier.
+- there is an outlier present (obs #3), although small datasets often yield
+  outliers
+
+## DHARMa residuals
+```{r validateModela1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=6, message=FALSE, warning=FALSE}
+polis.resid <- polis_glm |> simulateResiduals(plot=TRUE)
+```
+**Conclusions**:
+
+- there are no alarming signals out of the DHARMa residuals
+
+## Explore a lack of fit
+
+For simple models, we can explore a lack of fit via a goodness of fit test.
+Here we will do this via:
+
+- comparing the sum of square residuals to a $X^2$ distribution with degrees of
+freedom equal to that of the residuals in the fitted model
+- comparing the model deviance to a $X^2$ distribution with degrees of freedom
+equal to that of the residuals in the fitted model.
+
+As the model was fit using maximum likelihood, it is not optimising the sum
+square of residuals (like it is in OLS), therefore, it is arguably not really
+appropriate to be judging the performance of the model based on a property that
+it is not directly controlling.  Deviance on the other hand is directly
+calculated from the likelihood and thus a fairer basis for gauging the goodness
+of the model's fit.
+
+```{r validateModel2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=6}
+##Check the model for lack of fit via:
+##Pearson chisq
+polis.ss <- sum(resid(polis_glm, type="pearson")^2)
+1-pchisq(polis.ss, polis_glm$df.resid)
+#No evidence of a lack of fit
+
+#Deviance
+1-pchisq(polis_glm$deviance, polis_glm$df.resid)
+#No evidence of a lack of fit
+```
+**Conclusions**:
+
+- no evidence for a lack of fit (p > 0.05)
+
+## augment
+
+```{r validateModel3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=3, fig.height=3}
+polis_glm |>
+    augment() |>
+    ggplot() +
+    geom_point(aes(y=.resid, x=.fitted))
+```
+:::
+<!-- END_PRIVATE-->
+
+
+# Partial plots 
+<!-- START_PRIVATE-->
+There are also numerous routines and packages to support these fitted trends
+(partial plots).
+
+| Package     | Function                   | Type              | Notes             |
+|-------------|----------------------------|-------------------|-------------------|
+| `sjPlot`    | `plot_model(type = 'eff')` | Marginal means    |                   |
+| `effects`   | `allEffects()`             | Marginal means    |                   |
+| `ggeffects` | `ggeffects()`              | Marginal means    | calls `effects()` |
+| `ggeffects` | `ggpredict()`              | Conditional means | calls `predict()` |
+| `ggeffects` | `ggemmeans()`              | Marginal means    | calls `emmeans()` |
+|             |                            |                   |                   |
+::: {.panel-tabset}
+
+## plot_model 
+
+```{r validateModel5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+polis_glm |> plot_model(type='eff', show.data=TRUE)
+```
+
+## allEffects
+```{r validateModel4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+polis_glm |> allEffects(residuals=TRUE) |> plot()
+polis_glm |> allEffects(residuals=TRUE) |> plot(type='response')
+```
+
+## ggpredict
+```{r validateModel6, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+polis_glm |> ggpredict() |> plot(add.data=TRUE, jitter=FALSE)
+```
+
+## ggemmeans
+```{r validateModel7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+polis_glm |> ggemmeans(~RATIO) |> plot(add.data=TRUE, jitter=FALSE)
+```
+
+## estimate_expectation (easystats)
+```{r validateModel8, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+polis_glm |> estimate_expectation() |> plot()
+polis_glm |>
+  estimate_expectation() |>
+  visualisation_recipe(point = list(shape = 16)) |>
+  plot()
+polis_glm |> estimate_expectation(data =  "grid", length =  100) |> plot()
+polis_glm |> estimate_relation(length =  100) |> plot()
+polis_glm |> estimate_prediction() |> plot()
+polis_glm |> estimate_link() |> plot()
+```
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation / hypothesis testing 
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## summary
+
+```{r summaryModel2, results='markdown', eval=TRUE, mhidden=TRUE}
+polis_glm |> summary()
+```
+
+```{r summaryModel2d, results='markdown', echo=FALSE, eval=FALSE, mhidden=TRUE}
+coef(polis_glm)[1] |> plogis()
+exp(coef(polis_glm))
+polis_glm |> coef |> exp
+##odd ratio - ratio of change in probability of present to absent for
+##-when PA ratio is 0 (not possible), 36.8 times more likely to be
+##present than absent
+##a 1 unit change in X.  In this case 0.80.  So every 1 unit increase
+##in PA ratio results in a 0.80 increase in odds ratio (prob)/(1-prob)
+## That is the odds are multiplied by 0.8 - the odds decline by 20%
+##present - thus a decline. So the chances of having UTA (likelihood
+##of present/absent) decreases by
+##approx 20% for each unit increase in PA ratio
+```
+**Conclusions**:
+
+- the estimated y-intercept, which is the expected value of PA (on the log odds
+  scale) when Ratio level is 0 is `r round(coef(polis_glm)[1],2)`.
+  Note, as a Ratio value of 0 is outside the range of the collected data,
+  this intercept does not really have any useful interpretation (unless we are
+  happy to extrapolate).  Likewise, the hypothesis test associated with the
+  intercept is rarely of any value. 
+- Alternatively, if we exponentiate the intercept, it would then be expressed on
+  an odds scale and hence when Ratio is 0, the odds of the lizards being present
+  would be approximately ($e^{`r round(coef(polis_glm)[1], 2)`} =
+  `r round(exp(coef(polis_glm)[1]), 2)`$). That is, approximately `r round(exp(coef(polis_glm)[1]), 2)`:1.
+  At a Ratio of 0, the lizards are `r round(exp(coef(polis_glm)[1]), 2)` times more likely to be present than absent.
+- We could also back-transform to the probability scale and state that when the
+Ratio is 0, the probability of lizards being present is `r round(plogis(coef(polis_glm)[1]), 2)`.
+- The estimated slope (on the logit scale) is `r round(coef(polis_glm)[2], 2)`.  For every one unit
+  increase in Ratio, PA is expected to increase by 
+  `r round(coef(polis_glm)[2], 2)` units - e.g. it decreases.
+- Exponentiating the slope will back-transform it from log odds-ratio to
+  odds-ratio.  Hence, for every one unit increase in Ratio, the odds of the
+  lizard being present declines by a factor of `r round(exp(coef(polis_glm)[2]),
+  2)`.  It it important to remember that as the coefficients are on a log scale
+  (and are applied additively), when back-transforming with `exp`, log-laws
+  dictate that they are applied multiplicatively.
+
+
+Or if the model was centered
+
+```{r summaryModel2center, results='markdown', eval=TRUE, mhidden=TRUE}
+polis_glm4 |> summary()
+```
+
+## confint
+```{r summaryModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
+## on link scale (log odds)
+polis_glm |> confint()
+## or on odds (ratio) scale
+polis_glm |>
+  confint() |>
+  exp()
+```
+
+Or if the model was centered
+
+```{r summaryModel2acenter, results='markdown', eval=TRUE, mhidden=TRUE}
+## on link scale (log odds)
+polis_glm4 |> confint()
+## or on odds (ratio) scale
+polis_glm4 |>
+  confint() |>
+  exp()
+```
+## tidy
+```{r summaryModel2c, results='markdown', eval=TRUE, mhidden=TRUE}
+polis_glm |> tidy(conf.int=TRUE)
+polis_glm |> tidy(conf.int=TRUE, exponentiate = TRUE)
+polis_glm |> glance()
+```
+
+```{r summaryModel2b, results='asis', eval=TRUE, mhidden=TRUE}
+polis_glm |>
+  tidy(conf.int = TRUE) |>
+  kable()
+```
+
+Or if the model was centered
+
+```{r summaryModel2ccenter, results='markdown', eval=TRUE, mhidden=TRUE}
+polis_glm4 |> tidy(conf.int=TRUE)
+polis_glm4 |> tidy(conf.int=TRUE, exponentiate = TRUE)
+polis_glm4 |> glance()
+```
+
+```{r summaryModel2bcenter, results='asis', eval=TRUE, mhidden=TRUE}
+polis_glm4 |>
+  tidy(conf.int = TRUE) |>
+  kable()
+```
+## model_parameters (easystats)
+
+```{r summaryModel4, results='asis', eval=TRUE, mhidden=TRUE}
+polis_glm |>
+  model_parameters() |>
+  display()
+
+polis_glm |>
+  model_parameters(exponentiate = TRUE) |>
+  display()
+```
+```{r summaryModel4a, results='asis', eval=TRUE, mhidden=TRUE}
+polis_glm |>
+  model_performance() |>
+  display()
+```
+## tab_model
+```{r summaryModel3, results='markdown', eval=TRUE, mhidden=TRUE}
+# warning this is only appropriate for html output
+polis_glm |> sjPlot::tab_model(show.se=TRUE,show.aic=TRUE)
+```
+
+:::
+<!-- END_PRIVATE-->
+
+
+# Predictions 
+
+<!-- START_PRIVATE-->
+
+::: {.panel-tabset}
+
+## Pseudo R²
+
+In simple regression, the $R^{2}$ value (coefficient of determination)
+is interpreted as the amount of variation in the response that can be
+explained by its relationship with the predictor(s) and is calculated
+as the sum of squares explained divided by the sum of squares total.
+It is considered a measure of the strength of a relationship ans is
+calculated as:
+
+
+$$
+R^2 = 1 - \frac{\sum_i=1^N (y_i - \hat(y_i)^2)}{\sum_i=1^N (y_i - \bar(y))^2}
+$$
+where $y_{i}$ and $\hat{y_{i}}$ are the $i^{th}$ observed and predicted value
+respectively, $\bar{y}$ is the mean of the observed values and $N$ is the total
+number of observations.
+
+
+This is really only appropriate for OLS.  For other models there are alternative
+measures (**psuedo R-squared**) that can be appled depending on how they are to
+be interpreted:
+
+1. **Explained variance**.  If we consider the numerator as a measure of the
+   unexplained variance and the denominator as a measure of the total variance,
+   then their one minus the ratio is the proportion of the variance explained by
+   the model.
+2. **Improvement of a fitted model over a null model**.  The numerator is a
+   measure of the variance unexplained after fitting the model and the
+   denominator is the amount of variance unexplained after fitting a null model
+   (model with only an intercept - essentially just the response mean).  The
+   ratio therefore reflects the improvement. 
+3. **Square of correlation**. The squared correlation between the predicted and
+   observed values.
+
+There are many different ways to calculate $R^2$ values from GLM's.  The
+following table provides some guidance as to which method is appropriate for
+which type of model and how they should be interpreted..
+
+One very simple calculation is based on deviance (a measure of the
+total amount unexplained) as:
+
+$$
+1-\frac{Deviance}{Deviance_{NULL}}
+$$
+
+where $Deviance_{NULL}$ is the deviance of a null model 
+(e.g. `glm(PA ~ 1, data=polis, family='binomial')`)
+
+Alternatively, there are many different ways to calculate $R^2$ values
+from GLM's.  The following table provides some guidance as to which
+method is appropriate for which type of model and how they should be
+interpreted..
+
+| Model             | Appropriate $R^2$ | Formula                         | Interpreted as | Function                        |
+| ----------------- | ----------------- | ------------------------------- | -------------- | ---------------------------     |
+| Logisitic         | Tjur's R2         | $\dagger$                       |                | `performace::r2_tjur()`         |
+| Multinomial Logit | McFadden's R2     | $\ddagger$                      | 1 & 2          | `performace::r2_mcfadden()`     |
+| GLM               | Nagelkerke's R2   | $\S$                            | 2              | `performace::r2_nagelkerke()`   |
+| GLM               | Likelihood ratio  | Adjusted Nagelkerke - see below |                | `MuMIn::r2.squaredLR()`         |
+| Mixed models      | Nakagawa's R2     | Too complex                     |                | `performace::r2_nakagawa()`     |
+| Mixed models      |                   |                                 |                | `MuMIn::r.suaredGLMM()`         |
+| ZI models         | Zero-inflated R2  | Too complex                     |                | `performace::r2_zeroinflated()` |
+| Bayesian models   | Bayes R2          | Too complex                     |                | `performace::r2_bayes()`        |
+ 
+$\dagger$: $R^2=\frac{1}{n_{1}}\sum \hat{\pi}(y=1) - \frac{1}{n_{0}}\sum \hat{\pi}(y=0)$
+
+$\ddagger$: $R^2=1-\frac{logL(x)}{logL(0)}$
+
+$\S$: $R^2=\frac{1-(\frac{logL(0)}{logL(x)})^{2/N}}{1-logl(0)^{2/N}}$
+
+where $n_1$ and $n_0$ are the number of 1's and 0's in the response and
+$\hat{\pi}$ is the predicted probability. $logL(x)$ and $logL(0)$ are the
+log-likelihoods of the fitted and null models respectively and $N$ is the number
+of observations.
+
+Note, if you run `performance::r2()`, the function will work out what
+type of model has been fit and then use the appropriate function from
+the above table.
+
+```{r predictModel1, results='markdown', eval=TRUE, mhidden=TRUE}
+#R2
+1-(polis_glm$deviance/polis_glm$null)
+```
+**Conclusions:**
+
+- `r round(100*(1-(polis_glm$deviance/polis_glm$null)), 1)`% of the variation in PA
+  is explained by its relationship to Ratio.
+
+
+```{r predictModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
+#R2 for binomial outcomes
+## This is the squared difference of the average of the predicted probs for outcomes of 0 and
+## the average predicted probs for outcomes of 1
+## Coefficient of descrimination
+polis_glm |> performance::r2_tjur()
+#R2 for binomial outcomes
+polis_glm |> r2()
+
+## Likelihood ratio based
+polis_glm |> MuMIn::r.squaredLR()
+
+## Correlation based
+augment(polis_glm) |> mutate(Fit = plogis(.fitted)) |> summarise(Cor = cor(PA, Fit)^2)
+
+## Improvement
+deviance(polis_glm)/polis_glm$null
+```
+
+## LD50
+
+In some disciplines it is useful to be able to calculate an LD50.  This is the
+value along the x-axis that corresponds to a probability of 50% - e.g. the
+switch-over point in Island perimeter to area Ratio at which the lizards go
+from more likely to be present to more likely to be absent.  It is the
+inflection point.
+
+It is also the point at which the slope (when back-transformed) is at its
+steepest and can be calculated as:
+
+$$
+-\frac{Intercept}{Slope}
+$$
+
+```{r predictModel2, results='markdown', eval=TRUE, mhidden=TRUE}
+#LD50
+-polis_glm$coef[1]/polis_glm$coef[2]
+(ld50 <- -polis_glm$coef[1]/polis_glm$coef[2])
+## What about other points (not just 50%) along with confidence intervals..
+ld <- polis_glm |> MASS::dose.p(p=c(0.5,0.9))
+ld.SE <- attr(ld, "SE")
+lds <- data.frame(LD = attr(ld,'p'),
+                 Dose = as.vector(ld),
+                 SE = ld.SE) |>
+    mutate(lower = Dose-SE*qnorm(0.975),
+           upper = Dose+SE*qnorm(0.975))
+lds
+```
+
+:::
+
+<!-- END_PRIVATE-->
+
+
+# Summary figures 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+Useful summary figures to accompany statistical models typically
+depict the modelled trend(s) overlayed onto the data used to fit the
+model.  When there is only a single predictor, the data should be the
+raw data.  However, when there are numerous predictors and the
+modelled trend represents a trend associated with one (or more
+predictors) marginalising over other predictor(s), then displaying the
+raw data may not be satisfying.  The reason for this is that the
+modelled _partial trend_ depicts the trend between the response and
+the focal predictor(s) holding the other predictor(s) constant - that
+is, standardising for the other predictor(s).  Plotting of raw data
+will not reflect this standardisation.
+
+Hence, rather than plot the raw data, we can instead plot the partial
+observations (partial residuals).  To do so, add the (working)
+residuals onto predictions associated with the observed predictor
+values.
+
+Unfortunately, this technique is not as straight forward for logistic
+regression.  After adding the residuals to the predictions and
+back-transforming to the response scale, it is necessary to transform
+again to binomial.
+
+In this case, since we just have a single predictor, we might as well
+just add the raw data.
+
+
+## emmeans
+
+```{r figureModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+polis.grid <- with(polis, list(RATIO = seq(min(RATIO), max(RATIO), len=100)))
+polis.grid <- with(polis, list(RATIO = seq_range(RATIO, n=100)))
+#OR
+polis.grid <- polis |> data_grid(RATIO=seq_range(RATIO,  n=100))
+
+newdata <- polis_glm |>
+  emmeans(~RATIO, at = polis.grid, type = "response") |>
+  as.data.frame()
+
+ggplot(newdata, aes(y = prob, x = RATIO))+
+    geom_ribbon(aes(ymin = asymp.LCL, ymax = asymp.UCL), fill = 'blue', alpha = 0.2)+
+    geom_line() +
+    theme_classic()
+```
+
+We could also include the raw data
+
+```{r figureModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(newdata, aes(y = prob, x = RATIO))+
+    geom_ribbon(aes(ymin = asymp.LCL, ymax = asymp.UCL), fill = 'blue', alpha = 0.2)+
+    geom_line() +
+    geom_point(data = polis, aes(y = PA, x = RATIO))+
+    theme_classic()
+```
+
+Perhaps mark the boundaries of the confidence intervals with dashed lines rather
+than a ribbon.
+
+```{r figureModel1c, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(newdata, aes(y = prob, x = RATIO))+
+    geom_line(aes(y = asymp.LCL), linetype = 'dashed') +
+    geom_line(aes(y = asymp.UCL), linetype = 'dashed') +
+    geom_line() +
+    geom_point(data = polis, aes(y = PA, x = RATIO))+
+    theme_classic()
+```
+
+## With partial observations
+
+
+```{r figureModel1d, results='markdown', eval=TRUE, mhidden=TRUE}
+polis.partial <- polis_glm |>
+    emmeans(~RATIO, at=polis, type="response") |> as.data.frame() |>
+    mutate(
+        Resid = stats::residuals(polis_glm, type="response"),
+        Partial.obs = prob + Resid
+    )
+ggplot(newdata, aes(x=RATIO)) +
+    geom_point(data = polis.partial, aes(y=Partial.obs), color='black') +
+    geom_ribbon(aes(ymin = asymp.LCL, ymax = asymp.UCL), fill = 'blue', alpha = 0.2)+
+    geom_line(aes(y=prob)) +
+    geom_vline(xintercept = ld50, linetype='dashed') +
+    theme_classic()
+```
+
+```{r figureModel1d2, results='markdown', eval=TRUE, mhidden=TRUE}
+# Partial will represent the fitted values plus the residuals back transformed onto the probability scale
+# Partial.obs then backtransforms these onto the response scale [0,1]
+polis.partial <- polis_glm |>
+    emmeans(~RATIO, at=polis, type="link") |> as.data.frame() |>
+    mutate(
+        Resid = stats::residuals(polis_glm, type="working"),
+        Partial = plogis(emmean + Resid),
+        Partial.obs = qbinom(Partial, 1, 0.5)
+    )
+ggplot(newdata, aes(x=RATIO)) +
+    geom_point(data = polis.partial, aes(y=Partial), color='gray') +
+    geom_point(data = polis.partial, aes(y=Partial.obs), color='black') +
+    geom_ribbon(aes(ymin = asymp.LCL, ymax = asymp.UCL), fill = 'blue', alpha = 0.2)+
+    geom_line(aes(y=prob)) +
+    geom_vline(xintercept = ld50, linetype='dashed') +
+    theme_classic()
+```
+
+## estimate_expectations (easystats)
+```{r figureModelB, results='markdown', eval=TRUE, mhidden=TRUE}
+polis_grid <- polis_glm |>
+  insight::get_datagrid(at =  "RATIO", length = 100)
+newdata <- polis_glm |>
+  estimate_expectation(data = polis_grid) |>
+  as.data.frame()
+newdata |> head()
+## Now generate partial residuals
+resid_grid <- polis |>
+  insight::get_data()
+resid_newdata <- polis_glm |>
+  estimate_expectation(data = resid_grid) |>
+  as.data.frame() |> 
+    mutate(Partial.obs = Predicted + Residuals)
+
+ggplot(newdata, aes(y = Predicted, x = RATIO)) +
+    geom_point(data = resid_newdata, aes(y = Partial.obs)) +
+    geom_ribbon(aes(ymin = CI_low, ymax = CI_high), fill = "blue", alpha = 0.3) + 
+    geom_line() +
+    scale_y_continuous(expression(Probability~of~italic(Uta)~lizard~presence)) +
+    scale_x_continuous(expression(Island~perimeter~to~area~ratio)) +
+    theme_classic()
+```
+## modelr
+
+The `modelr` package takes a very specific approach to predictions and
+residuals, using `predict()` and `y - predict()` respectively.  Hence
+by adding the residuals and predictions, we will recover the partial
+observations.  Note however, the predictions will be **conditional
+means** and the partial observations will not be standardised by other
+predictors.  Furthermore, as this routine uses `predict()`, confidence
+intervals are not always available.  This routine is shown for
+comparison only, it is too limiting to be viable for most
+applications.
+
+```{r figureModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
+newdata = polis |>
+  modelr::add_predictions(polis_glm) |>
+  modelr::add_residuals(polis_glm) |>
+  mutate(Partial=pred + resid,
+         pred = plogis(pred))
+
+ggplot(newdata, aes(y=pred, x=RATIO))+geom_line() +
+    #geom_ribbon(aes(ymin=asymp.LCL, ymax=asymp.UCL), fill='blue',alpha=0.2)+
+    geom_point(data=polis, aes(y=PA, x=RATIO))+
+    geom_point(aes(y=Partial), color='green') + 
+    geom_vline(xintercept=ld50, linetype='dashed') +
+    theme_classic()
+```
+```{r modelr, mhidden=TRUE}
+polis.mod = polis |> fit_with(glm,  list(PA~RATIO),  family=binomial())
+polis.mod[[1]] |> modelr::rsquare(polis)
+map(polis.mod,  ~rsquare(., polis))
+
+modelr::add_predictions(polis,  polis.mod[[1]],  type='response')
+```
+
+:::
+<!-- END_PRIVATE-->
+
+
+# Methods 
+<!-- START_PRIVATE-->
+
+- The relationship between Uta lizard presence/absence and perimeter to area ratio 
+  was explored using logistic regression.
+- Specifically, the relationship was modelled as a generalised linear model against 
+  a binomial distribution (logit link)  
+- initial model validation checks revealed the presence of a potential outlier,
+  however, further examination of the underlying data suggested that the presence
+  of this value would only make the analyses more conservative, and thus it was decided 
+  to leave the observation in the analysis.
+- The model was validated via DHARMa (cite) residuals
+- LD50 was estimated as the negative intercept divided by the slope and pseudo R squared
+  calculated in accordance to (cite)
+- All models and graphics were conducted within the R (4.1.0) statistical and
+  graphical environment (cite).
+- the full code supporting these analyses can be found **here**
+
+::: {.panel-tabset}
+
+## Report
+
+```{r report, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report(polis_glm)
+```
+## Report text
+
+```{r reportText, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_text(polis_glm)
+```
+## Report model
+
+```{r reportModel, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_model(polis_glm)
+```
+## Report info
+
+```{r reportInfo, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_info(polis_glm)
+```
+## Report system
+
+```{r reportSystem, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_system()
+```
+
+:::
+
+<!-- END_PRIVATE-->
+
+# Results
+
+<!-- START_PRIVATE-->
+- Uta lizard presence/absence was found to be negatively related to perimeter to area ratio (stats)
+- When the perimeter to area ratio was 0, the odds of Uta lizard being present was 36:1 (see table 1)
+- For every one unit increase in perimeter to area ratio, the odds of Uta lizard presence declined
+  by 20% (see table 1)
+- ...
+
+::: {.panel-tabset}
+
+## Report parameters
+
+```{r reportParameters, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_parameters(polis_glm)
+```
+
+## Report statistics
+
+```{r reportStatistics, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_statistics(polis_glm)
+```
+## Report performance
+
+```{r reportPerformance, results='markdown', eval=TRUE, mhidden=TRUE}
+report::report_performance(polis_glm)
+```
+```{r session info, results='markdown', eval=TRUE}
+sessionInfo()
+```
+:::
+<!-- END_PRIVATE-->
+# References
+

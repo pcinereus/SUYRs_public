@@ -1,0 +1,153 @@
+---
+title: "GLM Part4"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+---
+
+```{r setup, include=FALSE, warnings=FALSE, message=FALSE}
+knitr::opts_chunk$set(ache.lazy = FALSE, tidy='styler')
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(glmmTMB)       #for model fitting
+library(car)           #for regression diagnostics
+library(broom)         #for tidy output
+library(ggfortify)     #for model diagnostics
+library(DHARMa)        #for residual diagnostics
+library(see)           #for plotting residuals
+library(knitr)         #for kable
+library(effects)       #for partial effects plots
+library(ggeffects)     #for partial effects plots
+library(emmeans)       #for estimating marginal means
+library(modelr)        #for auxillary modelling functions
+library(tidyverse)     #for data wrangling
+library(lindia)        #for diagnostics of lm and glm
+library(performance)   #for residuals diagnostics
+library(sjPlot)        #for outputs
+library(report)        #for reporting methods/results
+library(easystats)     #framework for stats, modelling and visualisation
+library(MASS)          #for negative binomials
+library(MuMIn)         #for AICc
+library(patchwork)     #for figure layouts
+```
+# Scenario
+
+@Loyn-1987-1987 modelled the abundance of forest birds with six predictor
+variables (patch area, distance to nearest patch, distance to nearest larger
+patch, grazing intensity, altitude and years since the patch had been isolated).
+
+![Regent honeyeater](../resources/regent_honeyeater_small.jpg){#fig-loyn width="165" height="240"}
+
+
+ABUND   DIST   LDIST   AREA   GRAZE   ALT   YR.ISOL
+------- ------ ------- ------ ------- ----- ---------
+..      ..     ..      ..     ..      ..    ..
+
+: Format of loyn.csv data file {#tbl-polis .table-codensed}
+
+
+------------- ------------------------------------------------------------------------------
+**ABUND**     Abundance of forest birds in patch- response variable
+**DIST**      Distance to nearest patch - predictor variable
+**LDIST**     Distance to nearest larger patch - predictor variable
+**AREA**      Size of the patch - predictor variable
+**GRAZE**     Grazing intensity (1 to 5, representing light to heavy) - predictor variable
+**ALT**       Altitude - predictor variable
+**YR.ISOL**   Number of years since the patch was isolated - predictor variable
+------------- ------------------------------------------------------------------------------
+
+: Description of the variables in the loyn data file {#tbl-loyn1 .table-condensed}
+
+
+The aim of the analysis is to investigate the effects of a range of predictors
+on the abundance of forest birds.
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+loyn <- read_csv('../data/loyn.csv', trim_ws=TRUE)
+glimpse(loyn)
+```
+
+# Exploratory data analysis 
+
+# Fit the model 
+
+# Model validation 
+
+
+
+# Partial plots 
+
+# Caterpillar plot
+
+
+# Model investigation / hypothesis testing
+
+
+
+# Further analyses 
+
+# Summary figures
+# References
+

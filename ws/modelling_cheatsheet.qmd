@@ -1,0 +1,96 @@
+---
+title: Modelling Cheatsheet 
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    css: ../resources/ws_style.css
+    toc: true
+    toc-float: true
+    embed-resources: true
+    number-sections: true
+    theme: spacelab
+    highlight-style: zenburn
+    number-depth: 3
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warning = FALSE, cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Glossary
+
+- **predicted values**: estimates 
+- **fitted values**: 
+- **conditional effects**: predictions that are conditioned on certain
+  levels (typically the reference level) of factors.  For example, the
+  trend/effects of one predictor at the first level (or first
+  combination) of other categorical predictor(s).
+- **marginal effects**: predictions that are marginalised (= averaged)
+  over all levels of the factors.  For example, the trend/effects of
+  one predictor averaged across all levels (or combinations) of other
+  predictors.
+
+
+# Visualising models
+
+| Package     | Function                   | Type              | Notes             |
+|-------------|----------------------------|-------------------|-------------------|
+| `sjPlot`    | `plot_model(type = 'eff')` | Marginal means    |                   |
+| `effects`   | `allEffects()`             | Marginal means    |                   |
+| `ggeffects` | `ggeffects()`              | Marginal means    | calls `effects()` |
+| `ggeffects` | `ggpredict()`              | Conditional means | calls `predict()` |
+| `ggeffects` | `ggemmeans()`              | Marginal means    | calls `emmeans()` |
+|             |                            |                   |                   |
+
+# R²
+
+| Model             | Appropriate $R^2$ | Formula                         | Interpreted as | Function                        |
+| ----------------- | ----------------- | ------------------------------- | -------------- | ---------------------------     |
+| Logisitic         | Tjur's R2         | $\dagger$                       |                | `performace::r2_tjur()`         |
+| Multinomial Logit | McFadden's R2     | $\ddagger$                      | 1 & 2          | `performace::r2_mcfadden()`     |
+| GLM               | Nagelkerke's R2   | $\S$                            | 2              | `performace::r2_nagelkerke()`   |
+| GLM               | Likelihood ratio  | Adjusted Nagelkerke - see below |                | `MuMIn::r2.squaredLR()`         |
+| Mixed models      | Nakagawa's R2     | Too complex                     |                | `performace::r2_nakagawa()`     |
+| Mixed models      |                   |                                 |                | `MuMIn::r.suaredGLMM()`         |
+| ZI models         | Zero-inflated R2  | Too complex                     |                | `performace::r2_zeroinflated()` |
+| Bayesian models   | Bayes R2          | Too complex                     |                | `performace::r2_bayes()`        |
+ 
+$\dagger$: $R^2=\frac{1}{n_{1}}\sum \hat{\pi}(y=1) - \frac{1}{n_{0}}\sum \hat{\pi}(y=0)$
+
+$\ddagger$: $R^2=1-\frac{logL(x)}{logL(0)}$
+
+$\S$: $R^2=\frac{1-(\frac{logL(0)}{logL(x)})^{2/N}}{1-logl(0)^{2/N}}$
+
+where $n_1$ and $n_0$ are the number of 1's and 0's in the response and
+$\hat{\pi}$ is the predicted probability. $logL(x)$ and $logL(0)$ are the
+log-likelihoods of the fitted and null models respectively and $N$ is the number
+of observations.
+
+Note, if you run `performance::r2()`, the function will work out what
+type of model has been fit and then use the appropriate function from
+the above table.

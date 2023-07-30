@@ -1,0 +1,43 @@
+SEASON,DENSITY,RECRUITS,SQRTRECRUITS,GROUP
+Spring,Low,15,3.872983,SpringLow
+Spring,Low,10,3.162278,SpringLow
+Spring,Low,13,3.605551,SpringLow
+Spring,Low,13,3.605551,SpringLow
+Spring,Low, 5,2.236068,SpringLow
+Spring,High,11,3.316625,SpringHigh
+Spring,High,10,3.162278,SpringHigh
+Spring,High,15,3.872983,SpringHigh
+Spring,High,10,3.162278,SpringHigh
+Spring,High,13,3.605551,SpringHigh
+Spring,High, 1,1.000000,SpringHigh
+Summer,Low,21,4.582576,SummerLow
+Summer,Low,31,5.567764,SummerLow
+Summer,Low,21,4.582576,SummerLow
+Summer,Low,18,4.242641,SummerLow
+Summer,Low,14,3.741657,SummerLow
+Summer,Low,27,5.196152,SummerLow
+Summer,High,34,5.830952,SummerHigh
+Summer,High,49,7.000000,SummerHigh
+Summer,High,69,8.306624,SummerHigh
+Summer,High,55,7.416198,SummerHigh
+Summer,High,28,5.291503,SummerHigh
+Summer,High,54,7.348469,SummerHigh
+Autumn,Low,14,3.741657,AutumnLow
+Autumn,Low,18,4.242641,AutumnLow
+Autumn,Low,20,4.472136,AutumnLow
+Autumn,Low,21,4.582576,AutumnLow
+Autumn,High, 4,2.000000,AutumnHigh
+Autumn,High,22,4.690416,AutumnHigh
+Autumn,High,30,5.477226,AutumnHigh
+Autumn,High,36,6.000000,AutumnHigh
+Autumn,High,13,3.605551,AutumnHigh
+Autumn,High,13,3.605551,AutumnHigh
+Winter,Low, 8,2.828427,WinterLow
+Winter,Low, 0,0.000000,WinterLow
+Winter,Low, 0,0.000000,WinterLow
+Winter,High,10,3.162278,WinterHigh
+Winter,High, 1,1.000000,WinterHigh
+Winter,High, 5,2.236068,WinterHigh
+Winter,High, 9,3.000000,WinterHigh
+Winter,High, 4,2.000000,WinterHigh
+Winter,High, 5,2.236068,WinterHigh

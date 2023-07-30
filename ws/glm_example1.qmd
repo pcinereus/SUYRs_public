@@ -1,0 +1,210 @@
+---
+title: GLM Example 1 
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(glmmTMB)       #for model fitting
+library(car)           #for regression diagnostics
+library(broom)         #for tidy output
+library(ggfortify)     #for model diagnostics
+library(DHARMa)        #for residual diagnostics
+library(see)           #for plotting residuals
+library(knitr)         #for kable
+library(effects)       #for partial effects plots
+library(ggeffects)     #for partial effects plots
+library(emmeans)       #for estimating marginal means
+library(modelr)        #for auxillary modelling functions
+library(tidyverse)     #for data wrangling
+library(lindia)        #for diagnostics of lm and glm
+library(performance)   #for residuals diagnostics
+library(sjPlot)        #for outputs
+library(report)        #for reporting methods/results
+library(easystats)     #framework for stats, modelling and visualisation
+```
+
+# Scenario
+ 
+Here is an example from @Fowler-1998-1998. An agriculturalist was
+interested in the effects of fertiliser load on the yield of grass.
+Grass seed was sown uniformly over an area and different quantities of
+commercial fertiliser were applied to each of ten 1 m² randomly
+located plots.  Two months later the grass from each plot was
+harvested, dried and weighed.  The data are in the file
+**fertilizer.csv** in the **data** folder.
+
+![Field of grass](../resources/turf.jpg){#fig-fertilizer width=70%}
+
+:::: {.columns}
+::: {.column width="30%"}
+
+| FERTILIZER   | YIELD   |
+| ------------ | ------- |
+| 25           | 84      |
+| 50           | 80      |
+| 75           | 90      |
+| 100          | 154     |
+| 125          | 148     |
+| \...         | \...    |
+
+: Format of the fertilizer.csv data file {#tbl-fertilizer .table-condensed}
+
+:::
+::: {.column width="70%"}
+---------------- ---------------------------------------------------
+**FERTILIZER**:  Mass of fertiliser (g/m²) - Predictor variable
+**YIELD**:       Yield of grass (g/m²) - Response variable
+---------------- ---------------------------------------------------
+
+: Description of the variables in the fertilizer data file {#tbl-fertilizer1 .table-condensed}
+
+:::
+::::
+  
+The aim of the analysis is to investigate the relationship between
+fertiliser concentration and grass yield.
+
+# Read in the data
+ 
+
+```{r}
+#| label: readData
+#| output: true
+#| eval: true
+fert <- read_csv("../data/fertilizer.csv", trim_ws = TRUE)
+```
+
+
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(fert)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(fert)
+```
+
+## str
+```{r}
+str(fert)
+```
+
+## Easystats (datawizard)
+```{r}
+fert |> datawizard::data_codebook()
+```
+:::
+
+# Exploratory data analysis
+
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &= \beta_0 + \beta_1 x_i
+\end{align}
+$$
+
+where $y_i$ represents the $i$ observed values, $\beta_0$ and $\beta_1$
+represent the intercept and slope respectively, and $\sigma^2$ represents the
+estimated variance.
+
+
+
+
+# Fit the model
+
+
+# Model validation 
+
+
+# Model outputs 
+
+
+# Model investigation / hypothesis testing 
+    
+
+# Predictions
+
+
+# Additional analyses
+
+
+# Summary figures
+
+
+# Reporting

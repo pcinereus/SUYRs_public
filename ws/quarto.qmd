@@ -1,0 +1,229 @@
+---
+title: "Quarto demonstration"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+# General info on quarto
+
+- [Quarto guide](https://quarto.org/docs/guide/)
+- [HTML options](https://quarto.org/docs/reference/formats/html.html)
+
+# yaml header
+
+- document metadata
+- rendering options
+
+- [HTML options](https://quarto.org/docs/reference/formats/html.html)
+- [DOCX options](https://quarto.org/docs/reference/formats/docx.html)
+ 
+# Basic markdown
+ 
+Most of a quarto document is written in _markdown_ - a simple language
+designed to represent document features in plain text. This demo will
+just briefly highlight some of the elements that we might use in the
+statistical worksheets.
+
+## Text formatting 
+
+Brief changes to font styles within a block of text can be effective
+at *emphasizing* or applying different meanings to characters. Common
+text modifier styles are: _italic_, **bold** and ~~strikethrough~~.
+
+| Markdown                                  | Result                                |
+|-------------------------------------------|---------------------------------------|
+| \*Italic text\* or \_Italic text\_        | *Italic text*                         |
+| \*\*Bold text\*\* or \_\_Bold text\_\_    | **Bold text**                         |
+| \~\~Strikethrough\~\~                     | ~~Strikethrough~~                     |
+| \`Monospace font\`                        | `Monospaced font`                     |
+| superscript\^2\^                          | superscript^2^                        |
+| subscript\~2\~                            | subscript~2~                          |
+| \[This text is underlined\]\{.underline\} | [This text is underlined]{.underline} |
+
+: {.rmdtable}
+
+Three or more `*`, `-` or `_` in a line (with blank lines either side)
+makes a horizontal line.
+
+****
+
+## Sections
+### Subsections
+#### Subsubsections etc
+
+## Tabbed content
+::: {.panel-tabset}
+
+### Tab 1
+Some content
+
+### Tab 2
+
+Some other content
+
+:::: {.panel-tabset .nav-pills}
+
+#### More tabs
+Pill content
+
+#### And more tabs
+Some other pill content
+
+::::
+:::
+
+## Lists
+
+Bullet list
+
+* This is the first bullet item
+* This is the second.  
+  To indent this sentence on the next line,
+    the previous line ended in two spaces and
+    this sentence is indented by four spaces.
+* This is the third item
+
+Enumerated list
+
+1. This is the first numbered item.
+2. This is the second.
+1. This is the third item.  Note that the number I supplied is ignored
+
+(i) This is list with roman numeral enumerators
+(ii) Another item
+
+Breaking lists
+
+1. This is the first numbered item.
+2. This is the second.
+1. This is the third item.  Note that the number I supplied is ignored
+
+<-- --!>
+
+1. Another list.
+2. With more points
+
+## Callouts
+
+::: {.callout-note}
+Note that there are five types of callouts, including:
+`note`, `warning`, `important`, `tip`, and `caution`.
+:::
+
+# Code
+
+## Inline
+
+You can include code inline, such as the number of rows in the iris
+data set is `r nrow(iris)`.
+
+## Blocks
+
+```{r}
+#| label: iris
+data(iris)
+head(iris)
+```
+
+# Tables
+
+## Embedded
+
+| Item      | Example | Description           |
+|-----------|---------|-----------------------|
+| numeric   | 12.34   | floating point number |
+| character | 'Site'  | words and symbols     |
+|           |         |                       |
+
+: This is the table caption {#tbl-example .table-condensed}
+
+We can refer to the table as see @tbl-example.
+
+## Executed in code
+
+```{r}
+#| label: tbl-iris
+#| tbl-cap: iris data
+iris |> head() |> knitr::kable()
+```
+
+We can refer to the table as see @tbl-iris.
+
+# Figures
+
+## Embedded
+
+![Grouse chicks](../resources/redgrousechicks.jpg){#fig-grouse width=50%}
+
+We can refer to the table as see @fig-grouse.
+
+## Executed in code
+
+```{r}
+#| label: fig-iris
+#| fig-cap: iris data
+library(ggplot2)
+
+iris |> ggplot(aes(y = Sepal.Width, x =  Sepal.Length)) + geom_point()
+```
+
+We can refer to the figure as see @fig-iris.
+
+# Math
+
+## Inline
+
+To include an inline math formula like $\alpha = 2$.
+
+## Blocks
+
+$$
+y_i ~\sim{} \beta_0 + \beta x_i
+$$

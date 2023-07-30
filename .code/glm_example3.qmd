@@ -1,0 +1,903 @@
+---
+title: "GLM Part3"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../public/resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+```{r setup, include=FALSE, warnings=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(glmmTMB)       #for model fitting
+library(car)           #for regression diagnostics
+library(broom)         #for tidy output
+library(ggfortify)     #for model diagnostics
+library(DHARMa)        #for residual diagnostics
+library(see)           #for plotting residuals
+library(knitr)         #for kable
+library(effects)       #for partial effects plots
+library(ggeffects)     #for partial effects plots
+library(emmeans)       #for estimating marginal means
+library(modelr)        #for auxillary modelling functions
+library(tidyverse)     #for data wrangling
+library(lindia)        #for diagnostics of lm and glm
+library(performance)   #for residuals diagnostics
+library(sjPlot)        #for outputs
+library(report)        #for reporting methods/results
+library(easystats)     #framework for stats, modelling and visualisation
+library(MASS)          #for negative binomials
+library(MuMIn)         #for AICc
+```
+
+# Scenario
+
+Here is a modified example from @Peake-1993-269.  @Peake-1993-269 investigated
+the relationship between the number of individuals of invertebrates living in
+amongst clumps of mussels on a rocky intertidal shore and the area of those
+mussel clumps.
+
+![Mussels](../public/resources/mussels.jpg){#fig-musseles}
+
+:::: {.columns}
+::: {.column width="30%"}
+
+| AREA      | INDIV   |
+| --------- | ------- |
+| 516.00    | 18      |
+| 469.06    | 60      |
+| 462.25    | 57      |
+| 938.60    | 100     |
+| 1357.15   | 48      |
+| \...      | \...    |
+
+: Format of peakquinn.csv data files {#tbl-mussels .table-condenses}
+
+:::
+::: {.column width="70%"}
+
+----------- --------------------------------------------------------------
+**AREA**    Area of mussel clump mm^2^ - Predictor variable
+**INDIV**   Number of individuals found within clump - Response variable
+----------- --------------------------------------------------------------
+
+: Description of the variables in the peake data file {#tbl-peake1 .table-condensed}
+
+:::
+::::
+
+
+The aim of the analysis is to investigate the relationship between mussel clump
+area and the number of non-mussel invertebrate individuals supported in the
+mussel clump.
+
+# Read in the data
+
+```{r}
+#| label: readData
+#| output: true
+#| eval: true
+peake <- read_csv("../public/data/peakquinn.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+peake |> glimpse()
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+peake |> head()
+```
+
+## str
+```{r}
+peake |> str()
+```
+
+## Easystats (datawizard)
+
+```{r}
+peake |> datawizard::data_codebook()
+```
+:::
+
+<!-- END_PRIVATE-->
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{Pois}(\lambda_i)\\
+ln(\lambda_i) = \beta_0 + \beta_1 ln(x_i)
+$$
+
+where the number of individuals in the $i^th$ observation is assumed to be drawn
+from a Poisson distribution with a $\lambda$ (=mean) of $\lambda_i$.  The
+natural log of these expected values is modelled against a linear predictor that
+includes an intercept ($\beta_0$) and slope ($\beta_i$) for natural log
+transformed area.  expected values are
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## Scatterplot
+
+```{r EDA, results='markdown', eval=TRUE, mhidded=TRUE, warning=FALSE, message=FALSE}
+ggplot(peake, aes(y=INDIV, x=AREA)) +
+  geom_point()+
+  geom_smooth()
+```
+
+**Conclusions:**
+
+- there is some evidence of non-homogeneity of variance (observations are more
+  tightly clustered around the trendline for small values of AREA and the spread
+  increases throughout the trend).
+- there is some evidence of non-linearity as evidenced by the substantial
+  change in trajectory of the loess smoother.
+- nevertheless, there is also evidence of non-normality in both the y-axis and
+  x-axis (there are more points at low values of both y and x).  Deviations from
+  normality can make it difficult to assess other assumptions.  Often the cause
+  of homogeneity and linearity is non-homogeneity.
+
+## Boxplots
+
+```{r EDA1, results='markdown', eval=TRUE, mhidded=TRUE, warning=FALSE, message=FALSE}
+ggplot(peake, aes(y=INDIV)) + geom_boxplot()
+
+ggplot(peake, aes(y=AREA)) + geom_boxplot()
+```
+
+**Conclusions:**
+
+- indeed both the response (`INDIV`) and predictor (`AREA`) appear to be skewed.
+It is not surprising that the response is skewed as it represents counts of the
+number of individuals. We might expect that this should follow a Poisson
+distribution.  Poisson distributions must be bounded by 0 at the lower end and
+hence as the expected value (=mean and location) of a Poisson distribution
+approaches 0, the distribution will become more and more asymmetrical.  A the
+same time, the distribution would be expected to become narrower (have a smaller
+variance) - since in a Poisson distribution the mean and variance are equal.
+
+Along with modelling these data against a Poisson distribution (with a natural
+log link), we should probably attempt to normalise the predictor variable
+(`AREA`).  Whilst linear models don't assume that the predictor variable follows
+a normal distribution (it is typically assumed to be a uniform distribution), it
+is assumed to be symmetrical.  In this case, a natural log transformation might
+help achieve this.  At the same time, it might also help homogeneity of variance
+and linearity.
+
+We can mimic the action of using a log link and log-transformed predictor by
+presenting the scatterplot on log-transformed axes.
+
+## Scatterplot
+
+```{r EDA2, results='markdown', eval=TRUE, mhidded=TRUE, warning=FALSE, message=FALSE}
+ggplot(peake, aes(y=INDIV, x=AREA)) +
+  geom_point()+
+  geom_smooth() +
+  scale_y_log10() +
+  scale_x_log10()
+```
+
+**Conclusions:**
+
+- there is no obvious violations of the assumptions now.
+:::
+<!-- END_PRIVATE-->
+
+# Fit the model
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## Candidate models 
+:::: {.panel-tabset}
+### LM
+$$
+y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i = \beta_0 + \beta_1 ln(x_i)
+$$
+
+```{r fitModel, results='markdown', eval=TRUE, mhidded=TRUE}
+peake.lm <- lm(INDIV~AREA, data=peake) 
+```
+
+#### Model validation 
+
+::::: {.panel-tabset}
+##### autoplot
+
+```{r validateModel1a, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, messsage=FALSE, warning=FALSE}
+peake.lm |> autoplot(which=1:6)
+```
+
+**Conclusions:**
+
+- there is clear evidence of a wedge (funnel) shape in the residuals indicative
+  of non-homogeneity of variance
+- the tails of the Q-Q plot deviate substantially from the ideal line suggesting
+  that the observed data are not normally distributed.
+- there is an observation with a high Cook's distance.
+
+##### Influence measures
+
+```{r validateModel1b, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, message=FALSE, warning=FALSE}
+peake.lm |> influence.measures()
+```
+##### Performance model checking
+
+```{r validateModel1c, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+peake.lm |> performance::check_model()
+```
+
+**Conclusions:**
+
+- there is clear evidence of a wedge (funnel) shape in the residuals indicative
+  of non-homogeneity of variance
+- the tails of the Q-Q plot deviate substantially from the ideal line suggesting
+  that the observed data are not normally distributed.
+- there is an observation with a high Cook's distance.
+
+##### DHARMa residuals
+
+
+```{r validateModel1d, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=8, fig.height=6, warning=FALSE, message=FALSE}
+peake.resid <- peake.lm |> simulateResiduals(plot=TRUE)
+```
+
+```{r validateModel1e, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=8, fig.height=4, warning=FALSE, message=FALSE}
+peake.resid |> testResiduals()
+```
+
+**Conclusions:**
+
+- there is clear evidence of a wedge (funnel) shape in the residuals indicative
+  of non-homogeneity of variance
+
+Please go to the Poisson (GLM) tab.
+
+:::::
+
+### Poisson (GLM)
+
+$$
+y_i \sim{} \mathcal{Pois}(\lambda_i)\\
+ln(\lambda_i) = \beta_0 + \beta_1 ln(x_i)
+$$
+
+```{r fitMode2, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6}
+peake.glm <- glm(INDIV ~ log(AREA), data=peake, family=poisson(link='log'))
+```
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### autoplot
+
+```{r validateModel2a, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, messsage=FALSE, warning=FALSE}
+peake.glm |> autoplot(which=1:6)
+```
+
+**Conclusions:**
+
+- there is still clear evidence of a wedge (funnel) shape in the residuals
+  indicative of non-homogeneity of variance
+- the tails of the Q-Q plot deviate substantially from the ideal line suggesting
+  that the observed data are not normally distributed.
+- there is an observation with a high Cook's distance.
+
+
+##### Influence measures
+
+```{r validateModel2b, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, message=FALSE, warning=FALSE}
+peake.glm |> influence.measures()
+```
+##### Performance model checking
+
+```{r validateModel2c, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+peake.glm |> performance::check_model()
+```
+
+
+```{r validateModel2cc, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=4, warning=FALSE, message=FALSE}
+peake.glm |> performance::check_overdispersion()
+peake.glm |> performance::check_zeroinflation()
+## Note, the following cannot be piped for the plot to work!
+#performance::check_normality(peake.glm) |> plot()
+peake.glm |> performance::check_outliers()
+```
+
+**Conclusions:**
+
+- there is clear evidence of a wedge (funnel) shape in the residuals indicative
+  of non-homogeneity of variance
+- the tails of the Q-Q plot deviate substantially from the ideal line suggesting
+  that the observed data are not normally distributed.
+- there are observations with a high Cook's distance.
+
+##### DHARMa residuals
+
+
+```{r validateModel2d, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=8, fig.height=6, warning=FALSE, message=FALSE}
+peake.resid <- peake.glm |> simulateResiduals(plot=TRUE)
+```
+
+```{r validateModel2e, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=8, fig.height=4, warning=FALSE, message=FALSE}
+peake.resid |> testResiduals()
+```
+
+**Conclusions:**
+
+- there is clear evidence of issues with the residual plot (including outliers)
+- the Q-Q plot does not closely follow the ideal line
+- there is evidence of violations of distributional conformity (KS test),
+  Dispersion and Outliers
+
+
+##### Explore a lack of fit manually
+
+```{r validateModel3, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6}
+##Check the model for lack of fit via:
+##Pearson chisq
+peake.ss <- sum(resid(peake.glm, type = "pearson")^2)
+1 - pchisq(peake.ss, peake.glm$df.resid)
+##Evidence of a lack of fit
+
+#Deviance
+1-pchisq(peake.glm$deviance, peake.glm$df.resid)
+#Evidence of a lack of fit
+```
+
+##### Explore over-dispersion manually
+
+```{r validateModel4, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6}
+peake.ss/peake.glm$df.resid
+peake.glm$deviance/peake.glm$df.resid
+```
+
+:::::
+
+The model appears to be over-dispersed.  That is, the Poisson distribution would
+expect (assume) that the variance is equal to the mean.  The diagnostics suggest
+that there is more variability in the response than the Poisson model would
+expect.
+
+This could be due to:
+
+- the model being too simple.  Linear models are intentionally low-dimensional
+  representations of the system.  They do not, and can not represent all the
+  complexity in the underlying system.  Instead they are intended to provide
+  very targeted insights into a small number of potential influences.
+  Nevertheless, the model might still be too simplistic.  Perhaps if we were
+  able to add an additional covariate, we might be able to explain the
+  additional variation.  For example, in this example, although it might be
+  reasonable to expect that the number of individuals in a mussel clump should
+  be driven by a Poisson process, the mussel clump area alone might not be
+  sufficient to capture the variance reasonably.  Perhaps if we were able to
+  include additional information, such as the position of the clump along the
+  shore (tidal influence) or orientation on the rock etc, we might be able to
+  explain more of the currently unexplained variation.
+
+- in the absence of additional covariates, it is possible to add a special type
+  of dummy covariate that is like a proxy for all additional covariates that we
+  could add.  This dummy variable is called a unit-level (or Observation-level)
+  random effect.  It essentially soaks up the additional variance.
+
+- another source of additional variation is when the objects being counted have
+  a tendency to aggregate (clumped).  When this is the case, the sampled data
+  tends to be more varied since any single sample is likely to either less or
+  more than the overall average number of items.  Hence the average of the
+  samples might turn out to be similar to a more homogeneous population, yet it
+  will have higher variance.
+  
+  The Negative Binomial distribution is able to accommodate clumpy data.  Rather
+  than assume that the variance and mean are equal (dispersion of 1), it
+  estimates dispersion as an additional parameter.  Together the two parameters
+  of the Negative Binomial can be used to estimate the location (mean) and
+  spread (variance) of the distribution.
+
+- yet another cause of over-dispersion is the presence of excessive zeros.  In
+  particular, some of these zeros could be false zeros.  That is, a zero was
+  recorded (no individuals observed), yet there one or more individuals were
+  actually present (just not detected).  This could imply that the observed data
+  are generated by two processes.  One that determines the actual number of
+  items that exist and then another that determines the destructibility of the
+  items.  For these circumstances, we can fit zero-inflated models.
+  Zero-inflated models are a mixture of two models, one representing the count
+  process and the other representing the imperfect detection process.
+
+Please go to the Negative Binomial (GLM) tab.
+
+
+### Negative Binomial (GLM)
+
+$$
+y_i \sim{} \mathcal{NegBin}(\lambda_i, \theta)\\
+ln(\lambda_i) = \beta_0 + \beta_1 ln(x_i)
+$$
+```{r fitMode3, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6}
+peake.glm1 <- glm.nb(INDIV ~ log(AREA), data=peake)
+## lets also fit a model in which we have centered the predictor to see the impact on estimated coefficients.
+peake.glm2 <- glm.nb(INDIV ~ scale(log(AREA), scale=FALSE), data=peake)
+```
+
+#### Model validation 
+::::: {.panel-tabset}
+
+##### autoplot
+
+```{r validateModel3a, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, messsage=FALSE, warning=FALSE}
+peake.glm1 |> autoplot(which=1:6)
+```
+
+**Conclusions:**
+
+- there is no longer clear evidence of a wedge (funnel) shape in the residuals
+  suggesting that the assumption of homogeneity of variance is satisfied
+- the tails of the Q-Q plot are an improvement on the Poisson.
+- there are no longer any large Cook's distances.
+
+
+##### Influence measures
+
+```{r validateModel3b, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, message=FALSE, warning=FALSE}
+peake.glm1 |> influence.measures()
+```
+##### Performance model checking
+
+```{r validateModel3c, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6, warning=FALSE, message=FALSE}
+peake.glm1 |> performance::check_model()
+```
+
+**Conclusions:**
+
+- there is no longer clear evidence of a wedge (funnel) shape in the residuals
+  suggesting that the assumption of homogeneity of variance is satisfied.
+- the tails of the Q-Q plot are an improvement on the Poisson.
+- there are no longer any large (>0.8) Cook's distances.
+
+##### DHARMa residuals
+
+
+```{r validateModel3d, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=8, fig.height=6, warning=FALSE, message=FALSE}
+peake.resid <- peake.glm1 |> simulateResiduals(plot=TRUE)
+```
+
+```{r validateModel3e, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=8, fig.height=4, warning=FALSE, message=FALSE}
+peake.resid |> testResiduals()
+```
+
+**Conclusions:**
+
+- there is no longer clear evidence of issues with the residual plot.
+- the Q-Q plot is a much better match to the ideal line
+- there is no longer any evidence of violations of distributional conformity (KS test),
+  Dispersion and Outliers
+
+
+##### Explore a lack of fit manually
+
+```{r validateModel3f, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6}
+##Check the model for lack of fit via:
+##Pearson chisq
+peake.ss <- sum(resid(peake.glm1, type = "pearson")^2)
+1 - pchisq(peake.ss, peake.glm1$df.resid)
+##Evidence of a lack of fit
+
+#Deviance
+1-pchisq(peake.glm1$deviance, peake.glm1$df.resid)
+#Evidence of a lack of fit
+```
+
+**Conclusions:**
+
+- there is no evidence of a lack of fit (p>0.05)
+
+##### Explore over-dispersion manually
+
+```{r validateModel3g, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=6, fig.height=6}
+peake.ss/peake.glm1$df.resid
+```
+
+**Conclusions:**
+
+- there is no longer any evidence of over-dispersion
+
+:::::
+
+::::
+
+
+
+## Comparisons (model selection)
+The model diagnostics suggest that the Negative Binomial model is more
+appropriate - since it satisfied the assumptions whereas the Poisson did not.
+In this case, this should be the overriding factor in selecting between the two
+models.  If however, both were found to be valid, we could use information
+criteria to help us chose between the two.
+
+Information criterion provide a relative measure of the fit of the model
+penalising for complexity (e.i. a balance between goodness of fit and model
+simplicity).  The actual value of an AIC by itself is of no real use.  It is
+only useful as a comparative measure between two or more related models.  For
+this purpose, the lower AIC is considered better.
+
+One of the most widely used information criterion is
+the Akaike Information Criterion (AIC).  The AIC is a measure of in-sample
+prediction error that penalises complexity:
+
+$$
+AIC = 2k - 2ln(\hat{L})
+$$
+where $k$ is the number of parameters being estimated and $\hat{L}$ is the
+maximum likelihood of the fitted model.
+
+As a general rule, if two AIC's are within 2 units of each other, they are
+considered to be not significantly different from one another.  In that case,
+you would select the model that is simplest (lower used degrees of freedom).
+
+```{r aicModel, results='markdown', eval=TRUE, mhidded=TRUE}
+AIC(peake.glm, peake.glm1)
+## For small sample sizes,  it is better to use AICc - this is
+## corrected for small sample sizes.
+AICc(peake.glm, peake.glm1)
+```
+
+**Conclusions:**
+
+- purely on the basis of AIC, we would also have selected the Negative Binomial
+  model (peake.glm1) over the Poisson model (peake.glm) as it has a
+  substantially lower (>2) AIC.
+
+
+## Partial plots 
+:::: {.panel-tabset}
+### plot_model
+
+Unfortunately, these seem to be broken at the moment...
+
+```{r plotModel1b, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=5, fig.height=5}
+## The following is equivalent to ggeffect
+peake.glm1 |> plot_model(type = 'eff', show.data = TRUE,  terms = 'AREA') 
+```
+
+```{r plotModel1b1, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=5, fig.height=5}
+## plot_model(peake.glm1, type='eff', show.data=FALSE,  terms='AREA [log]') 
+## plot_model(peake.glm1, type='eff', show.data=FALSE,  terms='AREA [exp]') 
+## The following is equivalent to ggpredict
+#plot_model(peake.glm1, type='pred',  show_data=TRUE, terms='AREA [exp]')
+## The following is equivalent to ggemmeans
+## plot_model(peake.glm1, type='emm',  terms='AREA [exp]')
+```
+
+### allEffects
+
+```{r plotModela1, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=5, fig.height=5}
+peake.glm1 |> allEffects(residuals = TRUE) |> plot(type = 'response')
+```
+
+### ggpredict 
+
+```{r plotModel1c, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=5, fig.height=5}
+peake.glm1 |> ggpredict() |> plot(add.data = TRUE, jitter = FALSE)
+```
+
+The `ggpredict() |> plot()` combination produces a list of `ggplot` objects.
+If we want to make adjustments to the `ggplot` object, we need to specify a
+single `term` in `ggpredict()`.
+
+```{r plotModel1c1, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=5, fig.height=5}
+## If you want to alter 
+peake.glm1 |> ggpredict(term = 'AREA') |> plot(add.data = TRUE, jitter = FALSE) +
+    scale_y_log10() +
+    scale_x_log10()
+```
+
+### ggemmeans
+
+```{r plotModel1d, results='markdown', eval=TRUE, mhidded=TRUE, fig.width=5, fig.height=5}
+peake.glm1 |> ggemmeans(~AREA) |> plot(add.data = TRUE, jitter = FALSE)
+peake.glm1 |> ggemmeans(~AREA) |> plot(add.data = TRUE, jitter = FALSE) +
+    scale_y_log10() +
+    scale_x_log10()
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation / hypothesis testing 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## Summary
+
+```{r summaryModel1a, results='markdown', eval=TRUE, mhidded=TRUE}
+peake.glm1 |> summary()
+```
+
+**Conclusions**:
+
+- the estimated y-intercept (value of Number of Individuals when log AREA is 0) is 
+  `r round(coef(peake.glm1)[1],2)`.  Note that this is still on the link (log) scale.
+  Note also, that as a log AREA value of 0 is outside the range of the collected data,
+  this intercept does not really have any useful interpretation (unless we are
+  happy to extrapolate).  If we had centred the Area predictor (either
+  before modelling or as part of the model -
+  `glm.nb(INDIV~scale(log(AREA),scale=FALSE), data=peake)`), then the y-intercept
+  would have had a sensible interpretation.  It would have been the expected
+  Individuals at the average clump Area.  Nevertheless, either way, the
+  hypothesis test associated with the intercept is rarely of any value.
+- the estimated slope is `r round(coef(peake.glm1)[2], 2)`.  For every one unit
+  increase in log Area, the number of individuals (on a log scale) is expected to increase by 
+  `r round(coef(peake.glm1)[2], 2)` units.
+- if we back transform the slope (by exponentiation), we get a slope of
+  `r round(exp(coef(peake.glm1)[2]), 2)`.  This is interpreted as - for every
+  1 unit increase in (log) Area, the number of individuals increases 
+  `r round(exp(coef(peake.glm1)[2]), 2)` fold.  That is, there is a 
+  `r 100*(round(exp(coef(peake.glm1)[2]), 2)-1)` percent increase per 1 unit
+  increase in log Area.
+- the estimated slope divided by the estimated uncertainty in the slope (Std.
+Error) gives a t-value of `r round(summary(peake.glm1)$coefficients[2, 3],2)`.  If
+we compare that to a t-distribution for `r df.residual(peake.glm1)`, we get a
+p-value < 0.05.  Hence we would reject the null hypothesis of no relationship
+between Area and number of Individuals.
+- the $R^2$ value is `r round(MuMIn::r.squaredLR(peake.glm1), 2)`. Hence,
+`r 100*round(MuMIn::r.squaredLR(peake.glm1), 2)` percent of the variation in
+number of Individuals is explained by its relationship to Area.
+
+## confint
+
+```{r summaryModel1b, results='markdown', eval=TRUE, mhidded=TRUE}
+peake.glm1 |> confint()
+## or on the response scale
+peake.glm1 |>
+  confint() |>
+  exp()
+```
+
+**Conclusions:**
+
+- the confidence intervals provide more context about the estimated effects of
+  Area on number of individuals.  In addition to describing the implications
+  associated with the typical effect (as indicated by the point estimate of
+  slope), we would also discuss the implications is the effect was a low as a 
+  `r round(exp(confint(peake.glm1)[2, 1]), 2)` fold increase or as high as a 
+  `r round(exp(confint(peake.glm1)[2, 2]), 2)` fold increase.
+
+
+## tidy
+
+```{r summaryModel1c, results='markdown', eval=TRUE, mhidded=TRUE}
+peake.glm1 |> tidy(conf.int=TRUE)
+peake.glm1 |> tidy(conf.int=TRUE, exponentiate=TRUE)
+peake.glm1 |> glance()
+```
+
+## tab_model
+
+```{r summaryModel1d, results='markdown', eval=TRUE, mhidded=TRUE}
+# warning this is only appropriate for html output
+peake.glm1 |> sjPlot::tab_model(show.se = TRUE, show.aic = TRUE)
+```
+
+:::
+<!-- END_PRIVATE-->
+# Predictions 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+In simple regression, the $R^{2}$ value (coefficient of determination)
+is interpreted as the amount of variation in the response that can be
+explained by its relationship with the predictor(s) and is calculated
+as the sum of squares explained divided by the sum of squares total.
+It is considered a measure of the strength of a relationship ans is
+calculated as:
+
+$$
+R^2 = 1 - \frac{\sum_i=1^N (y_i - \hat(y_i)^2)}{\sum_i=1^N (y_i - \bar(y))^2}
+$$
+where $y_{i}$ and $\hat{y_{i}}$ are the $i^{th}$ observed and predicted value
+respectively, $\bar{y}$ is the mean of the observed values and $N$ is the total
+number of observations.
+
+This is really only appropriate for OLS.  For other models there are alternative
+measures (**pseudo R-squared**) that can be applied depending on how they are to
+be interpreted:
+
+1. **Explained variance**.  If we consider the numerator as a measure of the
+   unexplained variance and the denominator as a measure of the total variance,
+   then their one minus the ratio is the proportion of the variance explained by
+   the model.
+2. **Improvement of a fitted model over a null model**.  The numerator is a
+   measure of the variance unexplained after fitting the model and the
+   denominator is the amount of variance unexplained after fitting a null model
+   (model with only an intercept - essentially just the response mean).  The
+   ratio therefore reflects the improvement. 
+3. **Square of correlation**. The squared correlation between the predicted and
+   observed values.
+
+There are many different ways to calculate $R^2$ values from GLM's.  The
+following table provides some guidance as to which method is appropriate for
+which type of model and how they should be interpreted..
+
+One very simple calculation is based on deviance (a measure of the
+total amount unexplained) as:
+
+$$
+1-\frac{Deviance}{Deviance_{NULL}}
+$$
+
+where $Deviance_{NULL}$ is the deviance of a null model 
+(e.g. `glm(PA ~ 1, data=polis, family='binomial')`)
+
+Alternatively, there are many different ways to calculate $R^2$ values
+from GLM's.  The following table provides some guidance as to which
+method is appropriate for which type of model and how they should be
+interpreted..
+
+| Model             | Appropriate $R^2$ | Formula                          | Interpreted as | Function                        |
+| ----------------- | ----------------- | -------------------------------- | -------------- | ---------------------------     |
+| Logistic          | Tjur's R2         | $\dagger$                        |                | `performace::r2_tjur()`         |
+| Multinomial Logit | McFadden's R2     | $\ddagger$                       | 1 & 2          | `performace::r2_mcfadden()`     |
+| GLM               | Nagelkerke's R2   | $\S$                             | 2              | `performace::r2_nagelkerke()`   |
+| GLM               | Likelihood ratio  | Adjusted Nagelkerke - see below  |                | `MuMIn::r2.squaredLR()`         |
+| Mixed models      | Nakagawa's R2     | Too complex                      |                | `performace::r2_nakagawa()`     |
+| Mixed models      |                   |                                  |                | `MuMIn::r.suaredGLMM()`         |
+| ZI models         | Zero-inflated R2  | Too complex                      |                | `performace::r2_zeroinflated()` |
+| Bayesian models   | Bayes R2          | Too complex                      |                | `performace::r2_bayes()`        |
+ 
+$\dagger$: $R^2=\frac{1}{n_{1}}\sum \hat{\pi}(y=1) - \frac{1}{n_{0}}\sum \hat{\pi}(y=0)$
+
+$\ddagger$: $R^2=1-\frac{logL(x)}{logL(0)}$
+
+$\S$: $R^2=\frac{1-(\frac{logL(0)}{logL(x)})^{2/N}}{1-logl(0)^{2/N}}$
+
+where $n_1$ and $n_0$ are the number of 1's and 0's in the response and
+$\hat{\pi}$ is the predicted probability. $logL(x)$ and $logL(0)$ are the
+log-likelihoods of the fitted and null models respectively and $N$ is the number
+of observations.
+
+Note, if you run `performance::r2()`, the function will work out what
+type of model has been fit and then use the appropriate function from
+the above table.
+
+## Manually
+```{r predictModel1a, results='markdown', eval=TRUE, mhidded=TRUE}
+#R2
+1-(peake.ss/peake.glm1$null)
+## Or based on deviance (preferred)
+1-(peake.glm1$deviance/peake.glm1$null)
+```
+
+## Likelihood-ratio based R2
+$$
+R^2 = 1 - exp(-2/n * logL(x) - logL(0))
+$$
+where $logL(x)$ and $logL(0)$ are the log-likelihoods of the fitted and null
+models respectively. 
+This is then sometimes adjusted (Nagelkerke's method) such that:
+$$
+max(R^2) = 1 - exp(2 / n * logL(0))
+$$
+because sometimes the max R^2$ is less than one.
+
+```{r predictModel1b, results='markdown', eval=TRUE, mhidded=TRUE}
+peake.glm1 |> r.squaredLR()
+```
+
+## Nagelkerke's R2
+
+```{r predictModel1c, results='markdown', eval=TRUE, mhidded=TRUE}
+peake.glm1 |> performance::r2_nagelkerke()
+```
+:::
+
+<!-- END_PRIVATE-->
+# Summary figures
+
+<!-- START_PRIVATE-->
+```{r figureModel, results='markdown', eval=TRUE, mhidded=TRUE}
+## Using emmeans
+peake.grid <- with(peake, list(AREA=seq(min(AREA), max(AREA), len=100)))
+#OR
+peake.grid <- peake |>
+    data_grid(AREA=seq_range(AREA,  n=100))
+newdata <- peake.glm1 |>
+  emmeans(~AREA, at = peake.grid, type = "response") |>
+  as.data.frame()
+head(newdata)
+ggplot(newdata, aes(y=response, x=AREA)) +
+    geom_ribbon(aes(ymin=asymp.LCL, ymax=asymp.UCL),fill='blue', alpha=0.3) +
+    geom_line() +
+    theme_classic()
+
+ggplot(newdata, aes(y=response, x=AREA)) +
+    geom_ribbon(aes(ymin=asymp.LCL, ymax=asymp.UCL),fill='blue', alpha=0.3) +
+    geom_line() +
+    geom_point(data=peake, aes(y=INDIV)) +
+    scale_x_log10(breaks = as.vector(c(1,2,5,10) %o% 10^(-1:4))) +
+    scale_y_log10() +
+    theme_classic()
+## If we want to plot the partial observations
+partial.obs <- peake.glm1 |> emmeans(~AREA, at=peake, type='response') |>
+    as.data.frame() |>
+    mutate(Partial.obs=response+resid(peake.glm1,type='response'))
+
+## response residuals are just resid * mu.eta(predict)
+ggplot(newdata, aes(y=response, x=AREA)) +
+    geom_ribbon(aes(ymin=asymp.LCL, ymax=asymp.UCL),fill='blue', alpha=0.3) +
+    geom_line() +
+    geom_point(data=peake, aes(y=INDIV)) +
+    geom_point(data=partial.obs, aes(y=Partial.obs), color='green') + 
+    scale_x_log10(breaks = as.vector(c(1,2,5,10) %o% 10^(-1:4))) +
+    scale_y_log10() +
+    theme_classic()	
+
+```
+<!-- END_PRIVATE-->
+# References
