@@ -7,7 +7,7 @@ format:
   html:
     ## Format
     theme: spacelab
-    css: ../resources/ws_style.css
+    css: ../public/resources/ws_style.css
     html-math-method: mathjax
     ## Table of contents
     toc: true
@@ -41,7 +41,7 @@ crossref:
   tbl-title: '**Table**'
   tbl-labels: arabic
 engine: knitr
-bibliography: ../resources/references.bib
+bibliography: ../public/resources/references.bib
 output_dir: "docs"
 documentclass: article
 fontsize: 12pt
@@ -200,7 +200,7 @@ We can refer to the table as see @tbl-iris.
 
 ## Embedded
 
-![Grouse chicks](../resources/redgrousechicks.jpg){#fig-grouse width=50%}
+![Grouse chicks](../public/resources/redgrousechicks.jpg){#fig-grouse width=50%}
 
 We can refer to the table as see @fig-grouse.
 
