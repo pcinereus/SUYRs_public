@@ -1,0 +1,228 @@
+---
+title: "Bayesian Cheatsheet"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+output_dir: "docs"
+engine: knitr
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Priors
+
+- https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
+- http://svmiller.com/blog/2021/02/thinking-about-your-priors-bayesian-analysis/
+
+| Family            | Parameter                            | Default brms                    | Defautl rstanarm            |
+|-------------------|--------------------------------------|---------------------------------|-----------------------------|
+| Gaussian          | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | Sigma                                | `student_t(3,0,mad(y))`         | `exponential(1/sd(y))`      |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+| Poisson           | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+| Negative binomial | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | Shape                                | `gamma(0.01, 0.01)`             | `exponential(1/sd(y))`      |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+
+Notes:
+
+`brms`
+
+https://github.com/paul-buerkner/brms/blob/c2b24475d727c8afd8bfc95947c18793b8ce2892/R/priors.R
+
+1. In the above, for non-Gaussian families, `y` is first transformed
+  according to the family link.  If the family link is `log`, then 0.1
+  is first added to 0 values.
+2. in `brms` the minimum standard deviation for the Intercept prior is
+   `2.5`
+3. in `brms` the minimum standard deviation for group-level priors is
+   `10`.
+
+`rstanarm`
+
+http://mc-stan.org/rstanarm/articles/priors.html
+
+1. in `rstanarm` priors on standard deviation and correlation
+   associated with group-level effects are packaged up into a single
+   prior (`decov` which is a decomposition of the variance and
+   covariance matrix).
+
+
+# MCMC sampling diagnostics {.tabset .tabset-faded}
+
+`available_mcmc()`
+
+| Package   | Description       | function               | rstanarm                         | brms                               |
+|-----------|-------------------|------------------------|----------------------------------|------------------------------------|
+| bayesplot | Traceplot         | `mcmc_trace`           | `plot(mod, plotfun='trace')`     | `mcmc_plot(mod, type='trace')`     |
+|           | Density plot      | `mcmc_dens`            | `plot(mod, plotfun='dens')`      | `mcmc_plot(mod, type='dens')`      |
+|           | Density & Trace   | `mcmc_combo`           | `plot(mod, plotfun='combo')`     | `mcmc_plot(mod, type='combo')`     |
+|           | ACF               | `mcmc_acf_bar`         | `plot(mod, plotfun='acf_bar')`   | `mcmc_plot(mod, type='acf_bar')`   |
+|           | Rhat hist         | `mcmc_rhat_hist`       | `plot(mod, plotfun='rhat_hist')` | `mcmc_plot(mod, type='rhat_hist')` |
+|           | No. Effective     | `mcmc_neff_hist`       | `plot(mod, plotfun='neff_hist')` | `mcmc_plot(mod, type='neff_hist')` |
+| rstan     | Traceplot         | `stan_trace`           | `stan_trace(mod)`                | `stan_trace(mod)`                  |
+|           | ACF               | `stan_ac`              | `stan_ac(mod)`                   | `stan_ac(mod)`                     |
+|           | Rhat              | `stan_rhat`            | `stan_rhat(mod)`                 | `stan_rhat(mod)`                   |
+|           | No. Effective     | `stan_ess`             | `stan_ess(mod)`                  | `stan_ess(mod)`                    |
+|           | Density plot      | `stan_dens`            | `stan_dens(mod)`                 | `stan_dens(mod)`                   |
+| ggmcmc    | Traceplot         | `ggs_traceplot`        | `ggs_traceplot(ggs(mod))`        | `ggs_traceplot(ggs(mod))`          |
+|           | ACF               | `ggs_autocorrelation`  | `ggs_autocorrelation(ggs(mod))`  | `ggs_autocorrelation(ggs(mod))`    |
+|           | Rhat              | `ggs_Rhat`             | `ggs_Rhat(ggs(mod))`             | `ggs_Rhat(ggs(mod))`               |
+|           | No. Effective     | `ggs_effective`        | `ggs_effective(ggs(mod))`        | `ggs_effective(ggs(mod))`          |
+|           | Cross correlation | `ggs_crosscorrelation` | `ggs_crosscorrelation(ggs(mod))` | `ggs_crosscorrelation(ggs(mod))`   |
+|           | Scale reduction   | `ggs_grb`              | `ggs_grb(ggs(mod))`              | `ggs_grb(ggs(mod))`                |
+|           |                   |                        |                                  |                                    |
+
+# Posteriors
+ 
+| Property          | Description                                                                                  |
+|-------------------|----------------------------------------------------------------------------------------------|
+| linear predictors | values predicted on the link scale                                                           |
+| expected values   | predictions (on response scale) without residual error (predicting expected mean outcome(s)) |
+| predicted values  | predictions (on response scale) that incorporate residual error                              |
+|                   |                                                                                              |
+| fitted values     | predictions on the response scale                                                            |
+
++---------------------------------+-------------------+---------------------------------------------------------+
+| Function                        | Values            | Description                                             |
++=================================+===================+=========================================================+
+| `__::as.matrix()`               | Parameters        | Returns $n\times p$ matrix                              |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `__::as.data.frame()`           | Parameters        | Returns $n\times p$ data.frame                          |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `__::as_tibble()`               | Parameters        | Returns $n\times p$ tibble                              |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `posterior::as_draws_df()`      | Parameters        | Returns $n\times p$ data.frame with additional info     |
+|                                 |                   | about chain, interaction and draw                       |
++---------------------------------+-------------------+---------------------------------------------------------+
+| ~~`brms::posterior_samples()`~~ | ~~Parameters~~    | ~~Returns $n\times p$ data.frame~~                      |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::tidy_draws()`       | Parameters        | Returns $n\times p$ tibble with addition info about     |
+|                                 |                   | the chain, iteration and draw                           |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstan::extract()`              | Parameters        | Returns a $p$ length list of $n$ length vectors         |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::spread_draws()`     | Parameters        | Returns $n\times r$ tibble with additional info about   |
+|                                 |                   | chain, interaction and draw                             |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::gather_draws()`     | Parameters        | Returns a gathered `spread_draws` tibble                |
+|                                 |                   | with additional info about chain, interaction and draw  |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_linpred()` | Linear predictors | Returns $n\times N$ tibble on the link scale            |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_linpred()`     | Linear predictors | Returns $n\times N$ tibble on the link scale            |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::linpred_draws()`    | Linear predictors | Returns tibble with $n\times N rows and `.linpred`      |
+|                                 |                   | on the link scale additional info about chain,          |
+|                                 |                   | interaction and draw                                    |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_epred()`   | Expected values   | Returns $n\times N$ tibble on the response scale        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_epred()`       | Expected values   | Returns $n\times N$ tibble on the response scale        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::epred_draws()`      | Expected values   | Returns tibble with $n\times N rows and `.epred` on     |
+|                                 |                   | the response scale additional info about chain,         |
+|                                 |                   | interaction and draw                                    |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_predict()` | Expected values   | Returns $n\times N$ tibble of predictions (including    |
+|                                 |                   | residuals) on the response scale                        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_predict()`     | Expected values   | Returns $n\times N$ tibble of predictions (including    |
+|                                 |                   | residuals) on the response scale                        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::predicted_draws()`  | Expected values   | Returns tibble with $n\times N rows and `.prediction`   |
+|                                 |                   | (including residuals) on the response scale additional  |
+|                                 |                   | info about chain, interaction and draw                  |
++---------------------------------+-------------------+---------------------------------------------------------+
+
+
+where $n$ is the number of MCMC samples and $p$ is the number of
+parameters to estimate, $N$ is the number of newdata rows and $r$ is
+the number of requested parameters.  For the `tidybayes` versions in
+the table above, the function expects a model to be the first
+parameter (and a dataframe to be the second).  There are also `add_`
+versions which expect a dataframe to be the first argument and the
+model to be the second.  These alternatives facilitate pipings with
+different starting objects.
+
+
+| Function      | Description                                                                    |
+|---------------|--------------------------------------------------------------------------------|
+| `median_qi`   | Median and quantiles of specific columns                                       |
+| `median_hdi`  | Median and Highest Probability Density Interval of specific columns            |
+| `median_hdci` | Median and continuous Highest Probability Density Interval of specific columns |
+| `tidyMCMC`    | Median/mean and quantiles/hpd of all columns                                   |
+
+
+# Predictions 
+
+| Package         | Function              | Description                                                                                                | Summarise with  |
+| ---             | ---                   | ------                                                                                                     | ---             |
+| `rstantools`    | `posterior_predict`   | Draw from the posterior of a prediction (includes sigma) - _predicts single observations_                  | `tidyMCMC()`    |
+| `rstantools`    | `posterior_linpred`   | Draw from the posterior of the fitted values (**on the link scale**) - _predicts average observations_     | `tidyMCMC()`    |
+| `rstantools`    | `posterior_epred`     | Draw from the posterior of the fitted values (**on the response scale**) - _predicts average observations_ | `tidyMCMC()`    |
+| `tidybayes`     | `predicted_draws`     | Extract the posterior of _prediction_ values                                                               | `median_hdci()` |
+| `tidybayes`     | `epred_draws`         | Extract the posterior of _expected_ values                                                                 | `median_hdci()` |
+| ~~`tidybayes`~~ | ~~`fitted_draws`~~    | ~~Extract the posterior of _fitted_ values~~                                                               | `median_hdci()` |
+| `tidybayes`     | `add_predicted_draws` | Adds draws from the posterior of _predictions_ to a data frame (of prediction data)                        | `median_hdci()` |
+| `tidybayes`     | `add_fitted_draws`    | Adds draws from the posterior of _fitted_ values to a data frame (of prediction data)                      | `median_hdci()` |
+| `emmeans`       | `emmeans`             | Estimated marginal means from which posteriors can be drawn (via `tidy_draws`                              | `median_hdci()` |
+|                 |                       |                                                                                                            |                 |
