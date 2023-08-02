@@ -351,7 +351,7 @@ posterior_predict.inla <- function(object, newdata = NULL, ndraws=250, include_r
           "zero-probability parameter for zero-inflated poisson_1",
           names(draws[[1]]$hyperpar)
       )
-      phi <- sapply(draws,2427.2   function(x) x$hyperpar[[wch]])
+      phi <- sapply(draws, function(x) x$hyperpar[[wch]])
       rdist <- function(N, x, phi) rbinom(N, size = 1, prob = 1 - phi) * rpois(N, lambda = x)
       out <- apply(out, 2, rdist, N=N, phi=phi)
   }
