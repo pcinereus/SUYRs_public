@@ -546,3 +546,17 @@ autocor_check <- function(data,  modelTMB, variable, grouping, maxlag, n.sim) {
       annotate("text", x = data.Var$u, y = min(c(data.rand.Var$v.rand,data.Var$v)) - 0.02*max(c(data.rand.Var$v.rand,data.Var$v)), label = c(paste("N =",data.Var$n[1]), data.Var$n[-1]), size = 5) +
       plot0
   }}
+
+
+
+
+## The following is required to fix a bug in emmeans and brms for poly terms
+## https://github.com/rvlenth/emmeans/issues/43
+recover_data.brmsfit <- function(object, data, ...) {
+    bt = brms::parse_bf(formula(object))
+    if (class(bt) != "brmsterms")
+        stop("This model is currently not supported.")
+    trms <- attr(model.frame(bt$dpars$mu$fe, data = object$data), "terms")
+    # we don't have a call component so I'll just put in NULL
+    emmeans:::recover_data.call(NULL, trms, "na.omit", data = object$data, ...)
+}
