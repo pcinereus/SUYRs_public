@@ -1,0 +1,225 @@
+---
+title: "Bayesian GAM Part1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../public/resources/references.bib
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+```{r setup, include=FALSE, warnings=FALSE, message=FALSE}
+knitr::opts_chunk$set(cache.lazy = FALSE, tidy='styler')
+```
+ 
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for MCMC diagnostics
+library(DHARMa)     #for residual diagnostics
+library(rstan)      #for interfacing with STAN
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(tidybayes)  #for more tidying outputs
+library(HDInterval) #for HPD intervals
+library(ggeffects)  #for partial plots
+library(broom.mixed)#for summarising models
+library(posterior)  #for posterior draws
+library(ggeffects)  #for partial effects plots
+library(patchwork)  #for multi-panel figures
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+theme_set(theme_grey()) #put the default ggplot theme back
+source('helperFunctions.R')
+```
+
+# Scenario
+
+This is an entirely fabricated example (how embarrising).
+So here is a picture of some Red Grouse Chicks to compensate..
+
+![Red grouse chicks](../public/resources/redgrousechicks.jpg){#fig-grouse width="251" height="290"}
+
+
+x  y
+-- --
+2  3
+4  5
+8  6
+10 7
+14 4
+
+: Format of data.gp.csv data file {#tbl-data.gp .table-condensed}
+
+------    -----------------------------
+**x**     - a continuous predictor
+**y**     - a continuous response
+------    -----------------------------
+
+: Format of data.gp.csv data file {#tbl-data.gp1 .table-condensed}
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+data_gam <- read_csv("../public/data/data_gam.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+#| dependson: readData
+
+data_gam |> glimpse()
+```
+
+## head
+```{r}
+#| label: headData
+#| dependson: readData
+## Explore the first 6 rows of the data
+data_gam |> head()
+```
+
+## str
+```{r}
+#| label: strData
+#| dependson: readData
+data_gam |> str()
+```
+
+## Easystats (datawizard)
+
+```{r}
+#| label: easyData
+#| dependson: readData
+data_gam |> datawizard::data_codebook()
+```
+:::
+
+<!-- END_PRIVATE-->
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i =\beta_0 + f(x_i)\\
+f(x_i) = \sum^k_{j=1}{b_j(x_i)\beta_j}
+$$
+
+where $\beta_0$ is the y-intercept, and $f(x)$ indicates an additive smoothing function of $x$. 
+
+<!-- START_PRIVATE-->
+Although this is a ficticious example without a clear backstory, given that
+there are two continous predictors (and that one of these has been identified as
+a response and the other a predictor), we can assume that we might be interested
+in investigating the relationship between the two.
+As such, our typically starting point is to explore the basic trend between the
+two using a scatterplot.
+
+```{r EDA1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+ggplot(data_gam, aes(y=y, x=x))+ 
+    geom_point()+
+    geom_line()
+```
+
+This does not look like a particularly linear relationship.  Lets fit a loess smoother..
+
+```{r EDA1b, results='markdown', eval=TRUE, mhidden=TRUE,warning=FALSE,message=FALSE, fig.width=4, fig.height=4}
+ggplot(data_gam, aes(y=y, x=x))+ 
+    geom_point()+
+    geom_smooth()
+```
+
+And what would a linear smoother look like?
+
+```{r EDA1c, results='markdown', eval=TRUE, mhidden=TRUE,warning=FALSE,message=FALSE, fig.width=4, fig.height=4}
+ggplot(data_gam, aes(y=y, x=x))+ 
+    geom_point()+
+    geom_smooth(method='lm')
+```
+
+Rather than either a loess or linear smoother, we can also try a Generalized
+Additive Model (GAM) smoother. Dont pay too much attention to the GAM formula at
+this stage, this will be discussed later in the Model Fitting section.
+
+```{r EDA1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+ggplot(data_gam, aes(y=y, x=x))+ 
+    geom_point()+
+    geom_smooth(method='gam', formula=y~s(x,k=3))
+```
+
+**Conclusions:**
+
+- it is clear that the relationship is not linear.
+- it does appear that as x inreases, y initially increases before eventually
+  declining again.
+- we could model this with a polynomial, but for this exemple, we will use these
+  data to illustrate the fitting of GAMs.
+
+<!-- END_PRIVATE-->
+
+# Fit the model
