@@ -1,0 +1,135 @@
+---
+title: "Regression Trees Part3"
+author: "Murray Logan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+    css: ../resources/ws_style.css
+  pdf_document:
+    df_print: default
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    latex_engine: xelatex
+    number_sections: yes
+    toc_depth: 2
+  word_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r libraries, results='markdown', eval=TRUE}
+library(gbm)         #for gradient boosted models
+library(car)
+library(dismo)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(gridExtra)
+library(patchwork)
+```
+
+# Scenario
+
+Verneaux (1973) measured the abundance of 27 fish species and 11
+environmental variables from 30 locations along the Doubs river which
+runs along the France-Switzerland border.  The environmental data
+comprised a range of hydrology, geomorphology and chemistry parameters
+and amungst other things, the ichthyologist was interested in relating
+fish abundances to the environmental drivers.
+
+The data are in two files.
+
+- `verneaux.fish.csv` - the abundance of 27 fish species
+- `verneaux.env.csv` - the environmental data
+
+| Variable | Description                               |
+|----------|-------------------------------------------|
+| DAS      | Distance from source (km)                 |
+| ALT      | Altitude (m above sea level)              |
+| PEN      | Slope (per thousand)                      |
+| DEB      | Mean minimum dischange (m^3.s^-1)         |
+| PH       | Water pH                                  |
+| DUR      | Calcium concentration (hardness) (mgL^-1) |
+| PHO      | Phosphorus concentration (mgL^-1)         |
+| NIT      | Nitrate concentration (mgL^-1)            |
+| AMM      | Ammonium concentration (mgL^-1)           |
+| OXY      | Dissolved oxygen (mgL^-1)                 |
+| BDO      | Biological oxygen demand (mgL^-1)         |
+|          |                                           |
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+fish = read_csv('../data/verneaux.fish.csv', trim_ws=TRUE)
+glimpse(fish)
+
+env = read_csv('../data/verneaux.env.csv', trim_ws=TRUE)
+glimpse(env)
+```
+
+## Data preparation
+
+For this example, we are going to focus on total fish abundance and therefore we need to sum the total number of fish within each location (rows).
+
+<div class = 'Hidden'>
+
+```{r processData, results='markdown', eval=TRUE}
+fish <- fish %>% rowSums
+```
+
+</div>
+
+# Exploratory data analysis
+
+
+
+# Fit the model
+
+
+# Explore relative influence
+
+
+# Explore partial effects
+
+
+# Explore accuracy
+
+
+# Explore interactions {.tabset .tabset-faded}
+
+
+# Tuning
+

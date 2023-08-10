@@ -1,0 +1,188 @@
+---
+title: "Regression Trees Part1"
+author: "Murray Logan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+    css: ../resources/ws_style.css
+  pdf_document:
+    df_print: default
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    latex_engine: xelatex
+    number_sections: yes
+    toc_depth: 2
+  word_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# Preparations
+
+https://besjournals.onlinelibrary.wiley.com/doi/10.1111/j.1365-2656.2008.01390.x
+
+Load the necessary libraries
+
+```{r libraries, results='markdown', eval=TRUE}
+library(gbm)         #for gradient boosted models
+library(car)
+library(dismo)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(gridExtra)
+library(patchwork)
+```
+
+# Scenario
+
+Abalone are an important aquaculture shell fish that are farmed
+for both their meat and their shells.  Abalone can live up to 50 
+years, although their longevity is known to be influenced by a 
+range of environmental factors.  Traditionally, abalone are aged
+by counting thier growth rings, however, this method is very
+laborious and expensive.  Hence a study was conducted in which abalone
+growth ring counts were matched up with a range of other more easily
+measured physical characteristics (such as shell dimesions and weights)
+in order to see if any of these other parameters could be used as
+proxies for the number of growth rings (or age).
+
+![abalone](../resources/abalone.jpg){width="251" height="290"}
+
+Format of abalone.csv data file
+
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+abalone = read_csv('../data/abalone.csv', trim_ws=TRUE)
+glimpse(abalone)
+```
+
+
+
+# Exploratory data analysis
+
+
+# Fit the model
+
+
+# Explore relative influence
+
+
+# Explore partial effects
+
+
+# Explore accuracy
+
+
+# Explore interactions {.tabset .tabset-faded}
+
+
+# Tuning
+
+
+
+```{r bootstrapping, results='markdown', eval=TRUE}
+nBoot <- 10
+abalone.pred <- with(abalone,
+                     expand.grid(SHELL_WEIGHT = modelr::seq_range(SHELL_WEIGHT, n = 100),
+                                SEX = levels(SEX),
+                                LENGTH = NA,
+                                DIAMETER = NA,
+                                HEIGHT = NA,
+                                WHOLE_WEIGHT = NA,
+                                MEAT_WEIGHT = NA,
+                                GUT_WEIGHT = NA)
+                     )
+abalone.list <- vector('list', nBoot) 
+abalone.list
+abalone.sum <- vector('list', nBoot) 
+for (i in 1:nBoot) {
+    print(paste0('Boot number: ', i))
+    ## Create random set
+    abalone.rnd <- abalone %>%
+        sample_n(size = n(), replace=TRUE)
+    ## Fit the trees
+    abalone.gbm = gbm(RINGS ~ SEX + LENGTH + DIAMETER + HEIGHT +
+                          WHOLE_WEIGHT + MEAT_WEIGHT + GUT_WEIGHT +
+                          SHELL_WEIGHT,
+                      data=abalone.rnd,
+                      distribution='poisson',
+                      var.monotone=c(0,1,1,1,1,1,1,1),
+                      n.trees=5000,
+                      interaction.depth=5,
+                      bag.fraction=0.5,
+                      shrinkage=0.001,
+                      train.fraction=1,
+                      cv.folds=3)
+    ## Determine the best number of trees
+    (best.iter = gbm.perf(abalone.gbm,method='cv'))
+    ## predict based on shell weight
+    fit <- predict(abalone.gbm, newdata = abalone.pred, n.trees = best.iter) %>% exp()
+    abalone.list[[i]] <- data.frame(abalone.pred, Boot = i, Fit = fit)
+    ## relative influence
+    abalone.sum[[i]] <- summary(abalone.gbm, n.trees = best.iter)
+}
+abalone.fit <- do.call('rbind', abalone.list)
+abalone.fit <- abalone.fit %>%
+    group_by(SHELL_WEIGHT, SEX) %>%
+    ## summarise(Median = median(Fit),
+    ##           Lower = quantile(Fit, p=0.025),
+    ##           Upper = quantile(Fit, p=0.975))
+    ggdist::median_hdci(Fit)       
+g1 <- abalone.fit %>% ggplot(aes(y=Fit, x=SHELL_WEIGHT, fill=SEX, color=SEX)) +
+    geom_ribbon(aes(ymin=.lower, ymax=.upper), alpha=0.3, color=NA) +
+    geom_line() +
+    scale_fill_viridis_d() +
+    scale_colour_viridis_d() +
+    theme_classic()
+
+abalone.inf <- do.call('rbind', abalone.sum)
+abalone.inf <- abalone.inf %>%
+    group_by(var) %>%
+    ggdist::median_hdci(rel.inf)       
+
+g2 <- abalone.inf %>% ggplot(aes(y=var, x=rel.inf)) +
+    geom_vline(xintercept=12.5, linetype='dashed') +
+    geom_pointrange(aes(xmin=.lower, xmax=.upper)) +
+    theme_classic()
+
+g2 + patchwork::inset_element(g1, left=0.5, bottom=0.01, right=1, top=0.7)
+g1 + patchwork::inset_element(g2, left=0.5, bottom=0.01, right=1, top=0.5)
+```
+
+
+
+
+
+# Random Forest
