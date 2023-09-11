@@ -74,7 +74,6 @@ Load the necessary libraries
 #| cache: false
 
 library(tidyverse)  #for data wrangling etc
-library(rstanarm)   #for fitting models in STAN
 library(cmdstanr)   #for cmdstan
 library(brms)       #for fitting models in STAN
 library(standist)   #for exploring distributions
@@ -95,8 +94,6 @@ library(patchwork)  #for multi-panel figures
 library(bayestestR) #for ROPE
 library(see)        #for some plots
 library(easystats)     #framework for stats, modelling and visualisation
-library(INLA)       #for approximate Bayes
-library(INLAutils)  #for additional INLA outputs
 theme_set(theme_grey()) #put the default ggplot theme back
 source('helperFunctions.R')
 ```
@@ -310,7 +307,7 @@ http://mc-stan.org/rstanarm/articles/priors.html
    prior (`decov` which is a decomposition of the variance and
    covariance matrix).
 
-
+**PUT A CHUNK HERE**
 
 
 
@@ -380,6 +377,7 @@ might not be accurate.
 |           | Scale reduction   | `ggs_grb`              | `ggs_grb(ggs(mod))`              | `ggs_grb(ggs(mod))`                |
 |           |                   |                        |                                  |                                    |
 
+**PUT A CHUNK HERE**
 
 # Model validation 
 
