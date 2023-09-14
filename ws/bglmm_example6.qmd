@@ -1,0 +1,270 @@
+---
+title: "GLMM example 6"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(sjPlot)    #for outputs
+library(knitr)     #for kable
+library(effects)   #for partial effects plots
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(MuMIn)     #for AICc
+library(tidyverse) #for data wrangling
+library(brms)
+library(tidybayes)
+library(bayesplot)
+library(broom.mixed)
+library(rstan)
+library(patchwork)
+library(DHARMa)
+library(standist)   #for visualizing distributions
+library(rstanarm)
+library(ggeffects)
+library(DHARMa)
+library(ggridges)
+library(easystats)     #framework for stats, modelling and visualisation
+library(patchwork)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+![fanworms](../resources/fanworms.jpg){#fig-fanworms width="157" height="160"}
+
+In an attempt to understand the effects on marine animals of short-term
+exposure to toxic substances, such as might occur following a spill, or
+a major increase in storm water flows, a it was decided to examine the
+toxicant in question, Copper, as part of a field experiment in Hong
+Kong. The experiment consisted of small sources of Cu (small,
+hemispherical plaster blocks, impregnated with copper), which released
+the metal into sea water over 4 or 5 days. The organism whose response
+to Cu was being measured was a small, polychaete worm, Hydroides, that
+attaches to hard surfaces in the sea, and is one of the first species to
+colonize any surface that is submerged. The biological questions focused
+on whether the timing of exposure to Cu affects the overall abundance of
+these worms. The time period of interest was the first or second week
+after a surface being available.
+
+The experimental setup consisted of sheets of black perspex (settlement
+plates), which provided good surfaces for these worms. Each plate had a
+plaster block bolted to its centre, and the dissolving block would
+create a gradient of [Cu] across the plate. Over the two weeks of the
+experiment, a given plate would have plain plaster blocks (Control) or a
+block containing copper in the first week, followed by a plain block, or
+a plain block in the first week, followed by a dose of copper in the
+second week. After two weeks in the water, plates were removed and
+counted back in the laboratory. Without a clear idea of how sensitive
+these worms are to copper, an effect of the treatments might show up as
+an overall difference in the density of worms across a plate, or it
+could show up as a gradient in abundance across the plate, with a
+different gradient in different treatments. Therefore, on each plate,
+the density of worms (\#/cm^2^) was recorded at each of four distances
+from the center of the plate.
+
+
+COPPER   PLATE   DIST   WORMS   AREA   COUNT
+-------- ------- ------ ------- ------ -------
+..       ..      ..     ..      ..     ..
+
+: Format of copper.csv data file {#tbl-copper .table-condensed}
+
+------------ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+**COPPER**   Categorical listing of the copper treatment (control = no copper applied, week 2 = copper treatment applied in second week and week 1= copper treatment applied in first week) applied to whole plates. Factor A (between plot factor).
+**PLATE**    Substrate provided for polychaete worm colonization on which copper treatment applied. These are the plots (Factor B). Numbers in this column represent numerical labels given to each plate.
+**DIST**     Categorical listing for the four concentric distances from the center of the plate (source of copper treatment) with 1 being the closest and 4 the furthest. Factor C (within plot factor)
+**WORMS**    Density (\#/cm~2~) of worms measured. Response variable.
+------------ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+: Description of the variables in the copper data file {#tbl-copper1 .table-condensed}
+ 
+
+
+# Read in the data
+
+```{r}
+#| label: readData
+copper <- read_csv("../data/copper.csv", trim_ws = TRUE)
+```
+
+# Data preparation
+
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{Pois}(\lambda_i)\\
+ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
+and $\bf{X}$ is the model matrix representing the overall intercept and effects of copper, distance and their interaction on the number of number of worms.
+Area of the place segment was also incorporated as an offset.
+$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual plates.
+
+These data are density of worms.  This is not ideal.  It would be
+better to have the actual counts along with the area and then model
+against a Poisson or Negative Binomial along with having an offset for
+area.  Such an approach would allow us to effectively model density
+whilst also being able to fit a model with a distribution that closely
+matches the data generation process.
+
+Unfortunately, we only have the densities.  As such, our choice of
+model families is somewhat restricted.  Out choices are:
+
+- Gaussian: assuming normality etc
+- log-normal:
+- Gamma with a log link: so long as we can address the presence of zeros in the data
+- Tweedie
+
+
+
+# Fit the model {.tabset .tabset-faded}
+
+## brms {.tabset .tabset-pills}
+
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularisation (to help prevent over fitting) and
+help stabilise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+
+### Defining priors {.tabset .tabset-pills}
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 3 with a standard deviation of 0.45
+  - mean of 3: since `median(log(copper$WORMS+10.125))` or `median(asinh(copper$WORMS/(2*1))/log(exp(1)))`
+  - sd of 0.45: since `mad(log(copper$WORMS+0.125))` or `mad(asinh(copper$WORMS/(2*1))/log(exp(1)))`
+- $\beta_{1-2}$: normal centred at 0 with a standard deviation of 0.9
+  - sd of 0.9: since `mad(log(copper$WORMS+0.125))/model.matrix(~COPPER*DIST, data = copper) |> apply(2, sd) `
+- $\beta_{3-5}$: normal centred at 0 with a standard deviation of 1
+  - sd of 1: since `mad(log(copper$WORMS+0.125))/model.matrix(~COPPER*DIST, data = copper) |> apply(2, sd) `
+- $\beta_{6-11}$: normal centred at 0 with a standard deviation of 1.5
+  - sd of 1.5: since `mad(log(copper$WORMS+0.125))/model.matrix(~COPPER*DIST, data = copper) |> apply(2, sd) `
+- $\sigma_j$: half-cauchy with parameters 0 and 2.
+- $\omega$: gamma with parameters 0.01 and 0.01.
+- $\Sigma$: decov with:
+  - regularisation: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+
+#### log-normal
+
+
+
+
+#### Gamma
+
+
+
+The above seem sufficiently wide whilst at the same time not providing
+any encouragement for the sampler to wander off into very unsupported
+areas.
+
+
+
+### Plotting prior and posterior
+
+```{r posterior2h2, results='markdown', eval=TRUE}
+copper.brm3b |> get_variables()
+copper.brm3b |> hypothesis('COPPERWeek1=0') |> plot()
+copper.brm3b |> hypothesis('DIST2=0') |> plot()
+copper.brm3b |> SUYR_prior_and_posterior() 
+```
+
+
+
+
+
+# References
