@@ -1,0 +1,157 @@
+---
+title: "Bayesian GLMM example 7"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(sjPlot)    #for outputs
+library(knitr)     #for kable
+library(effects)   #for partial effects plots
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(MuMIn)     #for AICc
+library(tidyverse) #for data wrangling
+library(brms)
+library(tidybayes)
+library(broom.mixed)
+library(rstan)
+library(patchwork)
+library(DHARMa)
+```
+
+# Scenario
+
+@Mitchell-2019 presented a data set in which male guppy fish where
+placed individually into long, narrow and shallow tanks that
+predominately only permitted the fish to swim in two dimensions. The
+activity rate (cumulative distance swam) of each guppy fish was
+remotely recorded via tracking software during 20 minute trials
+conducted each day for 14 days. The order in which individual guppy
+fish were recorded each day was randomised and the time of day of each
+trial was recorded.
+
+The researchers were interested in whether the the guppy fish become
+habituated to the experimental conditions and altered their activity
+patterns over time.
+
+The data are in the file
+**mitchell.csv** in the **data** folder.
+
+| ID   | TOD  | Day | Dist_moved |
+|------|------|-----|------------|
+| A39  | 0.39 | 7   | 3439.93    |
+| A3   | 0.39 | 7   | 2795.08    |
+| A13  | 0.39 | 7   | 5258.79    |
+| \... | \... |     |            |
+
+: Format of the mitchell.csv data file {#tbl-mitchell .table-condensed}
+
+---------------- ---------------------------------------------------
+**ID**:           Individual guppy fish ID - Random variable
+**TOD**:          Time of day of observation as a proportion - Predictor variable
+**Day**:          Day post entry into tank - Predictor variable
+**Dist_moved**:   Total distance (cm) moved in 20 min trial - Response variable
+---------------- ---------------------------------------------------
+ 
+: Description of the variables in the mitchell data file {#tbl-mitchell1 .table-condensed}
+ 
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+mitchell <- read_csv("../data/mitchell.csv", trim_ws = TRUE)
+```
+
+
+# Data preparation
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i/1000 \sim{} \mathcal{Gamma}(\lambda_i)\\
+ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of
+the fixed and random effects parameters respectively and $\bf{X}$ is
+the model matrix representing the overall intercept and effects of day
+and time of day on the total distance moved during the trial. $\bf{Z}$
+represents a cell means model matrix for the random intercepts
+associated with individual guppies.
+
+
+
+# Fit the model 
+
