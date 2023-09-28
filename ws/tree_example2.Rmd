@@ -1,0 +1,138 @@
+---
+title: "Regression Trees Part2"
+author: "Murray Logan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+    css: ../resources/ws_style.css
+  pdf_document:
+    df_print: default
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    latex_engine: xelatex
+    number_sections: yes
+    toc_depth: 2
+  word_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r libraries, results='markdown', eval=TRUE}
+library(gbm)         #for gradient boosted models
+library(car)
+library(dismo)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(patchwork)
+library(stars)
+```
+
+# Scenario
+
+@Leathwick-2008-1481 compiled capture data of short-finned eels (_Anguilla
+australis) within New Zealand freshwater streams to explore the distribution of
+the eels for conservation purposes. The goal was to be able to model the
+presence/absence of the eels against a range of environmental characteristics so
+as to predict their more broader occurances and identify which predictors are
+the most important in the predictions.
+
+![eel](../resources/AnguillaAustrRK.jpg){width="350" height="233"}
+
+Format of leathwick.csv data file
+
+Site  Angaus  SegSumT SegTSeas SegLowFlow ... 
+----- ------- ------- -------- ---------- -----
+1     0       16.0       -0.10  1.036     ...
+2     1       18.7        1.51  1.003     ...
+3     0       18.3        0.37  1.001     ...
+4     0       16.7       -3.80  1.000     ...
+5     1       17.2        0.33  1.005     ...
+6     0       15.1        1.83  1.015     ...
+..    ..      ..          ..    ..        ...
+
+-------------- ----------------------------------------------------------------------------------------------------------------------------------------------
+**Site**       Unique label for each site.
+**Angaus**     Presence (1) or absence (0) of _Anguilla australis_ eels
+**SegSumT**    Summer air temperature (degrees celcius) at the river segment
+               scale
+**SegTSeas**   Winter temperature normalised to January temperature at the river
+               segment scale
+**SegLowFlow** Forth root transformed low flow rate at the river segment scale
+**DSDist**     Distance to coast (km) (a downstream predictor)
+**DSDam**      Presence of known downsteam obstructions (a downstream predictor)
+**DSMaxSlope** Maximum downstream slope (a downstream predictor)
+**USAvgT**     Upstream average tempeture (normalised for the river segment)
+**USRainDays** Number of rainy days recorded in the upstream catchment
+**USSlope**    Slope of the river upstream
+**USNative**   Percentage of the upstream riparian vegetation that is native
+**Method**     Method used to capture the eels (categorical predictor)
+**LocSed**     Weighted average of the proportional cover of bed sediment
+               (1=mud, 2=sand, 3=fine gravel, 4=course gravel, 5=cobble, 6=boulder, 7=bedrock)
+-------------- ----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+leathwick = read_csv('../data/leathwick.csv', trim_ws=TRUE)
+glimpse(leathwick)
+```
+
+
+
+```{r readData1, results='markdown', eval=TRUE}
+leathwick_test = read_csv('../data/leathwick_test.csv', trim_ws=TRUE)
+glimpse(leathwick_test)
+```
+
+
+# Exploratory data analysis
+
+
+# Fit the model
+
+
+# Partial plots
+
+
+# Assessing accuracy
+
+
+## Plot spatial distribution of eels
+
+
+# References

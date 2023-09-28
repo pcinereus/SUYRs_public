@@ -1,0 +1,478 @@
+---
+title: "Regression Trees Part3"
+author: "Murray Logan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+    css: ../public/resources/ws_style.css
+  pdf_document:
+    df_print: default
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    latex_engine: xelatex
+    number_sections: yes
+    toc_depth: 2
+  word_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r libraries, results='markdown', eval=TRUE}
+library(gbm)         #for gradient boosted models
+library(car)
+library(dismo)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(gridExtra)
+library(patchwork)
+```
+
+# Scenario
+
+Verneaux (1973) measured the abundance of 27 fish species and 11
+environmental variables from 30 locations along the Doubs river which
+runs along the France-Switzerland border.  The environmental data
+comprised a range of hydrology, geomorphology and chemistry parameters
+and amungst other things, the ichthyologist was interested in relating
+fish abundances to the environmental drivers.
+
+The data are in two files.
+
+- `verneaux.fish.csv` - the abundance of 27 fish species
+- `verneaux.env.csv` - the environmental data
+
+| Variable | Description                               |
+|----------|-------------------------------------------|
+| DAS      | Distance from source (km)                 |
+| ALT      | Altitude (m above sea level)              |
+| PEN      | Slope (per thousand)                      |
+| DEB      | Mean minimum dischange (m^3.s^-1)         |
+| PH       | Water pH                                  |
+| DUR      | Calcium concentration (hardness) (mgL^-1) |
+| PHO      | Phosphorus concentration (mgL^-1)         |
+| NIT      | Nitrate concentration (mgL^-1)            |
+| AMM      | Ammonium concentration (mgL^-1)           |
+| OXY      | Dissolved oxygen (mgL^-1)                 |
+| BDO      | Biological oxygen demand (mgL^-1)         |
+|          |                                           |
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+fish = read_csv('../public/data/verneaux.fish.csv', trim_ws=TRUE)
+glimpse(fish)
+
+env = read_csv('../public/data/verneaux.env.csv', trim_ws=TRUE)
+glimpse(env)
+```
+
+## Data preparation
+
+For this example, we are going to focus on total fish abundance and therefore we need to sum the total number of fish within each location (rows).
+
+<div class = 'Hidden'>
+
+```{r processData, results='markdown', eval=TRUE}
+fish <- fish %>% rowSums
+```
+
+</div>
+
+# Exploratory data analysis
+
+<div class='HIDDEN'>
+
+```{r EDA, results='markdown', eval=TRUE, hidden=TRUE, fig.width=15, fig.height=15}
+car::scatterplotMatrix(cbind(fish, env))
+```
+
+</div>
+
+
+# Fit the model
+
+<div class='HIDDEN'>
+
+Now we will specify the gradient boosted model with:
+
+- Poisson distribution.  This is not the same as the usual 'family'.  It does
+  not directly nominate a modelling family.  Instead it determines the **loss**
+  function that is used to evaluate the tree splits.
+- **var.monotone**: indicates which of the predictors should be constrained to
+  monotonic trends (0: not monotonic, 1: positive monotonic, -1: negative
+  monotonic)
+- **n.trees**: the total number of trees to sequentially fit
+- **interaction.depth**: the number of splits within each tree.  This roughly
+  equates to the order of interactions.  The higher the number, the more complex
+  the interactions can be, however, the faster the potential rate of learning
+- **bag.fraction**: random fraction of data used to fit a single tree
+- **shrinkage**: rate of learning.  The smaller the value, the slower the
+  learning rate.  Typically, values should be between 0.001 and 0.01.
+- **train.fraction**: the proportion of the data used to train the tree. This is
+  for the purpose of determining the balance between over and underfitting and
+  evaluate the accuracy of the fit, however for the former purpose, this is a
+  cruder approach than either out-of-bag or cross validation. Therefore, it is
+  arguably better to set this fraction to 1 (use 100 percent of the data for
+  training) and use either out-of-bag or cross validation and (as we have done
+  here), withhold a fraction of the full data and perform our own accuracy
+  checking.
+- **cv.folds**: the number of cross validation folds.
+
+The values of `n.trees`, `interaction.depth` and `shrinkage` used below are
+purely based on what are typically good starting points.  Nevertheless, they
+will be data set dependent.  We will start off with those values and then evaluate
+whether they are appropriate.
+
+```{r fitModel2, results='markdown', eval=TRUE, hidden=TRUE, cache=TRUE}
+fish.gbm = gbm(fish ~ DAS + ALT + PEN + DEB + PH + DUR + PHO + NIT + AMM +
+              OXY + DBO,
+              data=env,
+              var.monotone = c(1,-1,-1,1,0,1,0,0,0,0,0),
+              distribution='poisson',
+              n.trees=10000,
+              n.minobsinnode = 2,
+              interaction.depth=5,
+              bag.fraction=0.5,
+              shrinkage=0.01,
+              train.fraction=1,
+              cv.folds=3)
+```
+
+We will now determine the optimum number of trees estimated to be required in
+order to achieve a balance between bias (biased towards the exact observations)
+and precision (variability in estimates). Ideally, the optimum number of trees
+should be close to 1000. If it is much less (as in this case), it could imply
+that the tree learned too quickly. On the other hand, if the optimum number of
+trees is very close to the total number of fitted trees, then it suggests that
+the optimum may not actually have occured yet and that more trees should be used
+(or a faster learning rate).
+
+```{r fitModel3, results='markdown', eval=TRUE, hidden=TRUE}
+(best.iter = gbm.perf(fish.gbm,method='OOB'))
+(best.iter = gbm.perf(fish.gbm,method='cv'))
+```
+
+**Conclusions:** 
+
+- both out-of-bag and cross validation suggest that the total number of trees
+  greatly exceeds the number necessary to achieve the optimum balance between
+  bias and precision.
+- it might be worth decreasing the learning rate. 
+- we can probably also reduce the total number of trees (so that it runs a
+  little quicker)
+  
+
+```{r fitModel4, results='markdown', eval=TRUE, hidden=TRUE, cache=TRUE}
+fish.gbm = gbm(fish ~ DAS + ALT + PEN + DEB + PH + DUR + PHO + NIT + AMM +
+              OXY + DBO,
+              data=env,
+              var.monotone = c(1,-1,-1,1,0,1,0,0,0,0,0),
+              distribution='poisson',
+              n.trees=10000,
+              n.minobsinnode = 2,
+              interaction.depth=5,
+              bag.fraction=0.5,
+              shrinkage=0.001,
+              train.fraction=1,
+              cv.folds=3)
+```
+
+```{r fitModel5, results='markdown', eval=TRUE, hidden=TRUE}
+(best.iter = gbm.perf(fish.gbm,method='OOB'))
+(best.iter = gbm.perf(fish.gbm,method='cv'))
+```
+
+**Conclusions:** 
+
+- both out-of-bag and cross validation suggest that the total number of trees
+  greatly exceeds the number necessary to achieve the optimum balance between
+  bias and precision.
+- it might be worth decreasing the learning rate. 
+
+</div>
+
+# Explore relative influence
+
+<div class='HIDDEN'>
+
+If a predictor is an important driver of the patterns in the response, then many
+of the tree splits should feature this predictor.  It thus follows that the
+number of proportion of total splits that features each predictor will be a
+measure of the relative influence of each of the predictors.
+
+```{r relativeInfluence1, results='markdown', eval=TRUE, hidden=TRUE, fig.width=7, fig.height=10}
+summary(fish.gbm, n.trees=best.iter)
+```
+
+**Conclusions:**
+
+- shell weight is overwelmingly the most influential predictor.
+- we can also ascribe a kind of signficance to the influence values by
+  determining which of them are greater than $100/p$ where $p$ is the number of
+  predictors.  The logic here is that if all predictors were equally
+  influential, then they would all have a relative influence of $100/p$.  Hence,
+  any predictors that have a relative influence greater than this number must be
+  explaining more than its share (and more than pure chance) and predictors with
+  relative influence lower are explaining less than chance (and therefore not
+  significantly influential).
+
+</div>
+
+# Explore partial effects
+
+<div class='HIDDEN'>
+
+```{r partialEffects1, results='markdown', eval=TRUE, hidden=TRUE, fig.width=6, fig.height=6}
+attr(fish.gbm$Terms,"term.labels")
+plot(fish.gbm, 1, n.tree=best.iter)
+plot(fish.gbm, 2, n.tree=best.iter)
+fish.gbm %>%
+    pdp::partial(pred.var='DAS',
+                 n.trees=best.iter,
+                 recursive=FALSE,
+                 inv.link=exp) %>%
+    autoplot()
+```
+
+ggbrt
+
+
+Recursive indicates that a weighted tree traversal method described by Friedman
+2001 (which is very fast) should be used (only works for gbm).  Otherwise a
+slower brute force method is used. If want to back transform - need to use brute
+force.
+
+```{r partialEffects2, results='markdown', eval=TRUE, hidden=TRUE, fig.width=10, fig.height=10}
+nms <- attr(fish.gbm$Terms,"term.labels")
+p <- vector('list', length(nms))
+names(p) <- nms
+for (nm in nms) {
+  print(nm)
+  p[[nm]] <- fish.gbm %>% pdp::partial(pred.var=nm,
+                                 n.trees=best.iter,
+                                 inv.link=exp,
+                                 recursive=FALSE,
+                                 type='regression') %>%
+      autoplot() +
+      ylim(18, 60)
+}
+patchwork::wrap_plots(p) 
+#do.call('grid.arrange', p)
+```
+
+We might also want to explore interactions...
+
+```{r partialEffects3, results='markdown', eval=TRUE, hidden=TRUE, cache=FALSE}
+fish.gbm %>%
+    pdp::partial(pred.var=c('DAS'),
+                 n.trees=best.iter, recursive=FALSE, inv.link=exp) %>%
+    autoplot()
+
+fish.gbm %>%
+    pdp::partial(pred.var=c('DAS','ALT'),
+                 n.trees=best.iter, recursive=TRUE) %>%
+    autoplot()
+
+g1 = fish.gbm %>% pdp::partial(pred.var='DAS', n.trees=best.iter,
+                            recursive=FALSE,inv.link=exp) %>%
+    autoplot
+g2 = fish.gbm %>% pdp::partial(pred.var='ALT', n.trees=best.iter,
+                            recursive=FALSE,inv.link=exp) %>%
+    autoplot
+
+
+g1 + g2
+```
+
+</div>
+
+# Explore accuracy
+
+<div class='HIDDEN'>
+
+```{r Accuracy1, results='markdown', eval=TRUE, hidden=TRUE, cache=FALSE, fig.width=7, fig.height=7}
+fish.acc <- env %>%
+    bind_cols(Obs = fish, Pred = predict(fish.gbm,
+                             newdata=env,
+                             n.tree=best.iter,
+                             type='response'))
+
+with(fish.acc,  cor(fish, Pred))
+
+fish.acc %>% ggplot(aes(y = Pred, x = Obs)) + geom_point()
+
+fish.acc %>%
+  ggplot() +
+  geom_point(aes(y=Pred,  x=fish))
+
+```
+
+</div>
+
+# Explore interactions {.tabset .tabset-faded}
+
+<div class='HIDDEN'>
+
+Computes Friedman's H-statistic to assess the strength of variable interactions.
+This measures the relative strength of interactions in models
+It is on a scale of 0-1, where 1 is very strong interaction
+In y=β_0+β_1x_1+β_2x_2+β_3x_3..
+H=\frac{β_3}{√{β_1^2+β_2^2+β_3^2}}
+If both main effects are weak, then the H- stat will be unstable.. and could indicate
+a strong interaction.
+
+## One at a time
+
+What were the strong main effects:
+ - DAS
+ - ALT
+ - OXY
+
+
+```{r Interactions1, results='markdown', eval=TRUE, hidden=TRUE, cache=FALSE, fig.width=7, fig.height=7}
+attr(fish.gbm$Terms,"term.labels")
+ 
+interact.gbm(fish.gbm, env,c(1,2), n.tree=best.iter)
+interact.gbm(fish.gbm, env,c(1,10), n.tree=best.iter)
+interact.gbm(fish.gbm, env,c(2,10), n.tree=best.iter)
+interact.gbm(fish.gbm, env,c(1,2,10), n.tree=best.iter)
+
+fish.gbm %>% pdp::partial(pred.var=c('DAS', 'OXY'),  n.trees=best.iter, recursive=FALSE) %>%
+    autoplot
+fish.gbm %>% pdp::partial(pred.var=c('DAS', 'OXY'),
+                          n.trees=best.iter,
+                          recursive=FALSE,
+                          inv.link = exp) %>%
+    autoplot
+fish.gbm %>% pdp::partial(pred.var=c(1, 10),  n.trees=best.iter, recursive=FALSE) %>% autoplot
+fish.gbm %>% pdp::partial(pred.var=c(2, 10),  n.trees=best.iter, recursive=FALSE) %>% autoplot
+
+```
+
+```{r Interactions2, results='markdown', eval=TRUE, hidden=TRUE, cache=FALSE, fig.width=7, fig.height=7}
+
+fish.grid = plot(fish.gbm, c(1,10), n.tree=best.iter, return.grid=TRUE)
+head(fish.grid)
+
+ggplot(fish.grid, aes(y=DAS, x=OXY)) +
+    geom_tile(aes(fill=y)) +
+    geom_contour(aes(z=y)) +
+    scale_fill_gradientn(colors=heat.colors(10))
+
+```
+
+## All two way interactions
+```{r Interactions3, eval=TRUE, echo=FALSE}
+terms <- attr(fish.gbm$Terms,"term.labels")
+fish.int <- NULL
+for (i in 1:(length(terms)-1)) {
+    for (j in (i+1):length(terms)) {
+        print(paste('i=',i, ' Name = ', terms[i]))
+        print(paste('j=',j, ' Name = ', terms[j]))
+        fish.int <- rbind(fish.int,
+                             data.frame(Var1=terms[i], Var2=terms[j],
+                                        "H.stat"=interact.gbm(fish.gbm, env,c(i,j),
+                                                              n.tree=best.iter)
+                                        ))
+    }
+}
+fish.int %>% arrange(-H.stat)
+```
+
+</div>
+
+# Tuning
+
+<div class='HIDDEN'>
+
+The takes a long time - do over a break
+
+```{r gbmstep1, eval=FALSE, hidden=TRUE, cache=FALSE}
+fish.gbm1 <- dismo::gbm.step(data=cbind(fish, env) %>% as.data.frame, gbm.x=2:11, gbm.y=1,
+                        tree.complexity=5,
+                        learning.rate=0.001,
+                      n.minobsinnode = 2,
+                        bag.fraction=0.5,
+                      n.train = 1,
+                        n.trees=10000,
+                        family='poisson')
+```
+
+```{r gbmstep2, eval=FALSE, hidden=TRUE, cache=FALSE}
+summary(abalone.gbm1)
+```
+
+# Random Forest
+```{r randomForest, results='markdown', eval=TRUE, hidden=TRUE}
+library(randomForest)
+fish.rf = randomForest(fish ~ DAS + ALT + PEN + DEB + PH + DUR + PHO + NIT + AMM +
+                           OXY + DBO,
+                       data=env, importance=TRUE,
+                       ntree=1000)
+fish.imp = randomForest::importance(fish.rf)
+## Rank by either:
+## *MSE (mean decrease in accuracy)
+## For each tree, calculate OOB prediction error.
+## This also done after permuting predictors.
+## Then average diff of prediction errors for each tree
+## *NodePurity (mean decrease in node impurity)
+## Measure of the total decline of impurity due to each
+## predictor averaged over trees
+100*fish.imp/sum(fish.imp)
+varImpPlot(fish.rf)
+## use brute force
+fish.rf %>% pdp::partial('DAS') %>% autoplot
+
+
+fish.rf.acc <- env %>%
+    bind_cols(Pred = predict(fish.rf,
+                             newdata=env))
+
+with(fish.rf.acc,  cor(fish, Pred))
+
+
+fish.rf.acc %>%
+  ggplot() +
+  geom_point(aes(y=Pred,  x=fish)) +
+  geom_point(data = fish.acc, aes(y=Pred,  x=fish), colour = 'red')
+```
+
+
+```{r ggBRT, results='markdown', eval=TRUE}
+#library(ggBRT)
+#library(bart)
+```
