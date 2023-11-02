@@ -595,7 +595,7 @@ ggpredict(fert.rstanarm3) |> plot(add.data=TRUE)
 :::: {.panel-tabset}
 
 https://mc-stan.org/cmdstanr/articles/cmdstanr.html
-
+    
 ### Using default priors
 
 In `brms`, the default priors are designed to be weakly informative.  They are
@@ -833,10 +833,10 @@ I will also overlay the raw data for comparison.
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
 priors <- prior(normal(164, 65),  class='Intercept') +
-    prior(normal(0, 2.5), class='b') +
+    prior(normal(0, 2), class='b') +
     prior(student_t(3, 0, 65),  class='sigma')
 
-fert.brm2 = brm(bf(YIELD ~ FERTILIZER),
+fert.brm2 <- brm(bf(YIELD ~ FERTILIZER),
                 data=fert,
                 prior=priors,
                 sample_prior = 'only', 
@@ -926,7 +926,7 @@ fert.brm3 |>
 
 ::::::
 :::::
-
+    
 ### Plotting prior and posterior
 
 When we have indicated that the posterior should be informed by both
@@ -3132,6 +3132,10 @@ fert.brm3 |>
     emmeans(~FERTILIZER, at = newdata) |>
     tidy_draws() |>
     median_hdci()
+fert.mcmc <- fert.brm3 |>
+  emmeans(~FERTILIZER, at = newdata) |>
+  tidy_draws()
+
 ```
 
 ### predicted values
@@ -3686,7 +3690,7 @@ bayestestR::equivalence_test(fert.brm3, parameters = 'FERTILIZER', range = c(-0.
 ### Change 100 to 200 (Method 1)
 
 ```{r Probability2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:2}
-newdata <- list(FERTILIZER = c(200, 100)) 
+newdata <- data.frame(FERTILIZER = c(200, 100)) 
 fert.brm3 |>
     emmeans(~FERTILIZER,  at = newdata) |>
     pairs()
@@ -3709,6 +3713,19 @@ fert.brm3 |>
     emmeans(~FERTILIZER,  at=newdata) |>
     regrid(transform = "log") |>
     pairs() |>
+    regrid()
+fert.brm3 |>
+  emmeans(~FERTILIZER,  at=newdata) |>
+  regrid(transform = "log") |>
+  pairs() |>
+  regrid() |>
+  gather_emmeans_draws() |>
+  summarise(P = mean(.value > 1.5))
+  
+fert.brm3 |>
+    emmeans(~FERTILIZER,  at=newdata) |>
+    regrid(transform = "log") |>
+    pairs(reverse =  TRUE) |>
     regrid()
 ```
 

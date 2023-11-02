@@ -1,0 +1,377 @@
+---
+title: "Bayesian GLMM example 7"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(sjPlot)    #for outputs
+library(knitr)     #for kable
+library(effects)   #for partial effects plots
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(MuMIn)     #for AICc
+library(tidyverse) #for data wrangling
+library(brms)
+library(tidybayes)
+library(broom.mixed)
+library(rstan)
+library(patchwork)
+library(DHARMa)
+```
+
+# Scenario
+
+@Mitchell-2019 presented a data set in which male guppy fish where
+placed individually into long, narrow and shallow tanks that
+predominately only permitted the fish to swim in two dimensions. The
+activity rate (cumulative distance swam) of each guppy fish was
+remotely recorded via tracking software during 20 minute trials
+conducted each day for 14 days. The order in which individual guppy
+fish were recorded each day was randomised and the time of day of each
+trial was recorded.
+
+The researchers were interested in whether the the guppy fish become
+habituated to the experimental conditions and altered their activity
+patterns over time.
+
+The data are in the file
+**mitchell.csv** in the **data** folder.
+
+| ID   | TOD  | Day | Dist_moved |
+|------|------|-----|------------|
+| A39  | 0.39 | 7   | 3439.93    |
+| A3   | 0.39 | 7   | 2795.08    |
+| A13  | 0.39 | 7   | 5258.79    |
+| \... | \... |     |            |
+
+: Format of the mitchell.csv data file {#tbl-mitchell .table-condensed}
+
+---------------- ---------------------------------------------------
+**ID**:           Individual guppy fish ID - Random variable
+**TOD**:          Time of day of observation as a proportion - Predictor variable
+**Day**:          Day post entry into tank - Predictor variable
+**Dist_moved**:   Total distance (cm) moved in 20 min trial - Response variable
+---------------- ---------------------------------------------------
+ 
+: Description of the variables in the mitchell data file {#tbl-mitchell1 .table-condensed}
+ 
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+mitchell <- read_csv("../public/data/mitchell.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(mitchell)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(mitchell)
+```
+
+## str
+```{r}
+str(mitchell)
+```
+
+## Easystats (datawizard)
+```{r}
+mitchell |> datawizard::data_codebook()
+```
+:::
+<!-- END_PRIVATE-->
+
+# Data preparation
+<!-- START_PRIVATE--> Let start by declaring the categorical variables
+and random effect as factors.
+
+
+```{r dataProcessing, results='markdown', eval=TRUE, mhidden=TRUE}
+mitchell <- mitchell |>
+  mutate(ID = factor(ID))
+```
+<!-- END_PRIVATE-->
+
+# Exploratory data analysis
+
+<!-- START_PRIVATE--> As the response represents a strictly positive
+real number (total distance moved), it would make sense to start by
+considering a Gamma model.
+
+Note, also that the response variable are relatively large distances
+(as the units of distance used were centimeters). It might be worth
+dividing these values by 100 or even 1000 during the modelling
+process.
+
+<!-- END_PRIVATE-->
+Model formula:
+$$
+y_i/1000 \sim{} \mathcal{Gamma}(\lambda_i)\\
+ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of
+the fixed and random effects parameters respectively and $\bf{X}$ is
+the model matrix representing the overall intercept and effects of day
+and time of day on the total distance moved during the trial. $\bf{Z}$
+represents a cell means model matrix for the random intercepts
+associated with individual guppies.
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## Boxplots
+```{r eda0, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=5}
+mitchell |> ggplot(aes(y = Dist_moved)) +
+  geom_boxplot()
+mitchell |> ggplot(aes(y = Dist_moved)) +
+  geom_boxplot() +
+  scale_y_log10()
+mitchell |> ggplot(aes(y = TOD)) +
+  geom_boxplot() +
+  scale_y_log10()
+mitchell |> ggplot(aes(y = Day)) +
+  geom_boxplot() 
+```
+## Scatter plots
+```{r eda1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=5}
+mitchell |> ggplot(aes(y = Dist_moved, x = Day)) +
+  geom_point() +
+  geom_line(aes(group = ID))
+mitchell |> ggplot(aes(y = Dist_moved, x = TOD)) +
+  geom_point() +
+  geom_line(aes(group = ID))
+```
+## Facet plots
+```{r eda2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=15, fig.height=15}
+mitchell |> ggplot(aes(y = Dist_moved, x = Day)) +
+  geom_point() +
+  scale_y_log10() +
+  scale_x_log10() +
+  geom_smooth(method =  "lm") +
+  facet_wrap(~ID)
+mitchell |> ggplot(aes(y = Dist_moved, x = TOD)) +
+  geom_point() +
+  scale_y_log10() +
+  scale_x_log10() +
+  geom_smooth(method =  "lm") +
+  facet_wrap(~ID)
+```
+:::
+<!-- END_PRIVATE-->
+
+
+# Fit the model 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularisation (to help prevent over fitting) and
+help stabilise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80)}
+mitchell.form <- bf(I(Dist_moved/1000) ~ Day + TOD + (1|ID),
+                family=Gamma(link='log'))
+options(width=150)
+mitchell.form |> get_prior(data = mitchell)
+options(width=80)
+```
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 134 with a standard deviation of 65
+  - mean of 134: since `median(log(mitchell$Dist_moved/1000))`
+  - sd pf 0.7: since `mad(log(mitchell$Dist_moved/1000))`
+- $\beta_1$: normal centred at 0 with a standard deviation of 2
+  - sd of 1: since `mad(log(Dist_moved/1000))/mad(scale(Day))`
+- $\sigma$: half-t centred at 0 with a standard deviation of 65 OR
+  - sd pf 65: since `mad(log(mitchell$Dist_moved/1000))`
+- $\sigma$: gamma with shape parameters of 2 and 1
+- $\beta_0$: normal centred at 1.5 with a standard deviation of 1.5
+  - mean of 1.5: since `mean(log(mitchell$Dist_moved/1000))` or `mean(asinh(mitchell$Dist_moved/(2*1))/log(exp(1)))`
+  - sd of 1.5: since `sd(log(mitchell$Dist_moved/1000))` or `sd(asinh(mitchell$Dist_moved/(2*1))/log(exp(1)))`
+
+```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+mitchell |> 
+  summarise(
+    Int_mu = median(log(Dist_moved/1000)),
+    Int_sd = mad(log(Dist_moved/1000)),
+    b1_sd = mad(log(Dist_moved/1000))/mad(scale(Day)),
+    b2_sd = mad(log(Dist_moved/1000))/mad(scale(TOD))
+    )
+standist::visualize("normal(1.8,5)", xlim=c(0,20))
+standist::visualize("student_t(3, 0, 2.5)",
+                    "cauchy(0,1)",
+                    xlim=c(-10,25))
+```
+
+```{r fitModel2h1, results='markdown', eval=FALSE, mhidden=TRUE}
+priors <- prior(normal(0.4, 0.7), class = 'Intercept') +
+    prior(normal(0, 2), class = 'b', coef = 'FoodTreatmentSatiated') +
+    prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
+    prior(normal(0, 2), class = 'b') +
+    prior(student_t(3, 0, 2), class = 'sd') 
+    prior(cauchy(0,2), class = 'sd') 
+
+priors <- prior(normal(1.8, 2), class = 'Intercept') +
+    prior(normal(0, 2.2), class = 'b', coef = 'FoodTreatmentSatiated') +
+    prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
+    prior(normal(0, 1), class = 'b') +
+    prior(cauchy(0,2), class = 'sd') 
+owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+                    offset(log(BroodSize)) + (1|Nest),
+                family=poisson(link='log'))
+owls.brm2 <- brm(owls.form, 
+                 data = owls,
+                 prior = priors,
+                 sample_prior = 'only',
+                 iter = 5000,
+                 warmup =2500,
+                 chains = 3,  
+                 cores = 3,
+                 thin = 10,
+                 refresh = 0,
+                 seed = 123,
+                 control =  list(adapt_delta = 0.99),
+                 backend = "cmdstanr"
+                 )
+
+```
+
+```{r partialPlot2h1a, results='markdown', eval=FALSE, mhidden=TRUE, fig.width=8, fig.height=5}
+owls.brm2 |>
+    ggpredict(~FoodTreatment*SexParent) |>
+    plot(add.data = TRUE)
+owls.brm2 |>
+    conditional_effects("FoodTreatment:SexParent") |>
+    plot(add.data = TRUE)
+owls.brm2 |>
+    conditional_effects("FoodTreatment:SexParent") |>
+  plot(points = TRUE) |>
+  _[[1]] +
+  scale_y_continuous(trans = scales::pseudo_log_trans())
+```
+
+The above seem sufficiently wide whilst at the same time not providing any encouragement for the sampler
+to wander off into very unsupported areas.
+
+```{r fitModel2h1b, results='markdown', eval=FALSE, mhidden=TRUE}
+owls.brm3 <- update(owls.brm2,  
+                       sample_prior = 'yes',
+                       iter =  10000,
+                       warmup =  5000,
+                       control = list(adapt_delta = 0.99),
+                       backend =  "cmdstanr",
+                       refresh = 0)
+save(owls.brm3, file = '../ws/testing/owls.brm3')
+```
+
+```{r partialPlot2h1b, results='markdown', eval=FALSE, mhidden=TRUE, fig.width=8, fig.height=5}
+owls.brm3 |>  
+    ggpredict(~FoodTreatment*SexParent) |>
+    plot(add.data = TRUE)
+owls.brm3 |>  
+    conditional_effects("FoodTreatment:SexParent") |>
+    plot(points = TRUE) |> 
+  _[[1]] +
+  scale_y_continuous(trans = scales::pseudo_log_trans())
+```
+
+::::
+
+:::
+<!-- END_PRIVATE-->

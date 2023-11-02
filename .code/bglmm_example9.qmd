@@ -1,0 +1,138 @@
+---
+title: "Bayesian GLMM example 7"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: spacelab
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    highlight-style: zenburn
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(sjPlot)    #for outputs
+library(knitr)     #for kable
+library(effects)   #for partial effects plots
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(MuMIn)     #for AICc
+library(tidyverse) #for data wrangling
+library(brms)
+library(tidybayes)
+library(broom.mixed)
+library(rstan)
+library(patchwork)
+library(DHARMa)
+```
+
+<!-- START_PRIVATE-->
+# Original data
+
+```{r readDataP, results='markdown', eval=TRUE}
+hughes <- read_csv('../public/data/hughes_full.csv', trim_ws=TRUE)
+glimpse(hughes)
+```
+
+| Bleaching Score | 2016 Equates to  | 2017 Equates to  |
+|-----------------+------------------+------------------|
+|               0 | No bleaching     | No bleaching     |
+|               1 | 0-10% bleaching  | 0-10% bleaching  |
+|               2 | 10-30% bleaching | 10-30% bleaching |
+|               3 | 30-60% bleaching | 30-60% bleaching |
+|               4 | > 60% bleaching  | 60-80% bleaching |
+|               5 | -                | > 80% bleaching  |
+
+# Data processing
+
+- Make a categorical version of Year
+- Combine Scores 4 and 5 into a single Score of 4 to be consistent across years
+- Make Score an ordered categorical variable
+- Generate a numeric version of categorical Score (as required for the `ocat` family.  Note this must be a 1 indexed numeric.
+- Relevel Sector such that it is in the order North, Central, South
+- Ensure that there is a categorical version of Reef
+- Generate a numeric version of the categorical Reef 
+
+
+```{r processDataP, results='markdown', eval=TRUE}
+hughes <- hughes %>%
+    mutate(fYear=factor(Year),
+           Score=ifelse(Score==5,4,Score),
+           oScore = factor(Score, ordered=TRUE),
+           nScore = as.numeric(factor(Score, ordered=TRUE)),
+           SectorThree=factor(SectorThree, levels=c('North','Central','South')),
+           fReef=factor(ReefID),
+           nReef=as.numeric(fReef))
+# now make a version that is just 2016
+hughes <- hughes %>% filter(fYear==2016) %>%
+    dplyr::select(REEF=ReefID, HABITAT=Habitat, SECTOR=SectorThree, SCORE=Score)
+write_csv(hughes, file='../public/data/hughes.csv')
+## hughes.colors = c('#FFFFFF', rev(heat.colors(length(levels(hughes$oScore))))[-1])
+```
+
+<!-- END_PRIVATE-->
