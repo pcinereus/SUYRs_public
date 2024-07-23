@@ -1,0 +1,223 @@
+---
+title: "Bayesian GLM Part3"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(ggeffects)     #for partial effects plots
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #for the easystats ecosystem
+library(INLA)          #for approximate Bayes
+library(INLAutils)     #for additional INLA outputs
+library(patchwork)     #for multiple plots
+library(modelsummary)  #for data and model summaries 
+theme_set(theme_grey()) #put the default ggplot theme back
+source("helperFunctions.R")
+```
+
+# Scenario
+
+Here is a modified example from @Peake-1993-269.  @Peake-1993-269 investigated the relationship between the number of individuals of invertebrates living in amongst clumps of mussels on a rocky intertidal shore and the area of those mussel clumps.
+
+![Mussels](../resources/mussels.jpg){#fig-mussels}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+| AREA      | INDIV   |
+| --------- | ------- |
+| 516.00    | 18      |
+| 469.06    | 60      |
+| 462.25    | 57      |
+| 938.60    | 100     |
+| 1357.15   | 48      |
+| \...      | \...    |
+
+: Format of peakquinn.csv data files {#tbl-peakquinn .table-condensed}
+
+:::
+
+::: {.column width="50%"}
+
+----------- --------------------------------------------------------------
+**AREA**    Area of mussel clump mm^2^ - Predictor variable
+**INDIV**   Number of individuals found within clump - Response variable
+----------- --------------------------------------------------------------
+
+: Description of the variables in the peakquinn data file {#tbl-peakquinn1 .table-condensed}
+
+:::
+::::
+
+
+The aim of the analysis is to investigate the relationship between mussel clump area and the number of non-mussel invertebrate individuals supported in the mussel clump.
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+peake <- read_csv("../data/peakquinn.csv", trim_ws = TRUE)
+```
+
+
+# Exploratory data analysis
+
+When exploring these data as part of a frequentist analysis, exploratory data
+analysis revealed that the both the response (counds of individuals) and
+predictor (mussel clump area) were skewed and the relationship between raw
+counds and mussel clump area was not linear.  Furthermore, there was strong
+evidence of a relationship between mean and variance. Normalising both reponse
+and predictor addressed these issues.  However, rather than log transform the
+response, it was considered more appropriate to model against a distribution
+that used a logarithmic link function.
+
+The individual observations here ($y_i$) are the observed number of (non mussel
+individuals found in mussel clump $i$.  As a count, these might be expected to
+follow a Poisson (or perhaps negative binomial) distribution.  In the case of a
+negative binomial, the observed count for any given mussel clump area are
+expected to be drawn from a negative binomial distribution with a mean of
+$\lambda_i$.  All the negative binomial distributions are expected to share the
+same degree of dispersion ($\theta$) - that is, the degree to which the
+inhabitants of mussell clumps aggregate together (or any other reason for
+overdispersion) is independent of mussel clump area and can be estimated as a
+constant across all populations.
+
+The natural log of the expected values ($\lambda_i$) is modelled against a
+linear predictor that includes an intercept ($\beta_0$) and a slope ($\beta_1$)
+associated with the natural log of mussel area.
+
+The priors on $\beta_0$ and $\beta_1$ should be on the natura log scale (since
+this will be the scale of the parameters).  As starting points, we will consider
+the following priors:
+
+- $\beta_0$: Normal prior centered at 0 with a variance of 5
+- $\beta_1$: Normal prior centered at 0 with a variance of 2
+- $\theta$: Exponential prior with rate 1
+
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
+ln(\lambda_i) &= \beta_0 + \beta_1 ln(x_i)\\
+\beta_0 & \sim\mathcal{N}(6,1.5)\\
+\beta_1 & \sim\mathcal{N}(0,1)\\
+\theta &\sim{} \mathcal{Exp}(1)\\
+OR\\
+\theta &\sim{} \mathcal{\Gamma}(2,1)\\
+\end{align}
+$$
+
+
+
+
+
+# Fit the model
+
+
+
+# MCMC sampling diagnostics
+
+# Model validation
+
+
+# Fit Negative Binomial rstanarm
+
+
+# Partial effects plots
+
+ 
+# Model investigation
+
+
+# Hypothesis testing 
+
+# Summary figure 
+
+
+# References

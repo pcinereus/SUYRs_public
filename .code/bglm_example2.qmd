@@ -1,5 +1,5 @@
 ---
-title: "Bayesian GLM Part1"
+title: "Bayesian GLM Part2"
 author: "Murray Logan"
 date: today
 date-format: "DD/MM/YYYY"
@@ -227,6 +227,16 @@ ln\left(\frac{p_i}{1-p_i}\right) &= \beta_0 + \beta_1 x_i\\
 \end{align}
 $$
 
+<!-- START_PRIVATE-->
+```{r EDA, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(polis, aes(y=PA, x=RATIO))+
+  geom_point()
+ggplot(polis, aes(y=PA, x=RATIO))+
+  geom_point()+
+  geom_smooth(method='glm', formula=y~x,
+              method.args=list(family='binomial'))
+```
+<!-- END_PRIVATE-->
 
 # Fit the model 
 <!-- START_PRIVATE-->

@@ -1,5 +1,5 @@
 ---
-title: "Bayesian GLM Part1"
+title: "Bayesian GLM Part2"
 author: "Murray Logan"
 date: today
 date-format: "DD/MM/YYYY"
