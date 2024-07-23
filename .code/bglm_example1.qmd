@@ -636,7 +636,7 @@ fert.rstanarm1 <- update(fert.rstanarm,  prior_PD=TRUE)
 ```
 
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE}
-ggpredict(fert.rstanarm1) |> plot(add.data=TRUE)
+ggpredict(fert.rstanarm1) |> plot(show_data=TRUE)
 ```
 
 **Conclusions:**
@@ -694,7 +694,7 @@ fert.rstanarm2= stan_glm(YIELD ~ FERTILIZER, data=fert,
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE}
 ggpredict(fert.rstanarm2) |>
-  plot(add.data=TRUE)
+  plot(show_data=TRUE)
 ```
 
 Now lets refit, conditioning on the data.
@@ -716,7 +716,7 @@ posterior_vs_prior(fert.rstanarm3, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggpredict(fert.rstanarm3) |> plot(add.data=TRUE)
+ggpredict(fert.rstanarm3) |> plot(show_data=TRUE)
 ```
 
 
@@ -895,13 +895,13 @@ fert.brm1 <- brm(bf(YIELD ~ FERTILIZER),
 #### ggpredict
 
 ```{r fitModel2e1, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm1 |> ggpredict() |> plot(add.data=TRUE)
+fert.brm1 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 #### ggemmeans
 
 ```{r fitModel2e2, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm1 |> ggemmeans(~FERTILIZER) |> plot(add.data=TRUE)
+fert.brm1 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
 ```
 
 #### conditional_effects
@@ -985,7 +985,7 @@ fert.brm2 <- brm(bf(YIELD ~ FERTILIZER),
 ```{r fitModel2i1, results='markdown', eval=TRUE, mhidden=TRUE}
 fert.brm2 |>
     ggpredict() |>
-    plot(add.data=TRUE)
+    plot(show_data=TRUE)
 ```
 
 ##### ggemmeans
@@ -993,7 +993,7 @@ fert.brm2 |>
 ```{r fitModel2i2, results='markdown', eval=TRUE, mhidden=TRUE}
 fert.brm2 |>
     ggemmeans(~FERTILIZER) |>
-    plot(add.data = TRUE)
+    plot(show_data = TRUE)
 ```
 
 ##### conditional_effects
@@ -1035,7 +1035,7 @@ save(fert.brm3, file = '../ws/testing/fert.brm3.RData')
 ```{r fitModel2k1, results='markdown', eval=TRUE, mhidden=TRUE}
 fert.brm3 |>
     ggpredict() |>
-    plot(add.data=TRUE)
+    plot(show_data=TRUE)
 ```
 
 ##### ggemmeans
@@ -1043,7 +1043,7 @@ fert.brm3 |>
 ```{r fitModel2k2, results='markdown', eval=TRUE, mhidden=TRUE}
 fert.brm3 |>
     ggemmeans(~FERTILIZER) |>
-    plot(add.data = TRUE)
+    plot(show_data = TRUE)
 ```
 
 ##### conditional_effects
@@ -2298,21 +2298,21 @@ wrap_elements(~testUniformity(fert.resids)) +
 ### ggpredict
 
 ```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.rstanarm3 |> ggpredict() |> plot(add.data=TRUE)
+fert.rstanarm3 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 ### ggemmeans
 
 ```{r partialPlot1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.rstanarm3 |> ggemmeans(~FERTILIZER) |> plot(add.data=TRUE)
+fert.rstanarm3 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
 ```
 
-### fitted_draws
+### epred_draws
 
 ```{r partialPlot1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.rstanarm3 |> fitted_draws(newdata=fert) |>
+fert.rstanarm3 |> epred_draws(newdata=fert) |>
  median_hdci() |>
- ggplot(aes(x=FERTILIZER, y=.value)) +
+ ggplot(aes(x=FERTILIZER, y=.epred)) +
  geom_ribbon(aes(ymin=.lower, ymax=.upper), fill='blue', alpha=0.3) + 
  geom_line()
 ```
@@ -2333,22 +2333,22 @@ fert.brm3 |>
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> ggpredict() |> plot(add.data=TRUE)
+fert.brm3 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> ggemmeans(~FERTILIZER) |> plot(add.data=TRUE)
+fert.brm3 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
 ```
 
-### fitted_draws
+### epred_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 fert.brm3 |>
-    fitted_draws(newdata = fert) |>
+    epred_draws(newdata = fert) |>
     median_hdci() |>
-    ggplot(aes(x = FERTILIZER, y=.value)) +
+    ggplot(aes(x = FERTILIZER, y=.epred)) +
     geom_ribbon(aes(ymin = .lower, ymax = .upper), fill = 'blue', alpha = 0.3) + 
     geom_line()
 ```

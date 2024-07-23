@@ -1,0 +1,219 @@
+---
+title: "Bayesian GLM Part1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(ggeffects)     #for partial effects plots
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #for the easystats ecosystem
+library(INLA)          #for approximate Bayes
+library(INLAutils)     #for additional INLA outputs
+library(patchwork)     #for multiple plots
+library(modelsummary)  #for data and model summaries 
+theme_set(theme_grey()) #put the default ggplot theme back
+source("helperFunctions.R")
+```
+
+# Scenario
+
+@Polis-1998-490 were interested in modelling the presence/absence of lizards (<i>Uta sp.</i>) against the perimeter to area ratio of 19 islands in the Gulf of California.
+
+![Uta lizard](../resources/uta.jpg){#fig-polis width="200" height="137"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+ISLAND       RATIO   PA
+------------ ------- ----
+Bota         15.41   1
+Cabeza       5.63    1
+Cerraja      25.92   1
+Coronadito   15.17   0
+..           ..      ..
+
+: Format of polis.csv data file {#tbl-polis .table-condensed}
+
+:::
+
+::: {.column width="50%"}
+
+------------ -----------------------------------------------------------------------------------------
+**ISLAND**   Categorical listing of the name of the 19 islands used - variable not used in analysis.
+**RATIO**    Ratio of perimeter to area of the island.
+**PA**       Presence (1) or absence (0) of *Uta* lizards on island.
+------------ -----------------------------------------------------------------------------------------
+
+: Description of the variables in the polis data file {#tbl-polis1 .table-condensed}
+
+:::
+::::
+
+
+The aim of the analysis is to investigate the relationship between island perimeter to area ratio and the presence/absence of Uta lizards.
+
+# Read in the data
+
+```{r}
+#| label: readData
+#| output: true
+#| eval: true
+polis <- read_csv("../data/polis.csv", trim_ws = TRUE)
+```
+
+
+
+# Exploratory data analysis
+
+
+The individual responses ($y_i$, observed presence/absence of Uta
+lizards) are each expected to have been **independently** drawn from
+Bernoulli (or binomial) distributions ($\mathcal{Bin}$). These
+distributions represent all the possible presence/absences we could
+have obtained at the specific ($i^th$) level of island perimeter to
+area ratio.  Hence the $i^th$ presence/absence observation is expected
+to have been drawn from a binomial distribution with a probability of
+$\mu_i$ and size of ($n=1$).
+
+The expected probabilities are related to the linear predictor
+(intercept plus slope associated with perimeter to area ratio) via a
+**logit** link.
+
+We need to supply priors for each of the parameters to be estimated
+($\beta_0$ and $\beta_1$).  Whilst we want these priors to be
+sufficiently vague as to not influence the outcomes of the analysis
+(and thus be equivalent to the frequentist analysis), we do not want
+the priors to be so vague (wide) that they permit the MCMC sampler to
+drift off into parameter space that is both illogical as well as
+numerically awkward.
+
+As a starting point, lets assign the following priors:
+
+- $\beta_0$: Normal prior centred at 0 with a variance of 2.5
+- $\beta_1$: Normal prior centred at 0 with a variance of 1
+
+Note, when fitting models through either `rstanarm` or `brms`, the
+priors assume that the predictor(s) have been centred and are to be
+applied on the link scale.  In this case the link scale is an
+identity.
+
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{Bin}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_i}\right) &= \beta_0 + \beta_1 x_i\\
+\beta_0 &\sim{} \mathcal{N}(0,2.5)\\
+\beta_1 &\sim{} \mathcal{N}(0,1)\\
+\end{align}
+$$
+
+
+# Fit the model 
+ 
+
+# MCMC sampling diagnostics
+
+
+# Model validation
+
+
+# Partial effects plots 
+
+
+
+# Model investigation 
+
+
+# Further analyses 
+
+# Summary figure 
+
+
+# References
