@@ -1,0 +1,825 @@
+body {
+	//background-color: antiquewhite;
+	background-color: #62ABFE;
+	counter-reset: section;
+	font-size: 11pt !important;
+	/* font: 100% Verdana, sans-serif !important; */
+	color: #666;
+        padding-top: 0px;
+}
+
+#title-block-header {
+  margin-block-end: 1rem;
+  position: relative;
+  background: url(banner1.png) no-repeat #ffffff;
+  margin-top: -25px;
+  margin-left: -25px;
+  margin-right: -25px;
+  border-bottom: solid 2px black;
+}
+.quarto-title {
+  background: url(logo1.png) no-repeat;
+  background-position-x: 650px;
+  background-position-y: -10px;
+  background-size: 350px;
+}
+
+div.quarto-title-block {
+  padding-top: 105px;
+  /* margin-left: 30px; */
+}
+div.quarto-title-block > div {
+border-top: solid 2px black;
+}
+
+#title-block-header.quarto-title-block.default .quarto-title .title {
+    margin-bottom: 0;
+    padding-left: 30px;
+}
+/* div.quarto-title-block { */
+/*   border-top: solid 2px black; */
+/* } */
+.quarto-title-meta {
+  padding-top: 0px;
+  margin-left: 30px;
+}
+
+#quarto-sidebar {
+    background-image: url(https://reefcloud.ai/static/media/mainAimsLogo.0b1e652909de41753d95ec26946b582c.svg);
+    background-repeat: no-repeat;
+    background-position: bottom;
+    //background-image: ../tut/resources/partner-logo-ausgvt-aims.png
+}
+#quarto-document-content {
+    background-color: white;
+    box-shadow: 0px 3px 20px #333;
+    padding: 25px;
+    left: 10px;
+    margin-top: 0px;
+}
+
+.callout {
+    margin-left: 0px !important;
+}
+
+div.sourceCode {
+    margin-left: calc(calc(0em + -2px) + 2px);
+    background-color: #fff !important;
+    border: none;
+}
+.cell:has(>div> .r),  .cell:has(>div> .txt), .cell:has(>div> .elisp), .cell:has(>div> .bash) , .cell:has(>div> .bash1), .cell:has(>div> .julia){
+    margin-bottom: 0.5em;
+    border: 1px solid #d6d6d6;
+}
+.tikz {
+    border: 0px;  /**/
+}
+div.sourceCode:has(> .r, .bash, .bash1, .julia) {
+    margin: 0 0 0px;
+    padding: 0;
+    padding-left: 3px;
+    /* border: 1px solid #d6d6d6;  /\**\/ */
+    /* border-left: 5px solid #3E769A; */
+    /* background: #FFFFE4 !important; */
+    overflow: hidden;
+    width: auto;
+    color: var(--bs-body-color);
+    border-bottom:none;
+}
+pre.r {
+    color: var(--bs-body-color) !important;
+    border-radius: 0rem;
+    background: #FFFFE4 !important;
+    border-left: 5px solid #3E769A;
+    padding-top: 2px;
+}
+pre.julia {
+    color: #DFDFE0 !important;
+    border-radius: 0rem;
+    background: #303030 !important;
+    border-left: 5px solid #3E769A;
+    padding-top: 2px;
+}
+pre.julia code.julia span {
+    color: #DFDFE0;
+}
+
+div.sourceCode:has(> .txt) {
+    margin: 0 0 0px;
+    padding: 0;
+    padding-left: 3px;
+    overflow: hidden;
+    width: auto;
+    color: var(--bs-body-color);
+    border-bottom: none;
+}
+
+.code-copy-button {
+    margin-top: 0px;
+    margin-right: 0px;
+}
+
+.callout pre.sourceCode {
+    padding-left: inherit;
+}
+
+div.cell-output {
+    padding-left: 2em;
+    /* border-left: 1px solid #d6d6d6; */
+    /* border-bottom: 1px solid #d6d6d6; */
+    border-right: 1px solid #d6d6d6;
+    /* background-color: #FFFBFF; */
+    background-color: white;
+}
+div.cell-output>pre {
+    /* background: #FEEFE4 !important; */
+    border-left: 5px solid #3E769A;
+    margin-bottom: 0px;
+    border-top: none;
+    border-radius: 0px;
+}
+.bash>div.cell-output>pre {
+    border-left: 3px;
+    border-left-style: solid;
+    border-left-color: #ccc;
+}
+
+.plain:has(>div> .txt) {
+    box-shadow: 2px 2px 12px -5px #999999;
+    border: 1pt solid black;
+    border-radius: 0px;
+}
+.plain>div.sourceCode {
+    padding-left: 0px;
+}
+.plain>div>pre {
+    color: var(--bs-body-color) !important;
+    border-radius: 0rem;
+    /* background: #FFFFE4 !important; */
+    /* border-left: 5px solid #3E769A; */
+    padding-top: 0px;
+}
+.plain>div>pre.numberSource code > span > a:first-child::before {
+    content: none;
+}
+.plain>div>pre.numberSource {
+    margin-left: 0em;
+}
+.plain>div>pre.numberSource code > span {
+    position: relative;
+    left: 0em;
+}
+pre.numberSource {
+    border-radius: 0px;
+}
+div.bash>div.sourceCode {
+    background-color: black !important;
+}
+div.bash>.cell-output {
+    background-color: black;
+}
+div.bash>.cell-output>pre code {
+    color: #c9c9c9;
+}
+
+pre.bash > code.sourceCode > span, pre.bash1 > code.sourceCode > span {
+    color: white;
+}
+
+p .bash code:not(.sourceCode), li .bash code:not(.sourceCode), td .bash code:not(.sourceCode) {
+    background-color: black;
+    padding: 0.2em;
+}
+
+.bash code span.fu, .bash code span.at, .bash code span.st , .bash code span.bu, .bash code span.ex, .bash code span.op  {
+    color: white;
+}
+.plain>div.cell-output {
+    padding-left: 0em;
+}
+/* .sidebar.toc-left, .sidebar.margin-sidebar { */
+/*     top: 0px; */
+/*     padding-top: 1em; */
+/*     background-color: white; */
+/*     box-shadow: 0px 3px 20px #333; */
+/* } */
+
+.sidebar .quarto-alternate-notebooks h2, .sidebar .quarto-alternate-notebooks .h2, .sidebar .quarto-alternate-formats h2, .sidebar .quarto-alternate-formats .h2, .sidebar nav[role=doc-toc]>h2, .sidebar nav[role=doc-toc]>.h2 {
+    font-size: .875rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+    margin-top: -1px;
+    margin-left: -1px;
+    font-family: inherit;
+    border-bottom: 9px solid #44639b;
+    padding-bottom: 0px;
+    padding-top: 0px;
+    background-color: #44639b;
+    color: #ffffff;
+    border-top: 10px solid #44639B;
+    z-index: 2;
+    padding-left: 5px;
+    font-size: 1.25rem;
+    border-radius: inherit;
+}
+
+
+
+
+.indented {
+    margin-left: 2em;
+}
+
+#TOC {
+    /* margin: 85px 0px 20px 0px; */
+    box-shadow: 0px 3px 20px #333;
+    width: 20%;
+    max-height: 90%;
+    overflow: auto;
+    margin-left: 0.1%;
+    position: fixed;
+    border-radius: 6px;
+    background-color: white;
+    padding: 2px;
+}
+
+h1 {
+    /* counter-reset: subsection; */
+    /* font-family: 'Trebuchet MS', Arial, sans-serif; */
+    font-weight: bold;
+    font-size: 2em;
+    /* color: #3E769A; */
+}
+h1, h2, h3, h4, h5  {
+    color: #3E769A;
+}
+.header-section-number {
+    color: #3E769A;
+}
+/* section:not(.unnumbered) > h1:not(.title):before { */
+/*     counter-increment: section 1; */
+/*     content: "Section " counter(section, decimal) ": "; */
+/* } */
+
+h1>.header-section-number {
+    color: #3E769A;
+}
+h1>.header-section-number:before {
+    content: "Section ";
+    color: #3E769A;
+}
+h1>.header-section-number:after {
+    content: ": ";
+    color: #3E769A;
+}
+
+pre.numberSource {
+    margin-left: 2em;
+    padding-left: 4px;
+    color: #3E769A;
+}
+
+code.r, code.julia >span>a {
+    color: #aaa;
+}
+
+
+code span.do {
+    font-style: italic;
+    color: #a0a1a7;
+}
+
+.cell-output>pre code {
+    color: #AA1234;
+}
+
+p code:not(.sourceCode), li code:not(.sourceCode), td code:not(.sourceCode) {
+    background-color: white;
+}
+/* div.sourceCode pre.sourceCode { */
+/*     color: inherit; */
+/* } */
+/*
+pre.sourceCode {
+    border-left: 3px;
+    border-left-style: solid;
+    border-left-color: #ccc; 
+    //border-left: 5px solid #3E769A;
+    padding-left: 0.6em;
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
+    font-size: .875em;
+    overflow: visible !important;
+    padding: 0.4em;
+}
+*/
+/*
+pre.sourceCode {
+    margin: 0 0 1px;
+    padding: 0;
+    padding-top: 2px;
+    padding-left: 3px;
+    border: 1px solid #d6d6d6;
+    border-left: 5px solid #3E769A;
+    background: #FFFFE4;
+    overflow: hidden;
+    width: auto;
+}
+*/
+.table-condensed {
+    max-width: 100%;
+    width: auto;
+    margin-right: auto;
+    margin-left: auto;
+}
+figcaption {
+    margin: auto;
+    text-align: center;
+}
+.tab-content.tabset-left {
+    display: block;
+}
+.nav-tabs .nav-link.active, .nav-tabs .nav-item.show .nav-link {
+    color: #495057;
+    background-color: #fff;
+    border-color: inherit;
+}
+.nav-tabs {
+    border-bottom: 1px solid #666;
+}
+.panel-tabset.tabset-left>.nav-tabs {
+    display: block;
+}
+.nav-tabs .nav-link {
+    margin-bottom: -1px;
+    background: none;
+    border: 1px solid #dddddd;
+    border-bottom: inherit;
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+}
+.nav-tabs>li>a {
+    margin-right: 2px;
+    line-height: 1.42857143;
+    border: 1px solid transparent;
+    border-radius: 4px 4px 0 0;
+    border: 1px solid #dddddd;
+    border-bottom: 1px solid #333;
+    text-align: -webkit-center;
+}
+.nav-tabs>li.active>a, .nav-tabs>li.active>a:hover, .nav-tabs>li.active>a:focus {
+    color: #666666;
+    background-color: #ffffff;
+    border: 1px solid #666;
+    border-bottom-color: transparent;
+    cursor: default;
+}
+.nav {
+    display: -webkit-flex;
+    -webkit-flex-wrap: wrap;
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap-reverse;
+}
+.tab-content {
+    border-left: 1px solid #333;
+    border-right: 1px solid #333;
+    border-bottom: 1px solid #333;
+    padding:10px;
+    margin-bottom: 0px;
+}
+/* tabset-left*/
+.container-fluid.main-container{
+max-width: 85%
+}
+.panel-tabset.tabset-left{
+    display: flex;
+}
+
+.tabset-left > .nav-tabs {
+	width:100px;
+}
+
+.tabset-left>.nav-tabs>li.active>a, .nav-tabs>li.active>a:hover, .nav-tabs>li.active>a:focus {
+	margin-right:0px;
+	border:1px solid #666;
+	border-right-color: white;
+	border-bottom:1px solid #666 !important;
+}
+
+.tabset-left > .nav-tabs > li {
+	margin-bottom:0px !important;
+}
+
+.tabset-left > .nav-tabs>li>a {
+    margin-right: -2px;
+	border-right:1px solid #666 !important;
+	/*border-bottom: none !important;*/
+	border-bottom:1px solid #dddddd;
+	border-right:none !important;
+	border-radius: 4px 0px 0px 4px;
+	width:100px;
+}
+
+.tabset-left > .nav-tabs {
+	border-bottom:none !important;
+}
+
+.nav.nav-pills {
+    flex: 15%;
+    width: 100%;
+}
+.nav.nav-pills li{
+    width: 100%;
+}
+.tabset-left > .tab-content{
+    flex: 85%;
+    width: 100%;
+	border-top:1px solid #666;
+}
+
+
+
+.gallery {
+    /* display: flex; */
+    display: block;
+    justify-content: space-between;
+}
+
+.gallery p {
+    display: inline-flex;
+    flex-direction: column;
+    text-align: center;
+    width: 100px;
+    margin: 0;
+}
+
+.thumb {
+    width: 100px;
+    height: 100px;
+    border: 1px solid #999;
+    box-shadow: 2px 2px 12px -5px #999999;
+    border-radius: 3px;
+    padding: 2px;
+}
+
+.thumb-L {
+    width: 150px;
+    height: 150px;
+    border: 1px solid #999;
+    box-shadow: 2px 2px 12px -5px #999999;
+    border-radius: 3px;
+    padding: 2px;
+    max-width: unset !important;
+}
+
+.thumb-s {
+    width: 40px;
+    height: 40px;
+    /* border: 1px solid #999; */
+    /* box-shadow: 2px 2px 12px -5px #999999; */
+    /* border-radius: 3px; */
+    padding: 2px;
+    max-width: unset !important;
+    display:block;
+}
+
+img::before {
+    font-size:2cm;
+    content: "this:";
+}
+
+.img-fluid {
+    max-width: inherit;
+    height: auto;
+}
+
+.newsbox {margin:25px 5px 5px 0px;padding:5px 10px;border:1px solid #369;background:#e8f1f6;display:block;}
+.newsbox p {padding-bottom:5px}
+.newsbox img {padding-left:5px}
+
+
+@media(min-width: 992px) {
+    body .page-columns {
+        display:grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start page-start-inset] 35px [body-start-outset] 35px [body-start] 0em [body-content-start] minmax(500px, calc( 1000px - 3em )) [body-content-end] 1.5em [body-end] 35px [body-end-outset] minmax(75px, 145px) [page-end-inset] 35px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.fullcontent:not(.floating):not(.docked) .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start page-start-inset] 35px [body-start-outset] 35px [body-start] 1.5em [body-content-start] minmax(500px, calc( 850px - 3em )) [body-content-end] 1.5em [body-end] 35px [body-end-outset] 35px [page-end-inset page-end] 5fr [screen-end-inset] 1.5em
+    }
+
+    body.slimcontent:not(.floating):not(.docked) .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start page-start-inset] 35px [body-start-outset] 35px [body-start] 1.5em [body-content-start] minmax(500px, calc( 850px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(0px, 200px) [page-end-inset] 35px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.listing:not(.floating):not(.docked) .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start] minmax(50px, 100px) [page-start-inset] 50px [body-start-outset] 50px [body-start] 1.5em [body-content-start] minmax(500px, calc( 850px - 3em )) [body-content-end] 3em [body-end] 50px [body-end-outset] minmax(0px, 250px) [page-end-inset] minmax(50px, 100px) [page-end] 1fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body:not(.floating):not(.docked) .page-columns.toc-left {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] 35px [page-start-inset] minmax(0px, 175px) [body-start-outset] 35px [body-start] 1.5em [body-content-start] minmax(450px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(0px, 200px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body:not(.floating):not(.docked) .page-columns.toc-left .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] 35px [page-start-inset] minmax(0px, 175px) [body-start-outset] 35px [body-start] 1.5em [body-content-start] minmax(450px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(0px, 200px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] minmax(25px, 50px) [page-start-inset] minmax(50px, 150px) [body-start-outset] minmax(25px, 50px) [body-start] 1.5em [body-content-start] minmax(500px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end] minmax(25px, 50px) [body-end-outset] minmax(50px, 150px) [page-end-inset] minmax(25px, 50px) [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.docked .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start] minmax(50px, 100px) [page-start-inset] 50px [body-start-outset] 50px [body-start] 0em [body-content-start] minmax(500px, calc( 1000px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(50px, 150px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end];
+    }
+
+    body.docked.fullcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start] minmax(50px, 100px) [page-start-inset] 50px [body-start-outset] 50px [body-start] 1.5em [body-content-start] minmax(500px, calc( 1000px - 3em )) [body-content-end] 1.5em [body-end body-end-outset page-end-inset page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating.fullcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] 50px [page-start-inset] minmax(50px, 150px) [body-start-outset] 50px [body-start] 1.5em [body-content-start] minmax(500px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end body-end-outset page-end-inset page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.docked.slimcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start] minmax(50px, 100px) [page-start-inset] 50px [body-start-outset] 50px [body-start] 1.5em [body-content-start] minmax(450px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(0px, 200px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.docked.listing .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start] minmax(50px, 100px) [page-start-inset] 50px [body-start-outset] 50px [body-start] 1.5em [body-content-start] minmax(500px, calc( 1000px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(0px, 200px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating.slimcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] 50px [page-start-inset] minmax(50px, 150px) [body-start-outset] 50px [body-start] 1.5em [body-content-start] minmax(450px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(50px, 150px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating.listing .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] minmax(25px, 50px) [page-start-inset] minmax(50px, 150px) [body-start-outset] minmax(25px, 50px) [body-start] 1.5em [body-content-start] minmax(500px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end] minmax(25px, 50px) [body-end-outset] minmax(50px, 150px) [page-end-inset] minmax(25px, 50px) [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+}
+
+@media(max-width: 991.98px) {
+    body .page-columns {
+        display:grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset] 5fr [body-start] 1.5em [body-content-start] minmax(500px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end] 35px [body-end-outset] minmax(75px, 145px) [page-end-inset] 35px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.fullcontent:not(.floating):not(.docked) .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset] 5fr [body-start] 1.5em [body-content-start] minmax(500px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end body-end-outset page-end-inset page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.slimcontent:not(.floating):not(.docked) .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset] 5fr [body-start] 1.5em [body-content-start] minmax(500px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end] 35px [body-end-outset] minmax(75px, 145px) [page-end-inset] 35px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.listing:not(.floating):not(.docked) .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset] 5fr [body-start] 1.5em [body-content-start] minmax(500px, calc( 1250px - 3em )) [body-content-end body-end body-end-outset page-end-inset page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body:not(.floating):not(.docked) .page-columns.toc-left {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] 35px [page-start-inset] minmax(0px, 145px) [body-start-outset] 35px [body-start] 1.5em [body-content-start] minmax(450px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end body-end-outset page-end-inset page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body:not(.floating):not(.docked) .page-columns.toc-left .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start] 35px [page-start-inset] minmax(0px, 145px) [body-start-outset] 35px [body-start] 1.5em [body-content-start] minmax(450px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end body-end-outset page-end-inset page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start page-start-inset body-start-outset body-start] 1.5em [body-content-start] minmax(500px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(75px, 150px) [page-end-inset] 25px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.docked .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset body-start body-content-start] minmax(500px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(25px, 50px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.docked.fullcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset body-start body-content-start] minmax(500px, calc( 1000px - 3em )) [body-content-end] 1.5em [body-end body-end-outset page-end-inset page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating.fullcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start page-start-inset body-start-outset body-start] 1em [body-content-start] minmax(500px, calc( 800px - 3em )) [body-content-end] 1.5em [body-end body-end-outset page-end-inset page-end] 4fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.docked.slimcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset body-start body-content-start] minmax(500px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(25px, 50px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.docked.listing .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset body-start body-content-start] minmax(500px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(25px, 50px) [page-end-inset] 50px [page-end] 5fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating.slimcontent .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start page-start-inset body-start-outset body-start] 1em [body-content-start] minmax(500px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 35px [body-end-outset] minmax(75px, 145px) [page-end-inset] 35px [page-end] 4fr [screen-end-inset] 1.5em [screen-end]
+    }
+
+    body.floating.listing .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset] 5fr [page-start page-start-inset body-start-outset body-start] 1em [body-content-start] minmax(500px, calc( 750px - 3em )) [body-content-end] 1.5em [body-end] 50px [body-end-outset] minmax(75px, 150px) [page-end-inset] 25px [page-end] 4fr [screen-end-inset] 1.5em [screen-end]
+    }
+}
+
+@media(max-width: 767.98px) {
+    body .page-columns,body.fullcontent:not(.floating):not(.docked) .page-columns,body.slimcontent:not(.floating):not(.docked) .page-columns,body.docked .page-columns,body.docked.slimcontent .page-columns,body.docked.fullcontent .page-columns,body.floating .page-columns,body.floating.slimcontent .page-columns,body.floating.fullcontent .page-columns {
+        display:grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset body-start body-content-start] minmax(0px, 1fr) [body-content-end body-end body-end-outset page-end-inset page-end screen-end-inset] 1.5em [screen-end]
+    }
+
+    body:not(.floating):not(.docked) .page-columns.toc-left {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset body-start body-content-start] minmax(0px, 1fr) [body-content-end body-end body-end-outset page-end-inset page-end screen-end-inset] 1.5em [screen-end]
+    }
+
+    body:not(.floating):not(.docked) .page-columns.toc-left .page-columns {
+        display: grid;
+        gap: 0;
+        grid-template-columns: [screen-start] 1.5em [screen-start-inset page-start page-start-inset body-start-outset body-start body-content-start] minmax(0px, 1fr) [body-content-end body-end body-end-outset page-end-inset page-end screen-end-inset] 1.5em [screen-end]
+    }
+
+    nav[role=doc-toc] {
+        display: none
+    }
+}
+
+
+// Julia
+pre.julia code.julia span.ot {
+color: #efef8f;
+font-style: inherit;
+}
+pre.julia code.julia span.at {
+font-style: inherit;
+}
+pre.julia code.julia span.ss {
+color: #cc9393;
+font-style: inherit;
+}
+pre.julia code.julia span.an {
+color: #7f9f7f;
+font-weight: bold;
+font-style: inherit;
+}
+pre.julia code.julia span.fu {
+color: #86ABDC ;
+font-style: inherit;
+}
+pre.julia code.julia span.st {
+color: #cc9393;
+font-style: inherit;
+}
+pre.julia code.julia span.cf {
+color: #f0dfaf;
+font-style: inherit;
+}
+pre.julia code.julia span.op {
+color: #AEAFB0;
+font-style: inherit;
+}
+pre.julia code.julia span.er {
+color: #c3bf9f;
+font-style: inherit;
+}
+pre.julia code.julia span.bn {
+color: #dca3a3;
+font-style: inherit;
+}
+pre.julia code.julia span.al {
+color: #ffcfaf;
+font-style: inherit;
+}
+pre.julia code.julia span.va {
+font-style: inherit;
+}
+pre.julia code.julia span.bu {
+color: #CDD6F4;
+font-style: inherit;
+}
+pre.julia code.julia span.ex {
+font-style: inherit;
+}
+pre.julia code.julia span.pp {
+color: #ffcfaf;
+font-weight: bold;
+font-style: inherit;
+}
+pre.julia code.julia span.in {
+color: #7f9f7f;
+font-weight: bold;
+font-style: inherit;
+}
+pre.julia code.julia span.vs {
+color: #cc9393;
+font-style: inherit;
+}
+pre.julia code.julia span.wa {
+color: #7f9f7f;
+font-weight: bold;
+font-style: inherit;
+}
+pre.julia code.julia span.do {
+color: #7f9f7f;
+font-style: inherit;
+}
+pre.julia code.julia span.im {
+color: #CBA6F7;
+font-style: inherit;
+}
+pre.julia code.julia span.ch {
+color: #dca3a3;
+font-style: inherit;
+}
+pre.julia code.julia span.dt {
+color: #dfdfbf;
+font-style: inherit;
+}
+pre.julia code.julia span.fl {
+color: #F4A261;
+font-style: inherit;
+}
+pre.julia code.julia span.co {
+color: #6C7086;
+font-style: inherit;
+}
+pre.julia code.julia span.cv {
+color: #7f9f7f;
+font-weight: bold;
+font-style: inherit;
+}
+pre.julia code.julia span.cn {
+color: #dca3a3;
+font-weight: bold;
+font-style: inherit;
+}
+pre.julia code.julia span.sc {
+color: #dca3a3;
+font-style: inherit;
+}
+pre.julia code.julia span.dv {
+color: #dcdccc;
+font-style: inherit;
+}
+pre.julia code.julia span.kw {
+color: #f0dfaf;
+font-style: inherit;
+}
+.prevent-inlining {
+content: "</";
+}

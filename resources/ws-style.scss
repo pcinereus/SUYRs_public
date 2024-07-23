@@ -1,0 +1,122 @@
+/*-- scss:defaults --*/
+$primary: #3E769A;
+// Fonts
+
+$font-family-sans-serif:      Ubuntu, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol" !default;
+
+$font-family-sans-serif:  "Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+
+$font-family: "Cabin Sketch";
+// $font-url: "https://fonts.googleapis.com/css?family=$font-family:wght@700";
+
+
+@import url('https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@700&display=swap');
+
+//@import url('https://fonts.googleapis.com/css2?family=Cabin-Sketch&family=Courier+Prime&family=Fira+Code&family=Roboto+Mono:wght@300;400&family=Sora:wght@300;400;500;600;700;800&display=swap');
+//$font-family-sans-serif:  "Cabin Sketch", sans-serif !default;
+
+// $theme-colors: (
+//   "primary": #0074d9,
+//   "danger": #ff4136
+// );
+
+/*-- scss:rules --*/
+.title {
+    color: $primary;
+}
+
+:root {
+--bs-root-font-size: 14px;
+}
+
+.paramsTable {
+    width: auto;
+    border: 2px solid $primary;
+}
+.paramsTable>thead>tr {
+    background-color: $primary;
+    --bs-table-bg: $primary;
+    color: white;
+}
+
+.paperTable {
+    width: auto;
+    background-color: white;
+    // border: 2px solid $primary;
+}
+.paperTable>thead>tr {
+    // --bs-table-bg: $primary;
+    // color: white;
+    font-weight: bold;
+}
+table.paperTable th {
+    padding: 3pt;
+    padding-right: 2em;
+    display: table-header;
+    color: black;
+    font-size: 1em;
+    font-weight: bold;
+    border-top: 2pt solid rgb(0,0,127);
+    border-bottom: 2pt solid rgb(0,0,127);
+    background: white;
+}
+table.paperTable tr:last-child td {
+    border-bottom: 2pt solid rgb(0,0,127);
+}
+table.paperTable td {
+    padding: 3pt;
+    padding-right: 2em;
+    border: 0pt solid rgb(0,0,127);
+    border-right: 0pt solid rgb(0,0,127);
+    border-bottom: 0pt solid rgb(0,0,127);
+}
+.table>:not(caption)>*:not(:last-child)>* {
+    border-bottom-color: inherit;
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+}
+
+.title {
+  font-family: 'Cabin Sketch', sans-serif;
+  font-size: 300%;
+}
+
+details[open] {
+    border: 1px solid grey;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 10px;
+    background-color: wheat;
+    margin-left: -10px;
+    margin-right: 10px;
+}
+details {
+    left: 10px;
+    position: relative;
+}
+// $primary: #362ec4;
+// $secondary: #8f5325;
+// $success: #3e8d63;
+// $info: #7854e4;
+// $warning: #b8c924;
+// $danger: #d62518;
+// $light: #f8f9fa;
+// $dark: #343a40;
+
+
+
+
+// $sidebar-bg: #0074d9;
+
+/* custom.scss */
+//$primary: #362ec4;
+//$secondary: #8f5325;
+//$success: #3e8d63;
+//$info: #7854e4;
+//$warning: #b8c924;
+//$danger: #d62518;
+//$light: #f8f9fa;
+//$dark: #343a40;
+/* end custom.scss */
+
+//@import '~bootstrap/scss/bootstrap.scss';

@@ -1,0 +1,548 @@
+---
+title: "Bayesian GLM Part1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(standist)      #for exploring distributions
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(HDInterval)    #for HPD intervals
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(posterior)     #for posterior draws
+library(ggeffects)     #for partial effects plots
+library(patchwork)     #for multi-panel figures
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(INLA)          #for approximate Bayes
+library(INLAutils)     #for additional INLA outputs
+library(modelsummary)  #for data and model summaries 
+theme_set(theme_grey()) #put the default ggplot theme back
+source('helperFunctions.R')
+```
+
+# Scenario
+
+Here is an example from @Fowler-1998-1998. An agriculturalist was
+interested in the effects of fertilizer load on the yield of grass.
+Grass seed was sown uniformly over an area and different quantities of
+commercial fertilizer were applied to each of ten 1 m<sup>2</sup>
+randomly located plots.  Two months later the grass from each plot was
+harvested, dried and weighed.  The data are in the file
+**fertilizer.csv** in the **data** folder.
+
+![Field of grass](../resources/turf.jpg){#fig-fertilizer width=70%}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+| FERTILIZER   | YIELD   |
+| ------------ | ------- |
+| 25           | 84      |
+| 50           | 80      |
+| 75           | 90      |
+| 100          | 154     |
+| 125          | 148     |
+| \...         | \...    |
+
+: Format of the fertilizer.csv data file {#tbl-fertilizer .table-condensed}
+
+:::
+
+::: {.column width="50%"}
+
+---------------- ---------------------------------------------------
+**FERTILIZER**:   Mass of fertilizer (g.m^-2^) - Predictor variable
+**YIELD**:        Yield of grass (g.m^-2^) - Response variable
+---------------- ---------------------------------------------------
+ 
+: Description of the variables in the fertilizer data file {#tbl-fertilizer1 .table-condensed}
+ 
+:::
+::::
+
+The aim of the analysis is to investigate the relationship between
+fertilizer concentration and grass yield.
+
+
+# Read in the data
+
+We will start off by reading in the Fertilizer data.  There are many functions
+in R that can read in a CSV file.  We will use a the `read_csv()` function as it
+is part of the tidyverse ecosystem.
+
+```{r}
+#| label: readData
+fert <- read_csv("../data/fertilizer.csv", trim_ws = TRUE)
+```
+
+
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(fert)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(fert)
+```
+
+## str
+```{r}
+str(fert)
+```
+
+## Easystats (datawizard)
+```{r}
+fert |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+fert |> modelsummary::datasummary_skim()
+```
+
+:::
+# Exploratory data analysis
+ 
+
+Model formula:
+
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &= \beta_0 + \beta_1 x_i\\
+\beta_0 &\sim{} \mathcal{N}(164,65)\\
+\beta_1 &\sim{} \mathcal{N}(0,1)\\
+\sigma &\sim{} \mathcal{t}(3,0,65)\\
+OR\\
+\sigma &\sim{} \mathcal{cauchy}(0,65)\\
+OR\\
+\sigma &\sim{} \mathcal{Exp}(0.016)\\
+OR\\
+\sigma &\sim{} \mathcal{gamma}(2,0.05)\\
+\end{align}
+$$
+
+
+
+# Fit the model 
+
+Note, for routines that take more than a couple of seconds to perform
+(such as most Bayesian models), it is a good idea to cache the
+Rmarkdown chunks in which the routine is performed. That way, the
+routine will only be run the first time and any objects generated will
+be stored for future use. Thereafter, provided the code has not
+changed, the routine will not be re-run. Rather, `knitr` will just
+retrieve the cached objects and continue on.
+
+One of the most difficult aspects of performing Bayesian analyses is
+the specification of priors.  For instances where there are some
+previous knowledge available and a desire to incorporate those data,
+the difficulty is in how to ensure that the information is
+incorporated correctly.  However, for instances where there are no
+previous relevant information and so a desire to have the posteriors
+driven entirely by the new data, the difficulty is in how to define
+priors that are both vague enough (not bias results in their
+direction) and yet not so vague as to allow the MCMC sampler to drift
+off into unsupported regions (and thus get stuck and yield spurious
+estimates).
+
+For early implementations of MCMC sampling routines (such as
+Metropolis Hasting and Gibbs), it was fairly common to see very vague
+priors being defined.  For example, the priors on effects, were
+typically normal priors with mean of 0 and variance of `1e+06`
+(1,00,000).  These are very vague priors.  Yet for some samplers
+(e.g. NUTS), such vague priors can encourage poor behaviour of the
+sampler - particularly if the posterior is complex. It is now
+generally advised that priors should (where possible) be somewhat
+**weakly informative** and to some extent, represent the bounds of
+what are feasible and sensible estimates.
+
+The degree to which priors __influence__ an outcome (whether by having
+a pulling effect on the estimates or by encouraging the sampler to
+drift off into unsupported regions of the posterior) is dependent on:
+
+- the relative sparsity of the data - the larger the data, the less
+  weight the priors have and thus less influence they exert.
+- the complexity of the model (and thus posterior) - the more
+  parameters, the more sensitive the sampler is to the priors.
+
+The sampled posterior is the product of both the likelihood and the
+prior - all of which are multidimensional.  For most applications, it
+would be vertically impossible to define a sensible multidimensional
+prior.  Hence, our only option is to define priors on individual
+parameters (e.g. the intercept, slope(s), variance etc) and to hope
+that if they are individually sensible, they will remain collectively
+sensible.
+
+So having (hopefully) impressed upon the notion that priors are an
+important consideration, I will now attempt to synthesise some of the
+approaches that can be employed to arrive at weakly informative priors
+that have been gleaned from various sources.  Largely, this advice has
+come from the following resources:
+
+- https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
+- http://svmiller.com/blog/2021/02/thinking-about-your-priors-bayesian-analysis/
+
+I will outline some of the current main recommendations before
+summarising some approaches in a table.
+
+- weakly informative priors should contain enough information so as to
+  regularise (discourage unreasonable parameter estimates whilst
+  allowing all reasonable estimates).
+- for effects parameters on scaled data, an argument could be made for
+  a normal distribution with a standard deviation of 1
+  (e.g. `normal(0,1)`), although klsome prefer a t distribution with 3
+  degrees of freedom and standard deviation of 1
+  (e.g. `student_t(3,0,1)`) - apparently a flatter t is a more robust
+  prior than a normal as an uninformative prior...
+- for unscaled data, the above priors can be scaled by using the
+  standard deviation of the data as the prior standard deviation
+  (e.g. `student_t(3,0,sd(y))`, or `sudent_t(3,0,sd(y)/sd(x))`)
+- for priors of hierachical standard deviations, priors should
+  encourage shrinkage towards 0 (particularly if the number of groups
+  is small, since otherwise, the sampler will tend to be more
+  responsive to "noise").
+  
+| Family            | Parameter                            | brms                            | rstanarm                    |
+|-------------------|--------------------------------------|---------------------------------|-----------------------------|
+| Gaussian          | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | Sigma                                | `student_t(3,0,mad(y))`         | `exponential(1/sd(y))`      |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+| Poisson           | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+| Negative binomial | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | Shape                                | `gamma(0.01, 0.01)`             | `exponential(1/sd(y))`      |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+
+Notes:
+
+`brms`
+
+https://github.com/paul-buerkner/brms/blob/c2b24475d727c8afd8bfc95947c18793b8ce2892/R/priors.R
+
+1. In the above, for non-Gaussian families, `y` is first transformed
+  according to the family link.  If the family link is `log`, then 0.1
+  is first added to 0 values.
+2. in `brms` the minimum standard deviation for the Intercept prior is
+   `2.5`
+3. in `brms` the minimum standard deviation for group-level priors is
+   `10`.
+
+`rstanarm`
+
+http://mc-stan.org/rstanarm/articles/priors.html
+
+1. in `rstanarm` priors on standard deviation and correlation
+   associated with group-level effects are packaged up into a single
+   prior (`decov` which is a decomposition of the variance and
+   covariance matrix).
+
+
+
+
+# MCMC sampling diagnostics 
+
+**MCMC sampling behaviour**
+
+Since the purpose of the MCMC sampling is to estimate the posterior of
+an unknown joint likelihood, it is important that we explore a range
+of diagnostics designed to help identify when the resulting likelihood
+might not be accurate.
+
+- **traceplots** - plots of the individual draws in sequence.  Traces
+  that resemble noise suggest that all likelihood features are likely
+  to have be traversed. Obvious steps or blocks of noise are likely to
+  represent distinct features and could imply that there are yet other
+  features that have not yet been traversed - necessitating additional
+  iterations.  Furthermore, each chain should be indistinguishable
+  from the others
+- **autocorrelation function** - plots of the degree of correlation
+  between pairs of draws for a range of lags (distance along the
+  chains).  High levels of correlation (after a lag of 0, which is
+  correlating each draw with itself) suggests a lack of independence
+  between the draws and that therefore, summaries such as mean and
+  median will be biased estimates.  Ideally, all non-zero lag
+  correlations should be less than 0.2.
+- **convergence diagnostics** - there are a range of diagnostics aimed
+  at exploring whether the multiple chains are likely to have
+  converged upon similar posteriors
+  - **R hat** - this metric compares between and within chain model
+    parameter estimates, with the expectation that if the chains have
+    converged, the between and within rank normalised estimates should
+    be very similar (and Rhat should be close to 1).  The more one
+    chains deviates from the others, the higher the Rhat value.
+    Values less than 1.05 are considered evidence of convergence.
+  - **Bulk ESS** - this is a measure of the effective sample size
+    from the whole (bulk) of the posterior and is a good measure of
+    the sampling efficiency of draws across the entire posterior
+  - **Tail ESS** - this is a measure of the effective sample size from
+    the 5% and 95% quantiles (tails) of the posterior and is a good
+    measure of the sampling efficiency of draws from the tail (areas
+    of the posterior with least support and where samplers can get
+    stuck).
+	
+
+
+`available_mcmc()`
+
+| Package   | Description       | function               | rstanarm                         | brms                               |
+|-----------|-------------------|------------------------|----------------------------------|------------------------------------|
+| bayesplot | Traceplot         | `mcmc_trace`           | `plot(mod, plotfun='trace')`     | `mcmc_plot(mod, type='trace')`     |
+|           | Density plot      | `mcmc_dens`            | `plot(mod, plotfun='dens')`      | `mcmc_plot(mod, type='dens')`      |
+|           | Density & Trace   | `mcmc_combo`           | `plot(mod, plotfun='combo')`     | `mcmc_plot(mod, type='combo')`     |
+|           | ACF               | `mcmc_acf_bar`         | `plot(mod, plotfun='acf_bar')`   | `mcmc_plot(mod, type='acf_bar')`   |
+|           | Rhat hist         | `mcmc_rhat_hist`       | `plot(mod, plotfun='rhat_hist')` | `mcmc_plot(mod, type='rhat_hist')` |
+|           | No. Effective     | `mcmc_neff_hist`       | `plot(mod, plotfun='neff_hist')` | `mcmc_plot(mod, type='neff_hist')` |
+| rstan     | Traceplot         | `stan_trace`           | `stan_trace(mod)`                | `stan_trace(mod)`                  |
+|           | ACF               | `stan_ac`              | `stan_ac(mod)`                   | `stan_ac(mod)`                     |
+|           | Rhat              | `stan_rhat`            | `stan_rhat(mod)`                 | `stan_rhat(mod)`                   |
+|           | No. Effective     | `stan_ess`             | `stan_ess(mod)`                  | `stan_ess(mod)`                    |
+|           | Density plot      | `stan_dens`            | `stan_dens(mod)`                 | `stan_dens(mod)`                   |
+| ggmcmc    | Traceplot         | `ggs_traceplot`        | `ggs_traceplot(ggs(mod))`        | `ggs_traceplot(ggs(mod))`          |
+|           | ACF               | `ggs_autocorrelation`  | `ggs_autocorrelation(ggs(mod))`  | `ggs_autocorrelation(ggs(mod))`    |
+|           | Rhat              | `ggs_Rhat`             | `ggs_Rhat(ggs(mod))`             | `ggs_Rhat(ggs(mod))`               |
+|           | No. Effective     | `ggs_effective`        | `ggs_effective(ggs(mod))`        | `ggs_effective(ggs(mod))`          |
+|           | Cross correlation | `ggs_crosscorrelation` | `ggs_crosscorrelation(ggs(mod))` | `ggs_crosscorrelation(ggs(mod))`   |
+|           | Scale reduction   | `ggs_grb`              | `ggs_grb(ggs(mod))`              | `ggs_grb(ggs(mod))`                |
+|           |                   |                        |                                  |                                    |
+
+
+# Model validation 
+
+**Posterior probability checks**
+
+`available_ppc()`
+
+| Package   | Description       | function                     | rstanarm                                               | brms                                               |
+|-----------|-------------------|------------------------------|-------------------------------------------------------|----------------------------------------------------|
+| bayesplot | Density overlay   | `ppc_dens_overlay`           | `pp_check(mod, plotfun='dens_overlay')`               | `pp_check(mod, type='dens_overlay')`               |
+|           | Obs vs Pred error | `ppc_error_scatter_avg`      | `pp_check(mod, plotfun='error_scatter_avg')`          | `pp_check(mod, type='error_scatter_avg')`          |
+|           | Pred error vs x   | `ppc_error_scatter_avg_vs_x` | `pp_check(mod, x=, plotfun='error_scatter_avg_vs_x')` | `pp_check(mod, x=, type='error_scatter_avg_vs_x')` |
+|           | Preds vs x        | `ppc_intervals`              | `pp_check(mod, x=, plotfun='intervals')`              | `pp_check(mod, x=, type='intervals')`              |
+|           | Partial plot       | `ppc_ribbon`                 | `pp_check(mod, x=, plotfun='ribbon')`                 | `pp_check(mod, x=, type='ribbon')`                 |
+|           |                   |                              |                                                       |                                                    |
+
+
+
+# Partial effects plots 
+
+
+# Model investigation 
+
+Rather than simply return point estimates of each of the model
+parameters, Bayesian analyses capture the full posterior of each
+parameter.  These are typically stored within the `list` structure of
+the output object.
+
+As with most statistical routines, the overloaded `summary()` function
+provides an overall summary of the model parameters.  Typically, the
+summaries will include the means / medians along with credibility
+intervals and perhaps convergence diagnostics (such as R hat).
+However, more thorough investigation and analysis of the parameter
+posteriors requires access to the full posteriors.
+
+There is currently a plethora of functions for extracting the full
+posteriors from models.  In part, this is a reflection of a rapidly
+evolving space with numerous packages providing near equivalent
+functionality (it should also be noted, that over time, many of the
+functions have been deprecated due to inconsistencies in their names).
+Broadly speaking, the functions focus on draws from the posterior of
+either the parameters (intercept, slope, standard deviation etc),
+**linear predictor**, **expected values** or **predicted values**.
+The distinction between the latter three are highlighted in the
+following table.
+
+| Property          | Description                                                                                  |
+|-------------------|----------------------------------------------------------------------------------------------|
+| linear predictors | values predicted on the link scale                                                           |
+| expected values   | predictions (on response scale) without residual error (predicting expected mean outcome(s)) |
+| predicted values  | predictions (on response scale) that incorporate residual error                              |
+|                   |                                                                                              |
+| fitted values     | predictions on the response scale                                                            |
+
+The following table lists the various ways of extracting the full
+posteriors of the model parameters parameters, **expected** values and
+**predicted** values. The crossed out items are now deprecated and
+function with a namespace of `__` mean that the functionality is
+provided via a range of packages.
+
++---------------------------------+-------------------+---------------------------------------------------------+
+| Function                        | Values            | Description                                             |
++=================================+===================+=========================================================+
+| `__::as.matrix()`               | Parameters        | Returns $n\times p$ matrix                              |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `__::as.data.frame()`           | Parameters        | Returns $n\times p$ data.frame                          |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `__::as_tibble()`               | Parameters        | Returns $n\times p$ tibble                              |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `posterior::as_draws_df()`      | Parameters        | Returns $n\times p$ data.frame with additional info     |
+|                                 |                   | about chain, interaction and draw                       |
++---------------------------------+-------------------+---------------------------------------------------------+
+| ~~`brms::posterior_samples()`~~ | ~~Parameters~~    | ~~Returns $n\times p$ data.frame~~                      |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::tidy_draws()`       | Parameters        | Returns $n\times p$ tibble with addition info about     |
+|                                 |                   | the chain, iteration and draw                           |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstan::extract()`              | Parameters        | Returns a $p$ length list of $n$ length vectors         |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::spread_draws()`     | Parameters        | Returns $n\times r$ tibble with additional info about   |
+|                                 |                   | chain, interaction and draw                             |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::gather_draws()`     | Parameters        | Returns a gathered `spread_draws` tibble                |
+|                                 |                   | with additional info about chain, interaction and draw  |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_linpred()` | Linear predictors | Returns $n\times N$ tibble on the link scale            |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_linpred()`     | Linear predictors | Returns $n\times N$ tibble on the link scale            |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::linpred_draws()`    | Linear predictors | Returns tibble with $n\times N rows and `.linpred`      |
+|                                 |                   | on the link scale additional info about chain,          |
+|                                 |                   | interaction and draw                                    |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_epred()`   | Expected values   | Returns $n\times N$ tibble on the response scale        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_epred()`       | Expected values   | Returns $n\times N$ tibble on the response scale        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::epred_draws()`      | Expected values   | Returns tibble with $n\times N rows and `.epred` on     |
+|                                 |                   | the response scale additional info about chain,         |
+|                                 |                   | interaction and draw                                    |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_predict()` | Expected values   | Returns $n\times N$ tibble of predictions (including    |
+|                                 |                   | residuals) on the response scale                        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_predict()`     | Expected values   | Returns $n\times N$ tibble of predictions (including    |
+|                                 |                   | residuals) on the response scale                        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::predicted_draws()`  | Expected values   | Returns tibble with $n\times N rows and `.prediction`   |
+|                                 |                   | (including residuals) on the response scale additional  |
+|                                 |                   | info about chain, interaction and draw                  |
++---------------------------------+-------------------+---------------------------------------------------------+
+
+
+where $n$ is the number of MCMC samples and $p$ is the number of
+parameters to estimate, $N$ is the number of newdata rows and $r$ is
+the number of requested parameters.  For the `tidybayes` versions in
+the table above, the function expects a model to be the first
+parameter (and a dataframe to be the second).  There are also `add_`
+versions which expect a dataframe to be the first argument and the
+model to be the second.  These alternatives facilitate pipings with
+different starting objects.
+
+
+| Function      | Description                                                                    |
+|---------------|--------------------------------------------------------------------------------|
+| `median_qi`   | Median and quantiles of specific columns                                       |
+| `median_hdi`  | Median and Highest Probability Density Interval of specific columns            |
+| `median_hdci` | Median and continuous Highest Probability Density Interval of specific columns |
+| `tidyMCMC`    | Median/mean and quantiles/hpd of all columns                                   |
+
+
+
+
+# Predictions
+
+
+# Hypothesis testing 
+
+# Summary figures 
+
+
+
+# References
+

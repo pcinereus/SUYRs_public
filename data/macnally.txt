@@ -1,0 +1,38 @@
+LOCATION	HABITAT	GST	EYR
+Reedy Lake	Mixed	3.4	0
+Pearcedale	Gipps.Manna	3.4	9.2
+Warneet	Gipps.Manna	8.4	3.8
+Cranbourne	Gipps.Manna	3	5
+Lysterfield	Mixed	5.6	5.6
+Red Hill	Mixed	8.1	4.1
+Devilbend	Mixed	8.3	7.1
+Olinda	Mixed	4.6	5.3
+Fern Tree Gum	Montane Forest	3.2	5.2
+Sherwin	Foothills Woodland	4.6	1.2
+Heathcote Ju	Montane Forest	3.7	2.5
+Warburton	Montane Forest	3.8	6.5
+Millgrove	Mixed	5.4	6.5
+Ben Cairn	Mixed	3.1	9.3
+Panton Gap	Montane Forest	3.8	3.8
+OShannassy	Mixed	9.6	4
+Ghin Ghin	Mixed	3.4	2.7
+Minto	Mixed	5.6	3.3
+Hawke	Mixed	1.7	2.6
+St Andrews	Foothills Woodland	4.7	3.6
+Nepean	Foothills Woodland	14	5.6
+Cape Schanck	Mixed	6	4.9
+Balnarring	Mixed	4.1	4.9
+Bittern	Gipps.Manna	6.5	9.7
+Bailieston	Box-Ironbark	6.5	2.5
+Donna Buang	Mixed	1.5	0
+Upper Yarra	Mixed	4.7	3.1
+Gembrook	Mixed	7.5	7.5
+Arcadia	River Red Gum	3.1	0
+Undera	River Red Gum	2.7	0
+Coomboona	River Red Gum	4.4	0
+Toolamba	River Red Gum	3	0
+Rushworth	Box-Ironbark	2.1	1.1
+Sayers	Box-Ironbark	2.6	0
+Waranga	Mixed	3	1.6
+Costerfield	Box-Ironbark	7.1	2.2
+Tallarook	Foothills Woodland	4.3	2.9

@@ -7,3 +7,4 @@ resources/Rmarkdown-examples/*.png
 resources/Rmarkdown-examples/*.docx
 resources/Rmarkdown-examples/E*.md
 .Rproj.user
+/.code/bglm_example1.html
