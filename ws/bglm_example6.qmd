@@ -1,0 +1,193 @@
+---
+title: "Bayesian GLM Part6"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(standist)      #for exploring distributions
+library(HDInterval)    #for HPD intervals
+library(posterior)     #for posterior draws
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(ggeffects)     #for partial effects plots
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #for the easystats ecosystem
+library(ggridges)      #for ridge plots
+library(patchwork)     #for multiple plots
+library(modelsummary)  #for data and model summaries 
+theme_set(theme_grey()) #put the default ggplot theme back
+source("helperFunctions.R")
+```
+
+# Scenario
+
+An ecologist studying a rocky shore at Phillip Island, in southeastern Australia, was interested in how
+clumps of intertidal mussels are maintained [@Quinn-1988-137]. In particular, he wanted to know how densities of adult
+mussels affected recruitment of young individuals from the plankton. As with most marine invertebrates,
+recruitment is highly patchy in time, so he expected to find seasonal variation, and the interaction
+between season and density - whether effects of adult mussel density vary across seasons - was the aspect
+of most interest.
+
+The data were collected from four seasons, and with two densities of adult mussels. The experiment
+consisted of clumps of adult mussels attached to the rocks. These clumps were then brought back to the
+laboratory, and the number of baby mussels recorded. There were 3-6 replicate clumps for each density
+and season combination.
+
+SEASON   DENSITY   RECRUITS   SQRTRECRUITS   GROUP
+-------- --------- ---------- -------------- ------------
+Spring   Low       15         3.87           SpringLow
+..       ..        ..         ..             ..
+Spring   High      11         3.32           SpringHigh
+..       ..        ..         ..             ..
+Summer   Low       21         4.58           SummerLow
+..       ..        ..         ..             ..
+Summer   High      34         5.83           SummerHigh
+..       ..        ..         ..             ..
+Autumn   Low       14         3.74           AutumnLow
+..       ..        ..         ..             ..
+
+: Format of the quinn.csv data file {#tbl-quinn .table-condensed}
+
+------------------ --------------------------------------------------------------------------------------------
+**SEASON**         Categorical listing of Season in which mussel clumps were collected ­ independent variable
+**DENSITY**        Categorical listing of the density of mussels within mussel clump ­ independent variable
+**RECRUITS**       The number of mussel recruits ­ response variable
+**SQRTRECRUITS**   Square root transformation of RECRUITS - needed to meet the test assumptions
+**GROUPS**         Categorical listing of Season/Density combinations - used for checking ANOVA assumptions
+------------------ --------------------------------------------------------------------------------------------
+
+: Description of the variables in the quinn data file {#tbl-quinn1 .table-condensed}
+
+![Mussel](../resources/mussels.jpg){#fig-mussel height="300"}
+
+# Read in the data
+
+```{r}
+quinn <- read_csv("../data/quinn.csv", trim_ws = TRUE)
+```
+	
+# Exploratory data analysis
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
+ln(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
+\beta_0 &\sim{} \mathcal{N}(0,10)\\
+\beta_{1,2,3} &\sim{} \mathcal{N}(0,2.5)\\
+\theta &\sim{} \mathcal{Exp}(1)
+\end{align}
+$$
+
+where $\boldsymbol{\beta}$ is a vector of effects parameters and $\bf{X}$ is a model matrix representing the intercept and effects of season, density and their interaction on mussel recruitment.
+
+```{r dataprep, results='markdown', eval=TRUE}
+quinn <- quinn |>
+  mutate(SEASON = factor(SEASON,
+                         levels = c("Spring", "Summer", "Autumn", "Winter")),
+                         DENSITY = factor(DENSITY))
+```
+# Exploratory data analysis
+# Fit the model 
+
+
+# MCMC sampling diagnostics
+
+# Model validation 
+
+
+# Explore negative binomial model
+# Partial effects plots 
+
+# Model investigation 
+
+# Further investigations 
+
+# Summary figures 
+
+
+
+# References

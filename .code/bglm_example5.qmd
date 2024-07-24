@@ -178,7 +178,8 @@ day |> datawizard::data_codebook()
 
 ## Skim (modelsummary)
 ```{r}
-day |> modelsummary::datasummary_skim(categorical = TRUE)
+day |> modelsummary::datasummary_skim()
+day |> modelsummary::datasummary_skim(by = "TREAT")
 ```
 
 
