@@ -170,6 +170,13 @@ loyn |> head()
 #| dependson: readData
 loyn |> datawizard::data_codebook()
 ```
+
+## Skim (modelsummary)
+```{r}
+loyn |> modelsummary::datasummary_skim(categorical = TRUE)
+```
+
+
 :::
 
 <!-- END_PRIVATE-->
