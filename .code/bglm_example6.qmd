@@ -193,14 +193,17 @@ Model formula:
 $$
 \begin{align}
 y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
-ln(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
-\beta_0 &\sim{} \mathcal{N}(0,10)\\
-\beta_{1,2,3} &\sim{} \mathcal{N}(0,2.5)\\
-\theta &\sim{} \mathcal{Exp}(1)
+ln(\mu_i) &= \beta_0 + \sum_{j=1}^nT_{[i],j}.\beta_j\\
+\beta_0 &\sim{} \mathcal{N}(2.4, 1.5)\\
+\beta_{[1,2,3]} &\sim{} \mathcal{N}(0, 1)\\
 \end{align}
 $$
 
-where $\boldsymbol{\beta}$ is a vector of effects parameters and $\bf{X}$ is a model matrix representing the intercept and effects of season, density and their interaction on mussel recruitment.
+where $\beta_{0}$ is the y-intercept (mean of the first group),
+$\beta_{[1,2,3]}$ are the vector of effects parameters (contrasting
+each group mean to that of the first group and $T{[i],j}$ represents a
+$i$ by $j$ model matrix is a model matrix representing the season,
+density and their interaction on mussel recruitment.
 
 ```{r dataprep, results='markdown', eval=TRUE}
 quinn <- quinn |>
@@ -1868,6 +1871,29 @@ quinn.mcmc |>
 
 quinn.mcmc |>
     equivalence_test(range = c(0.755, 1.32)) 
+```
+
+### Modelsummary
+```{r}
+#| label: modelsummary
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+quinn.brmsNB |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic,
+  exponentiate = TRUE
+)
+```
+
+```{r}
+#| label: modelsummary_plot
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+quinn.brmsNB |> modelplot(coef_omit = "shape", exponentiate = TRUE)
 ```
 
 ::::

@@ -1,0 +1,220 @@
+---
+title: "Bayesian GLMM Part1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(rstanarm)   #for fitting models in STAN
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(HDInterval) #for HPD intervals
+library(posterior)  #for posterior draws
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for diagnostics
+library(rstan)      #for interfacing with STAN
+library(DHARMa)     #for residual diagnostics
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(broom.mixed) #for tidying MCMC outputs
+library(tidybayes)  #for more tidying outputs
+library(ggeffects)  #for partial plots
+library(patchwork)  #for multiple figures
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(ggridges)   #for ridge plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+A plant pathologist wanted to examine the effects of two different
+strengths of tobacco virus on the number of lesions on tobacco leaves.
+She knew from pilot studies that leaves were inherently very variable
+in response to the virus. In an attempt to account for this leaf to
+leaf variability, both treatments were applied to each leaf. Eight
+individual leaves were divided in half, with half of each leaf
+inoculated with weak strength virus and the other half inoculated with
+strong virus. So the leaves were blocks and each treatment was
+represented once in each block. A completely randomised design would
+have had 16 leaves, with 8 whole leaves randomly allocated to each
+treatment.
+
+![Tobacco plant](../resources/TobaccoPlant.jpg){#fig-tobacco height="300"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+LEAF   TREAT    NUMBER
+------ -------- --------
+1      Strong   35.898
+1      Week     25.02
+2      Strong   34.118
+2      Week     23.167
+3      Strong   35.702
+3      Week     24.122
+\...   \...     \...
+
+: Format of tobacco.csv data files {#tbl-tobacco .table-condensed}
+
+:::
+
+::: {.column width="50%"}
+
+------------ ----------------------------------------------------------------------------------------------------
+**LEAF**     The blocking factor - Factor B
+**TREAT**    Categorical representation of the strength of the tobacco virus - main factor of interest Factor A
+**NUMBER**   Number of lesions on that part of the tobacco leaf - response variable
+------------ ----------------------------------------------------------------------------------------------------
+
+: Description of the variables in the tobacco data file {#tbl-tobacco1 .table-condensed}
+
+:::
+::::
+
+
+# Read in the data
+
+```{r}
+#| label: readData
+tobacco <- read_csv("../data/tobacco.csv", trim_ws = TRUE)
+```
+
+ 
+
+# Exploratory data analysis
+
+Model formula:
+$$
+\begin{align}
+y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
+\mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
+\beta_0 &\sim{} \mathcal{N}(35, 20)\\
+\beta_1 &\sim{} \mathcal{N}(0, 10)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_j^2 &\sim{} \mathcal{Cauchy}(0,5)\\
+\sigma^2 &\sim{} Gamma(2,1)\
+\end{align}
+$$
+
+where:
+
+- $\bf{X}$ is the model matrix representing the overall intercept and
+  effects of the treatment on the number of lesions.
+- $\boldsymbol{\beta}$ is a vector of the population-level effects
+  parameters to be estimated.
+- $\boldsymbol{\gamma}$ is a vector of the group-level effect parameters
+- $\bf{Z}$ represents a cell means model matrix for the random intercepts (and
+  possibly random slopes) associated with leaves.
+- the population-level intercept ($\beta_0$) has a gaussian prior with location
+  of 31 and scale of 10
+- the population-level effect ($\beta_1$) has a gaussian prior with location of
+  0 and scale of 10
+- the group-level effects are assumed to sum-to-zero and be drawn from a
+  gaussian distribution with mean of 0 and covariance of $\Sigma$  
+- $\boldsymbol{\Sigma}$ is the variance-covariance matrix between the
+  groups (individual leaves).  It turns out that it is difficult to
+  apply a prior on this covariance matrix, so instead, the covariance
+  matrix is decomposed into a correlation matrix
+  ($\boldsymbol{\Omega}$) and a vector of variances
+  ($\boldsymbol{\sigma_l}$) which are the diagonals ($\boldsymbol{D}$)
+  of the covariance matrix.
+- $\boldsymbol{\Omega}$ 
+$$
+\gamma \sim{} N(0,\Sigma)\\
+\Sigma -> \Omega, \tau\\
+$$
+where $\Sigma$ is a covariance matrix.
+
+# Fit the model
+
+
+# MCMC sampling diagnostics 
+
+
+# Partial effects plots
+
+
+# Model investigation
+
+# Further investigations
+
+# References
