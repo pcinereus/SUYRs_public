@@ -1,0 +1,185 @@
+---
+title: "Bayesian GLM Part4"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(ggeffects)     #for partial effects plots
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #for the easystats ecosystem
+library(patchwork)     #for multiple plots
+library(modelsummary)  #for data and model summaries 
+library(car)           #for scatterplot matrices
+library(ggridges)      #for ridge plots 
+theme_set(theme_grey()) #put the default ggplot theme back
+source("helperFunctions.R")
+```
+
+# Scenario
+ 
+@Loyn-1987-1987 modelled the abundance of forest birds with six predictor
+variables (patch area, distance to nearest patch, distance to nearest
+larger patch, grazing intensity, altitude and years since the patch had
+been isolated).
+
+![Regent honeyeater](../resources/regent_honeyeater_small.jpg){#fig-honeyeater width="165" height="240"}
+
+
+ABUND   DIST   LDIST   AREA   GRAZE   ALT   YR.ISOL
+------- ------ ------- ------ ------- ----- ---------
+..      ..     ..      ..     ..      ..    ..
+
+: Format of loyn.csv data file {#tbl-loyn .table-condensed}
+
+------------- ------------------------------------------------------------------------------
+**ABUND**     Abundance of forest birds in patch- response variable
+**DIST**      Distance to nearest patch - predictor variable
+**LDIST**     Distance to nearest larger patch - predictor variable
+**AREA**      Size of the patch - predictor variable
+**GRAZE**     Grazing intensity (1 to 5, representing light to heavy) - predictor variable
+**ALT**       Altitude - predictor variable
+**YR.ISOL**   Number of years since the patch was isolated - predictor variable
+------------- ------------------------------------------------------------------------------
+
+: Description of the variables in the loyn data file {#tbl-loyn1 .table-condensed}
+
+The aim of the analysis is to investigate the effects of a range of
+predictors on the abundance of forest birds.
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+loyn <- read_csv('../data/loyn.csv', trim_ws=TRUE)
+```
+
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+log(\mu_i) = \boldsymbol{\beta} \bf{X_i}\\
+\beta_0 \sim{} \mathcal{N}(3,0.5)\\
+\beta_{1-9} \sim{} \mathcal{N}(0,2.5)\\
+\sigma \sim{} \mathcal{Gamma}(2,1)\\
+OR\\
+\sigma \sim{} \mathcal{t}(3,0,2.5)
+$$
+
+where $\boldsymbol{\beta}$ is a vector of effects parameters and $\bf{X}$ is a model matrix representing the additive effects of
+the scaled versions of distance (ln), distance to the nearest large patch (ln), patch area (ln), grazing intensity, year of isolation and 
+altitude on the abundance of forest birds.
+
+# Fit the model 
+
+
+
+# MCMC sampling diagnostics
+
+# Model validation 
+
+
+
+# Partial effects plots 
+
+
+# Model investigation 
+
+
+
+# Further analyses 
+
+
+
+# Summary figure
+
+
+
+
+# References
