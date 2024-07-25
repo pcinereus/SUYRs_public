@@ -1,0 +1,170 @@
+---
+title: "Bayesian GLMM Part5"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+library(tidyverse) #for data wrangling
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(knitr)     #for kable
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(brms)
+library(broom.mixed)
+library(tidybayes)
+library(bayesplot)
+library(standist)   #for visualizing distributions
+library(rstanarm)
+library(cmdstanr)   #for cmdstan
+library(ggeffects)
+library(rstan)
+library(DHARMa)
+library(ggridges)
+library(easystats)     #framework for stats, modelling and visualisation
+library(patchwork)
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+Some ornithologists were interested in the degree of sibling negotiations in owl
+chicks.  Specifically, they wanted to explore how sibling negotiations were
+affected by feeding satiety and the sex of the parent returning to the nest.
+The ornithologists had accessed to a number of owl nests and were able to count
+(via recording equipment) the number of sibling negotiations (calls) that the
+owl chicks made when the parent returned to the nest.
+
+We could hypothesise that the chicks might call more if they were hungry.  As
+part of the investigation, the researchers were able to provided supplementary
+food.  As such, they were able to manipulate the conditions such that sometimes
+the chicks in a nest would be considered deprived of supplementary food and at
+other times they were satiated.  
+
+As a parent returned, the researchers recorded the number of sibling
+negotiations (calls) along with the sex of the parent.  Since the number of
+calls is likely to be a function of the number of chicks (the more chicks the
+more calls), the researchers also counted the number of siblings in the brood. 
+
+Each nest was measured on multiple occasions.  Hence, we must include the nest
+as a random effect to account for the lack of independence between observations
+on the same set of siblings.
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+owls <- read_csv("../data/owls.csv", trim_ws = TRUE)
+```
+
+
+# Data preparation
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{Pois}(\lambda_i)\\
+ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed
+and random effects parameters respectively and $\bf{X}$ is the model matrix
+representing the overall intercept and effects of food treatment, sex of parent,
+arrival time (and various interactions) on the number of sibling negotiations.
+Brood size was also incorporated as an offset.  $\bf{Z}$ represents a cell means
+model matrix for the random intercepts associated with individual nests.
+
+
+# Fit the model 
+
+
+# MCMC sampling diagnostics 
+
+
+# Model validation 
+
+# Model refit and validation 
+
+ 
+# Partial effects plots 
+
+
+# Model investigation 
+
+# Further investigations 
+
+
+# References
