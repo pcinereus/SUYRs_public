@@ -1,0 +1,1587 @@
+---
+title: "Bayesian GLMM Part3"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../public/resources/ws-style.scss]
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(rstanarm)   #for fitting models in STAN
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(HDInterval) #for HPD intervals
+library(posterior)  #for posterior draws
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for MCMC diagnostics
+library(rstan)      #for interfacing with STAN
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(DHARMa)     #for residual diagnostics
+library(tidybayes)  #for more tidying outputs
+library(ggeffects)  #for partial plots
+library(broom.mixed)#for tidying MCMC outputs
+library(patchwork)  #for multiple plots
+library(ggridges)   #for ridge plots 
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+![Starlings](../public/resources/starlings.jpg){#fig-starlings width="200" height="274"}
+
+```{tikz}
+%| label: fig-starling_design
+%| engine: tikz
+%| echo: false
+%| fig-cap: Sampling design for the starling data set
+%| fig-width: 13
+%| fig-height: 6
+%| cache: true
+%| class: tikz
+%| engine-opts:
+%|   template: "../public/resources/tikz-minimal.tex"
+\tikzstyle{HandLabel} = [font={\fontspec[Scale=1.1]{xkcd}}]
+\tikzstyle{Messy} = [decorate,decoration={random steps,segment length=3pt, amplitude=0.5pt}]
+\tikzset{%
+every node/.style={%
+draw=black,
+inner sep=1mm,
+outer sep=0,
+Messy, HandLabel,
+minimum size=1cm,
+minimum height=8mm,
+align=center,
+anchor=north,
+},
+Rnd/.style={%
+draw=black!90,
+fill=black!30,
+},
+Trt/.style={%
+%rounded corners,
+%Messy, 
+draw=black,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Latent/.style={%
+%rounded corners,
+%Messy, 
+draw=black!40,
+text=black!40,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Th/.style={%
+%rounded corners,
+draw=black!90
+},
+Control/.style={%
+rounded corners,
+draw=green!90,
+top color=green!10,
+bottom color=green!30,
+},
+Comment/.style={%
+draw=none,
+inner sep=0mm,
+outer sep=0mm,
+minimum height=5mm,
+align=right
+},
+}
+
+\forestset{myst/.style={%
+for tree={%
+parent anchor=south, 
+child anchor=north,
+l sep=1cm,
+s sep=0.5cm,
+edge path={\noexpand\path[\forestoption{edge},-{latex}] 
+(!u.parent anchor) |- ($(!u.parent anchor)!.5!(.child anchor)$) -| (.child anchor)
+\forestoption{edge label};}
+}
+}
+}
+
+\begin{forest} myst,
+[,phantom, s=1cm
+[Tree, Trt, name=Situation
+[{tree1}, Rnd, name=Bird
+[Nov, Trt, name=Month]
+[Jan, Trt]
+]
+[{tree2}, Rnd
+[Nov, Trt]
+[Jan, Trt]
+]
+[{tree ...}, Rnd
+[Nov, Trt]
+[Jan, Trt]
+]
+]
+[Nest-box, Trt, name=NB
+[nest-box1, Rnd [Nov, Trt][Jan, Trt]]
+[nest-box2, Rnd [Nov, Trt][Jan, Trt]]
+[{nest-box ...}, Rnd [Nov, Trt][Jan, Trt]]
+]
+[Other, Trt, name=Ot
+[other1, Rnd [Nov, Trt][Jan, Trt]]
+[other2, Rnd [Nov, Trt][Jan, Trt]]
+[{other ...}, Rnd [Nov, Trt][Jan, Trt]]
+]
+]
+\node[left=1cm of Month.west, Comment,anchor=east] (lMonth) {Month};
+\node[Comment,anchor=east] at (lMonth.east |- Bird.west) (lBird) {Bird};
+\node[Comment,anchor=east] at (lMonth.east |- Situation.west) (lSituation) {Situation};
+\node [Comment] at ($(NB) !0.5! (Ot)$) {....};
+\end{forest}
+
+
+```
+
+
+SITUATION   MONTH   MASS   BIRD
+----------- ------- ------ -----------
+tree        Nov     78     tree1
+..          ..      ..     ..
+nest-box    Nov     78     nest-box1
+..          ..      ..     ..
+inside      Nov     79     inside1
+..          ..      ..     ..
+other       Nov     77     other1
+..          ..      ..     ..
+tree        Jan     85     tree1
+..          ..      ..     ..
+
+: Format of starling_full.csv data file {#tbl-starling .table-condensed}
+
+--------------- ------------------------------------------------------------------------------
+**SITUATION**   Categorical listing of roosting situations (tree, nest-box, inside or other)
+**MONTH**       Categorical listing of the month of sampling.
+**MASS**        Mass (g) of starlings.
+**BIRD**        Categorical listing of individual bird repeatedly sampled.
+--------------- ------------------------------------------------------------------------------
+
+: Description of the variables in the starling_full data file {#tbl-starling1 .table-condensed}
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+starling <- read_csv('../public/data/starling_full.csv', trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(starling)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(starling)
+```
+
+## str
+```{r}
+str(starling)
+```
+
+## Easystats (datawizard)
+```{r}
+starling |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+starling |> modelsummary::datasummary_skim()
+starling |> modelsummary::datasummary_skim(by = c("SITUATION", "MONTH"))
+```
+
+:::
+<!-- END_PRIVATE-->
+
+# Exploratory data analysis
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &= \beta_0 + \boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\boldsymbol{\gamma} &= \gamma_0\\
+\beta_0 &\sim{} \mathcal{N}(0, 100)\\
+\beta &\sim{} \mathcal{N}(0, 10)\\
+\gamma_0 &\sim{} \mathcal{N}(0, \sigma_1^2)\\
+\sigma &\sim{} \mathcal{cauchy}(0, 2)\\
+\sigma_1 &\sim{} \mathcal{cauchy}(0, 2)\\
+\end{align}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
+and $\bf{X}$ is the model matrix representing the overall intercept and effects of roosting situation and month on starling mass.
+$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual birds.
+
+
+<!-- START_PRIVATE-->
+
+```{r processData, results='markdown', eval=TRUE}
+starling <- starling %>%
+    mutate(BIRD = factor(BIRD),
+           SITUATION = factor(SITUATION),
+           MONTH = factor(MONTH, levels=c('Nov', 'Jan')))
+```
+
+```{r eda1, results='markdown', eval=TRUE}
+ggplot(starling, aes(y=MASS, x=MONTH)) +
+    geom_boxplot() +
+    facet_grid(~SITUATION)
+ggplot(starling, aes(y=MASS, x=SITUATION, fill = MONTH)) +
+    geom_boxplot() 
+## Better still
+ggplot(starling, aes(y=MASS, x=MONTH, group=BIRD)) +
+    geom_point() +
+    geom_line() +
+    facet_grid(~SITUATION) 
+```
+ 
+**Conclusions:**
+
+- it is clear that the Nov mass of each bird is different - so random intercepts
+- the degree to which they change between Nov and Dec is also relatively
+  different per bird - perhaps random intercept/random slope
+
+
+<!-- END_PRIVATE-->
+
+
+# Fit the model
+
+::: {.panel-tabset}
+
+<!-- START_PRIVATE-->
+
+## rstanarm 
+:::: {.panel-tabset}
+### Using default priors
+In `rstanarm`, the default priors are designed to be weakly informative. They
+are chosen to provide moderate regularisation (to help prevent over-fitting) and
+help stabilise the computations.
+
+```{r fitModel1a, results='markdown', eval=TRUE, cache=TRUE}
+starling.rstanarm <- stan_glmer(MASS ~ MONTH*SITUATION+(1|BIRD),
+                                data = starling,
+                                family = gaussian(), 
+                                iter = 5000,
+                                warmup = 2000,
+                                chains = 3,
+                                thin = 5,
+                                refresh = 0)
+```
+
+```{r fitModel1b, results='markdown', eval=TRUE, cache=FALSE}
+starling.rstanarm %>% prior_summary()
+```
+This tells us:
+- for the intercept (when the family is Gaussian), a normal prior with
+  a mean of 84 and a standard deviation of 17 is used.  The 2.5 is
+  used for scaling all parameter standard deviations.  The value of 84
+  is based on the mean of the response (`mean(starling$MASS)`) and
+  the scaled standard deviation of 17 is based on multiplying the
+  scaling factor by the standard deviation of the response.
+
+```{r fitModel1c, results='markdown', eval=TRUE, cache=FALSE}
+2.5*sd(starling$MASS)
+```
+
+- for the coefficients (in this case, the effects of MONTH, SEASON and
+  their interactions), the default prior is a normal prior centred
+  around 0 with a standard deviation of 2.5.  This is then adjusted
+  for the scale of the data by multiplying the 2.5 by the ratio of the
+  standard deviation of the response by the standard deviation of the
+  numerical dummy variables for the predictor (then rounded).
+
+```{r fitModel1d, results='markdown', eval=TRUE, cache=FALSE}
+2.5*sd(starling$MASS)/apply(model.matrix(~MONTH*SITUATION, starling)[,-1], 2, sd)
+```
+
+-  the auxiliary prior represents whatever additional prior is required for the
+   nominated model.  In the case of a Gaussian model, this will be $\sigma$, for
+   negative binomial, it will be the reciprocal of dispersion, for gamma, it
+   will be shape, etc .  By default in `rstanarm`, this
+   is a exponential with a rate of 1 which is then adjusted by division with the
+   standard deviation of the response.
+   
+```{r fitModel1e, results='markdown', eval=TRUE, cache=TRUE}
+1/sd(starling$MASS)
+```
+
+### Assessing priors
+Lets now run with priors only so that we can explore the range of values they
+allow in the posteriors.
+
+```{r fitModel1f, results='markdown', eval=TRUE, cache=TRUE}
+starling.rstanarm1 <- update(starling.rstanarm,  prior_PD=TRUE)
+```
+
+```{r fitModel1g, results='markdown', eval=TRUE, cache=FALSE}
+starling.rstanarm1 %>%
+    ggpredict(~MONTH*SITUATION) %>%
+    plot(show_data=TRUE)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is fairly wide and the predicted means could range
+  from a small value to a relatively large value.
+
+ 
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 84 with a standard deviation of 17
+  - mean of 84: since `mean(starling$MASS)`
+  - sd of 17: since `2.5*sd(starling$MASS)`
+- $\beta_1$: normal centred at 0 with a standard deviation of 33
+  - sd of 33: since `2.5*sd(starling$MASS) / apply(model.matrix(~MONTH*SITUATION, starling)[,-1], 2, sd)`
+
+- $\beta_{2-4}$: normal centred at 0 with a standard deviation of 39
+  - sd of 39: since `2.5*sd(starling$MASS) / apply(model.matrix(~MONTH*SITUATION, starling)[,-1], 2, sd)`
+- $\beta_{5-7}$: normal centred at 0 with a standard deviation of 50
+  - sd of 50: since `2.5*sd(starling$MASS) / apply(model.matrix(~MONTH*SITUATION, starling)[,-1], 2, sd)`
+- $\sigma$: exponential with rate of 0.15
+  - since `1 / sd(starling$MASS)`
+- $\Sigma$: decov with:
+  - regularisation: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel1h, results='markdown', eval=TRUE, cache=TRUE}
+starling.rstanarm2 <- stan_glmer(MASS ~ MONTH*SITUATION+(1|BIRD),
+                                data = starling,
+                                family = gaussian(), 
+                                prior_intercept = normal(84, 17, autoscale = FALSE),
+                                prior = normal(0, c(33, 39, 39, 39, 50, 50, 50), autoscale = FALSE),
+                                prior_aux=rstanarm::exponential(0.15, autoscale = FALSE),
+                                prior_covariance = decov(1, 1, 1, 1), 
+                                prior_PD = TRUE, 
+                                iter = 5000,
+                                warmup = 1000,
+                                chains = 3,
+                                thin = 5,
+                                refresh = 0
+                                )
+```
+
+```{r fitModel1i, results='markdown', eval=TRUE, cache=FALSE}
+starling.rstanarm2 %>%
+    ggpredict(~SITUATION*MONTH) %>%
+    plot(show_data = TRUE)
+```
+
+Now lets refit, conditioning on the data.
+
+```{r fitModel1j, results='markdown', eval=TRUE, cache=TRUE, dependson='fitModel1h'}
+starling.rstanarm3 <- update(starling.rstanarm2,  prior_PD=FALSE)
+```
+ 
+### Plotting prior and posterior
+
+```{r modelFit1k, results='markdown', eval=TRUE, fig.width=8, fig.height=8}
+posterior_vs_prior(starling.rstanarm3, color_by='vs', group_by=TRUE,
+                   facet_args=list(scales='free_y'))
+```
+
+**Conclusions:**
+
+- in each case, the prior is substantially wider than the posterior, suggesting
+  that the posterior is not biased towards the prior.
+  
+```{r modelFit1l, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+ggemmeans(starling.rstanarm3,  ~SITUATION*MONTH) %>% plot(show_data=TRUE)
+ggpredict(starling.rstanarm3,  ~SITUATION*MONTH) %>% plot(show_data=TRUE)
+```
+
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularisation (to help prevent over fitting) and
+help stabilise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+```{r fitModel2a, results='markdown', eval=TRUE, cache=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80)}
+starling.form <- bf(MASS ~ MONTH*SITUATION+(MONTH + MONTH:SITUATION|BIRD),
+  family = gaussian()
+)
+options(width=150)
+starling.form %>% get_prior(data = starling)
+options(width=80)
+```
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 84 with a standard deviation of 5.9
+  - mean of 84: since `median(starling$MASS)`
+  - sd of 5.9: since `mad(starling$MASS)`
+- $\beta_1$: normal centred at 0 with a standard deviation of 13
+  - sd of 13: since `sd(starling$MASS) / apply(model.matrix(~MONTH*SITUATION, starling)[, -1], 2, sd)`
+- $\beta_{2-4}$: normal centred at 0 with a standard deviation of 15
+  - sd of 15: since `sd(starling$MASS) / apply(model.matrix(~MONTH*SITUATION, starling)[, -1], 2, sd)`
+- $\beta_{5-7}$: normal centred at 0 with a standard deviation of 20
+  - sd of 20: since `sd(starling$MASS) / apply(model.matrix(~MONTH*SITUATION, starling)[, -1], 2, sd)`
+- $\sigma$: gamma with shape parameters 6.5 and 1
+  - 6.5: since `sd(starling$MASS)`
+- $\sigma_j$: half-cauchy with parameters 0 and 2.5.
+  - 2.: since `sqrt(sd(starling$MASS))`
+- $\Sigma$: decov with:
+  - regularisation: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+Note, for hierarchical models, the model will tend to want to have a
+large $sigma$ in order to fit the data better.  It is a good idea to
+__regularise__ this tendency by applying a prior that has most mass
+around zero.  Suitable candidates include:
+
+- half-t: as the degrees of freedom approach infinity, this will approach a half-normal 
+- half-cauchy: this is essentially a half-t with 1 degree of freedom
+- exponential
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel2h, results='markdown', eval=TRUE, cache=FALSE}
+starling %>% 
+  group_by(SITUATION, MONTH) %>%
+  summarise(
+    mean(MASS),
+    median(MASS),
+    sd(MASS),
+    mad(MASS))
+
+sqrt(5.9)
+
+standist::visualize("normal(84,20)", xlim=c(0,200))
+standist::visualize("student_t(3, 0, 5.9)",
+                    "gamma(6.5,1)",
+                    "cauchy(0,2.5)",
+                    "student_t(3, 0, 5.9)",
+                    xlim=c(-10,25))
+```
+
+```{r fitModel2h1, results='markdown', eval=TRUE, cache=TRUE}
+priors <- prior(normal(80, 5), class = 'Intercept') +
+    prior(normal(0, 13), class = 'b', coef = "MONTHJan") +
+    prior(normal(0, 15), class = 'b', coef = "SITUATIONnestMbox") +
+    prior(normal(0, 15), class = 'b', coef = "SITUATIONother") +
+    prior(normal(0, 15), class = 'b', coef = "SITUATIONtree") +
+    prior(normal(0, 10), class = 'b') +
+    ## prior(gamma(6.5,1), class = 'sigma') +
+    prior(student_t(3,0,5), class = 'sigma') +
+    prior(student_t(3, 0,5), class = 'sd') 
+starling.form <- bf(MASS ~ MONTH*SITUATION+(1|BIRD),
+                     family = gaussian()
+                   )
+starling.brm2 <- brm(starling.form, 
+                  data = starling,
+                  prior = priors,
+                  sample_prior = 'only',
+                  iter = 5000,
+                  warmup = 1000,
+                  chains = 3, cores = 3,
+                  thin = 5,
+                  refresh = 0,
+                  backend = "cmdstanr"
+                  )
+```
+
+```{r partialPlot2h1a, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm2 %>%
+    ggpredict(~SITUATION*MONTH) %>%
+    plot(show_data = TRUE)
+starling.brm2 %>%
+    conditional_effects("SITUATION:MONTH") %>%
+    plot(points = TRUE)
+```
+
+The above seem sufficiently wide whilst at the same time not providing any encouragement for the sampler
+to wander off into very unsupported areas.
+
+```{r fitModel2h1b, results='markdown', eval=TRUE, cache=TRUE}
+starling.brm3 <- update(starling.brm2,  
+                       sample_prior = 'yes',
+                       control = list(adapt_delta = 0.99),
+                       refresh = 0)
+save(starling.brm3, file = '../ws/testing/starling.brm3')
+```
+
+```{r partialPlot2h1b, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>%
+    ggpredict(~SITUATION*MONTH) %>%
+    plot(show_data = TRUE)
+starling.brm3 %>%
+    conditional_effects("SITUATION:MONTH") %>%
+    plot(points = TRUE)
+```
+
+### Plotting prior and posterior
+
+```{r posterior2h2, results='markdown', eval=TRUE}
+starling.brm3 %>% get_variables()
+starling.brm3 %>% hypothesis('MONTHJan=0') %>% plot
+starling.brm3 %>% hypothesis('SITUATIONnestMbox=0') %>% plot
+```
+
+```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+starling.brm3 %>% SUYR_prior_and_posterior()
+```
+
+
+### Random intercept/slope model
+
+While we are here, we might like to explore a random intercept/slope model
+
+```{r fitModel2h3, results='markdown', eval=TRUE, cache=TRUE}
+priors <- prior(normal(80,2), class = 'Intercept') +
+    #prior(normal(0, 13), class = 'b', coef = "MONTHJan") +
+    #prior(normal(0, 15), class = 'b', coef = "SITUATIONnestMbox") +
+    #prior(normal(0, 15), class = 'b', coef = "SITUATIONother") +
+    #prior(normal(0, 15), class = 'b', coef = "SITUATIONtree") +
+    prior(normal(0, 10), class = 'b') +
+    ## prior(gamma(6.5,1), class = 'sigma') +
+    prior(student_t(3, 0, 1), class = 'sigma') +
+    ## prior(cauchy(0,2.5), class = 'sd') +
+    prior(student_t(3, 0, 1), class = 'sd') +
+    prior(lkj_corr_cholesky(1), class = 'cor')
+
+starling.form <- bf(MASS ~ MONTH*SITUATION+(MONTH|BIRD),
+                     family = gaussian()
+                   )
+starling.brm3a <- brm(starling.form, 
+                  data = starling,
+                  prior = priors,
+                  sample_prior = 'only',
+                  iter = 5000,
+                  warmup = 2500,
+                  chains = 3, cores =  3,
+                  thin = 5,
+                  refresh = 0,
+                  control = list(adapt_delta = 0.99),
+                  backend = 'cmdstanr'
+                  )
+starling.brm4 <- brm(starling.form, 
+                  data = starling,
+                  prior = priors,
+                  sample_prior = 'yes',
+                  iter = 5000,
+                  warmup = 1000,
+                  chains = 3,
+                  thin = 5,
+                  refresh = 0,
+                  control = list(adapt_delta = 0.99)
+                  )
+save(starling.brm4, file = '../ws/testing/starling.brm4')
+```
+
+```{r posterior2k, results='markdown', eval=TRUE}
+starling.brm4 %>% get_variables()
+starling.brm4 |> hypothesis('MONTHJan=0') |> plot()
+starling.brm4 |> hypothesis('SITUATIONnestMbox=0') |> plot()
+```
+
+```{r posterior2k1, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+starling.brm4 %>% SUYR_prior_and_posterior()
+```
+
+```{r posterior2k2, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
+starling.brm4 %>%
+  posterior_samples() %>%
+  dplyr::select(-`lp__`) %>%
+  pivot_longer(everything(), names_to = 'key') %>% 
+  filter(!str_detect(key, '^r')) %>%
+  mutate(Type = ifelse(str_detect(key, 'prior'), 'Prior', 'Posterior'),
+         ## Class = ifelse(str_detect(key, 'Intercept'),  'Intercept',
+         ##         ifelse(str_detect(key, 'b'),  'b', 'sigma')),
+         Class = case_when(
+               str_detect(key, '(^b|^prior).*Intercept$') ~ 'Intercept',
+               str_detect(key, 'b_SITUATION.*|prior_b_SITUATION.*') &
+               !str_detect(key, '.*:.*') ~ 'SITUATION',
+               str_detect(key, 'b_MONTH.*|prior_b_MONTH.*') &
+               !str_detect(key, '.*\\:.*') ~ 'MONTH',
+               str_detect(key, '.*\\:.*|prior_b_.*\\:.*') ~ 'Interaction',
+               str_detect(key, 'sd') ~ 'sd',
+               str_detect(key, '^cor|prior_cor') ~ 'cor',
+             str_detect(key, 'sigma') ~ 'sigma'
+             ),
+         Par = str_replace(key, 'b_', '')) %>%
+  ggplot(aes(x = Type,  y = value, color = Par)) +
+  stat_pointinterval(position = position_dodge())+
+  facet_wrap(~Class,  scales = 'free')
+```
+
+### Compare models
+
+
+
+We can compare the two models using LOO
+
+```{r fitModel2h3a, results='markdown', eval=TRUE, cache=TRUE}
+(l.1 <- starling.brm3 %>% rstan::loo())
+(l.2 <- starling.brm4 %>% rstan::loo())
+loo_compare(l.1, l.2)
+```
+
+There is not substantially more support for the more complex random
+intercept/slope model over the simpler random intercept only
+model. Consequently, we will continue with the simple random intercept
+model.
+
+::::
+
+<!-- END_PRIVATE-->
+:::
+    
+# MCMC sampling diagnostics
+
+::: {.panel-tabset}
+
+<!-- START_PRIVATE-->
+
+In addition to the regular model diagnostics checking, for Bayesian analyses, it
+is also necessary to explore the MCMC sampling diagnostics to be sure that the
+chains are well mixed and have converged on a stable posterior.
+
+There are a wide variety of tests that range from the big picture, overall chain
+characteristics to the very specific detailed tests that allow the experienced
+modeller to drill down to the very fine details of the chain behaviour.
+Furthermore, there are a multitude of packages and approaches for exploring
+these diagnostics.
+
+## brms 
+
+:::: {.panel-tabset}
+
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation2a, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+</details>
+
+Of these, we will focus on:
+
+- trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation2b, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+pars <- starling.brm3 %>% get_variables()
+pars <- pars %>%
+    str_extract('^b_.*|[sS]igma|^sd.*') %>%
+    ## str_extract('^b.Intercept|^b_SITUTATION.*|^b_MONTH.*|[sS]igma|^sd.*') %>%
+    na.omit()
+pars
+starling.brm3 %>% mcmc_plot(type='trace', variable = pars)
+```
+  
+   The chains appear well mixed and very similar
+   
+- acf_bar (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2c, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm3 %>% mcmc_plot(type='acf_bar', variable = pars)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- rhat_hist: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2d, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm3 %>% mcmc_plot(type='rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff_hist (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2e, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm2 %>% mcmc_plot(type='neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2f, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm3 %>% mcmc_plot(type='combo', variable = pars)
+starling.brm3 %>% mcmc_plot(type='violin', variable = pars)
+```
+</details>
+
+### stan plots
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation2g, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm3 %>% get_variables()
+pars <- starling.brm4 |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') %>% na.omit()
+
+starling.brm4$fit |> 
+    stan_trace(pars = pars)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2h, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm4$fit |> 
+    stan_ac(pars = pars)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2i, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm4$fit |> stan_rhat() 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2j, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm4$fit %>% stan_ess()
+```
+
+  Ratios all very high.
+
+```{r modelValidation2k, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm4$fit %>%
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+### ggmcmc
+
+The `ggmean` package also as a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation2l, results='markdown', eval=TRUE, fig.width=6, fig.height=7}
+## starling.ggs <- starling.brm3 %>% ggs(burnin = FALSE, inc_warmup = FALSE)
+## starling.ggs %>% ggs_traceplot()
+``` 
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2m, results='markdown', eval=TRUE, fig.width=6, fig.height=7}
+## ggs_autocorrelation(starling.ggs)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2n, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+## ggs_Rhat(starling.ggs)
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2o, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+## ggs_effective(starling.ggs)
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2p, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+## ggs_crosscorrelation(starling.ggs)
+```
+
+```{r modelValidation2q, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+## ggs_grb(starling.ggs)
+```
+</details>
+
+::::
+
+<!-- END_PRIVATE-->
+
+:::
+
+
+# Model validation 
+
+::: {.panel-tabset}
+
+<!-- START_PRIVATE-->
+## brms
+	
+:::: {.panel-tabset}
+
+### pp check
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation5a, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+</details>
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation5b, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm3 |> pp_check(type = 'dens_overlay', nsamples = 100)
+```
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  Note, this is not really that useful for models that involve a
+  binomial response
+
+```{r modelValidation5c, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm3 %>% pp_check(type = 'error_scatter_avg')
+```
+
+This is not really interpretable
+
+- intervals:  plots the observed data overlayed on top of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation5e, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+starling.brm3 %>% pp_check(group = 'BIRD', type = 'intervals')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation5g, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(starling.brm2)
+```
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+```{r modelValidation6a, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+preds <- starling.brm3 %>% posterior_predict(ndraws = 250,  summary = FALSE)
+starling.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = starling$MASS,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = FALSE)
+plot(starling.resids, quantreg = TRUE)
+```
+
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+```{r modelValidation6aa, results='markdown', eval=TRUE, fig.width=8, fig.height=10}
+starling.resids <- make_brms_dharma_res(starling.brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(starling.resids)) +
+               wrap_elements(~plotResiduals(starling.resids, form = factor(rep(1, nrow(starling))))) +
+               wrap_elements(~plotResiduals(starling.resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(starling.resids)) 
+```
+
+::::
+
+<!-- END_PRIVATE-->
+:::
+    
+
+
+
+# Partial effects plots 
+
+::: {.panel-tabset}
+
+<!-- START_PRIVATE-->
+
+## brms 
+
+:::: {.panel-tabset}
+
+### conditional_effects
+
+```{r partialPlot2d, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm4 |> 
+    conditional_effects("SITUATION:MONTH") |> 
+    plot(points = TRUE)
+```
+
+### ggpredict
+
+```{r partialPlot2a, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>%
+    ggpredict(~SITUATION*MONTH) %>%
+    plot(show_data = TRUE)
+```
+
+
+### ggemmeans
+
+```{r partialPlot2b, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>%
+    ggemmeans(~SITUATION*MONTH) %>%
+    plot(show_data = TRUE) 
+```
+
+### fitted_draws
+
+```{r partialPlot2c, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+Partial.obs <- starling.brm3$data %>%
+    mutate(Pred = predict(starling.brm3)[,'Estimate'],
+           Resid = resid(starling.brm3)[,'Estimate'],
+           Obs = Pred + Resid)
+
+starling.brm3 %>%
+    fitted_draws(newdata = starling, re_formula = NA) %>%
+    median_hdci() %>%
+    ggplot(aes(x = SITUATION, y = .value, color = MONTH)) +
+    geom_pointrange(aes(ymin = .lower, ymax = .upper)) + 
+    geom_line() +
+    geom_point(data = Partial.obs,  aes(y = Obs,  x = SITUATION, color = MONTH),
+               position = position_nudge(x = 0.1)) +
+    geom_point(data = starling,  aes(y = MASS,  x = SITUATION, color = MONTH), alpha=0.2,
+               position = position_nudge(x = 0.05))
+```
+
+::::
+
+<!-- END_PRIVATE-->
+:::
+    
+
+# Model investigation 
+
+::: {.panel-tabset}
+
+<!-- START_PRIVATE-->
+
+## brms 
+
+:::: {.panel-tabset}
+
+`brms` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+
+```{r summariseModel2a, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>% summary()
+```
+
+```{r summariseModel2a1, results='markdown', eval=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+starling.sum <- summary(starling.brm3)
+```
+
+**Conclusions:**
+
+- the estimated Mass of starlings nesting Inside in November is
+  `r as.numeric(round(starling.sum$fixed[1,1],2))`
+- starlings that nest Inside were found to increase their Mass from November to
+  January by `r as.numeric(round(starling.sum$fixed[2,1],2))` grams.
+- starling that nest in nest boxes are on average
+  `r as.numeric(round(starling.sum$fixed[3,1],2))` grams heavier in November than those that
+  nest inside.
+- starling that nest in other and trees are on average
+  `r as.numeric(-1*round(starling.sum$fixed[4,1],2))` grams lighter and 
+  `r as.numeric(round(starling.sum$fixed[5,1],2))` heavier respectively in November than those that
+  nest inside.
+- there is relatively little variation in Mass between individual birds compared
+  to the variation in Mass within Birds.
+
+### as_draws_df (posteriors)
+
+```{r summariseModel2bm, results='markdown', eval=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+starling.brm3 %>% as_draws_df()
+starling.brm3 %>%
+  as_draws_df() %>%
+  summarise_draws(
+    median,
+    HDInterval::hdi,
+    Pl = ~mean(.x < 0),
+    Pg = ~mean(.x > 0),
+    rhat,
+    ess_bulk
+  )
+```
+
+
+### tidyMCMC
+
+```{r summariseModel2b, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3$fit %>%
+    tidyMCMC(estimate.method = 'median',
+             conf.int = TRUE,  conf.method = 'HPDinterval',
+             rhat = TRUE, ess = TRUE)
+```
+```{r summariseModel2b1, results='markdown', eval=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+starling.tidy <- tidyMCMC(starling.brm3$fit, estimate.method='median',
+                         conf.int=TRUE,  conf.method='HPDinterval',
+                         rhat=TRUE, ess=TRUE)
+```
+
+**Conclusions:**
+
+see above
+
+### gather_draws
+
+```{r summariseModel2c, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>% get_variables()
+starling.draw <- starling.brm3 %>%
+    gather_draws(`b.Intercept.*|b_SITUATION.*|b_MONTH.*`,  regex=TRUE)
+starling.draw
+```
+
+We can then summarise this
+
+```{r summariseModel2c1, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.draw %>% median_hdci
+```
+
+```{r summariseModel2c3, results='markdown', eval=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+starling.gather <- starling.brm3 %>%
+    gather_draws(`b_Intercept.*|b_SITUATION.*|b_MONTH.*`,  regex=TRUE) %>%
+    median_hdci
+```
+
+```{r summariseModel2c4, results='markdown', eval=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+starling.brm3 %>%
+    gather_draws(`b_Intercept.*|b_SITUATION.*|b_MONTH.*`, regex=TRUE) %>% 
+    ggplot() +
+    geom_vline(xintercept=0, linetype='dashed') +
+    stat_slab(aes(x = .value, y = .variable,
+                  fill = stat(ggdist::cut_cdf_qi(cdf,
+                                                 .width = c(0.5, 0.8, 0.95), 
+                                                 labels = scales::percent_format())
+                              )), color='black') + 
+    scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
+
+starling.brm3 %>% 
+    gather_draws(`.Intercept.*|b_SITUATION.*|b_MONTH.*`, regex=TRUE) %>% 
+    ggplot() + 
+    geom_vline(xintercept = 0, linetype='dashed') +
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    theme_classic()
+```
+
+### bayesplot
+
+```{r summariseModel2j, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3$fit %>% plot(type='intervals') 
+```
+
+### half-eye (ggdist)
+
+```{r summariseModel2ka, results='markdown', eval=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+starling.brm4 %>% 
+    gather_draws(`^b_.*`, regex=TRUE) %>% 
+    filter(.variable != 'b_Intercept') %>%
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    facet_wrap(~.variable, scales='free')
+
+starling.brm4 %>% 
+    gather_draws(`^b_.*`, regex=TRUE) %>% 
+    filter(.variable != 'b_Intercept') %>%
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+```
+
+### density ridges (ggridges)
+
+```{r summariseModel2c7, results='markdown', eval=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+starling.brm4 %>% 
+    gather_draws(`^b_.*`, regex=TRUE) %>% 
+    filter(.variable != 'b_Intercept') %>%
+    ggplot() +  
+    geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+##Or in colour
+starling.brm4 %>% 
+    gather_draws(`^b_.*`, regex=TRUE) %>% 
+    filter(.variable != 'b_Intercept') %>%
+    ggplot() + 
+    geom_density_ridges_gradient(aes(x=(.value),
+                                     y = .variable,
+                                     fill = stat(x)),
+                                 alpha=0.4, colour = 'white',
+                                 quantile_lines = TRUE,
+                                 quantiles = c(0.025, 0.975)) +
+    geom_vline(xintercept = 1, linetype = 'dashed') +
+    scale_x_continuous() +
+    scale_fill_viridis_c(option = "C") 
+
+## Fractional scale
+starling.brm4 %>% 
+    gather_draws(`^b_.*`, regex=TRUE) %>% 
+    filter(.variable != 'b_Intercept') %>%
+    ggplot() + 
+    geom_density_ridges_gradient(aes(x=exp(.value),
+                                     y = .variable,
+                                     fill = stat(x)),
+                                 alpha=0.4, colour = 'white',
+                                 quantile_lines = TRUE,
+                                 quantiles = c(0.025, 0.975)) +
+    geom_vline(xintercept = 1, linetype = 'dashed') +
+    scale_x_continuous(trans = scales::log2_trans()) +
+    scale_fill_viridis_c(option = "C") 
+```
+ 
+### tidy_draws
+
+This is purely a graphical depiction on the posteriors.
+
+```{r summariseModel2d, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>% tidy_draws()
+```
+
+### spread_draws
+
+```{r summariseModel2e, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>% spread_draws(`.*Intercept.*|b_SITUATION.*|b_MONTH.*`,  regex=TRUE)
+```
+	
+### posterior_samples
+```{r summariseModel2f, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm3 %>% posterior_samples() %>% as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel2g, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+starling.brm4 |>
+    bayes_R2(re.form = NA, summary=FALSE) |>
+    median_hdci()
+starling.brm4 %>%
+    bayes_R2(re.form = ~(1|BIRD), summary=FALSE) %>%
+    median_hdci()
+starling.brm4 |> 
+    bayes_R2(re.form = ~(MONTH|BIRD), summary=FALSE) |> 
+    median_hdci()
+starling.brm4 |> 
+    bayes_R2(re.form = ~(MONTH + MONTH:SITUATION|BIRD), summary=FALSE) |> 
+    median_hdci()
+```
+
+### Modelsummary
+```{r}
+#| label: modelsummary
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+starling.brm4 |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic,
+  exponentiate = FALSE
+)
+```
+
+```{r}
+#| label: modelsummary_plot
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+starling.brm4 |> modelplot(exponentiate = FALSE)
+```
+
+::::
+
+<!-- END_PRIVATE-->
+:::
+
+# Further investigations 
+
+::: {.panel-tabset}
+
+<!-- START_PRIVATE-->
+
+## brms
+
+```{r postHoc1a, results='markdown', eval=TRUE, echo=1}
+starling.brm3 %>%
+    emmeans(~SITUATION) %>%
+    pairs() 
+
+starling.brm3 %>%
+    emmeans(~MONTH) %>%
+    pairs() 
+
+starling.brm3 %>%
+    emmeans(~MONTH|SITUATION) %>%
+    pairs() 
+
+## To get percentage change
+starling.brm3 %>%
+    emmeans(~MONTH|SITUATION) %>%
+    regrid(transform = 'log') %>%
+    pairs(reverse = TRUE) %>%
+    regrid() %>% 
+    gather_emmeans_draws() %>%
+    mutate(.value = 100*(.value - 1)) %>%
+    median_hdci()
+
+## OR if you want both absolute and percentage change
+starling.em <- starling.brm3 %>%
+    emmeans(~MONTH|SITUATION) %>%
+    gather_emmeans_draws() %>%
+    spread(key=MONTH, value=.value) %>%
+    mutate(Eff=Jan-Nov,
+           PEff=100*(Jan-Nov)/Nov)
+starling.em %>% head
+
+starling.em %>%
+    ggplot() +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_vline(xintercept = 10, linetype = "dashed", color='red') +
+    stat_halfeye(aes(x = PEff, y = SITUATION)) +
+    theme_classic()
+
+starling.em %>% median_hdci(PEff)
+
+starling.em %>%
+    summarize(
+        Prob=sum(PEff>0)/n(),
+        `Prob>10`=sum(PEff>10)/n())
+```
+
+Compare specific sets of SITUATION within each MONTH
+
+```{r postHoc2a, results='markdown', eval=TRUE, echo=1}
+levels(starling$SITUATION)
+cmat <- cbind(Comp1=c(0.5, 0.5, -1, 0),
+              Comp2=c(1, -0.5, -0.5, 0))
+cmat <- cbind("Nat vs Art"=c(-1/3, -1/3, -1/3, 1),
+              "Tree vs I/NB" =  c(-1/2, -1/2, 0, 1),
+              "Tree vs NB" =  c(0, -1, 0, 1))
+
+starling.brm3 %>%
+    emmeans(~SITUATION) %>%
+    contrast(list(SITUATION=cmat))
+
+starling.brm3 %>%
+  emmeans(~SITUATION) %>%
+  contrast(list(SITUATION=cmat)) |>
+  gather_emmeans_draws() 
+
+starling.brm3 %>%
+    emmeans(~SITUATION|MONTH) %>%
+    contrast(list(SITUATION=cmat))
+
+starling.em <- starling.brm3 %>%
+    emmeans(~SITUATION|MONTH) %>%
+    contrast(list(SITUATION=cmat)) %>%
+    gather_emmeans_draws() %>%
+    spread(key=MONTH, value=.value) %>%
+    mutate(Eff=Jan-Nov,
+           PEff=100*(Jan-Nov)/Nov)
+starling.em %>% head
+```
+
+
+```{r fitModel, results='markdown', eval=FALSE, echo=FALSE}
+starling.rstan %>% get_variables()
+plot(starling.rstan,  'mcmc_trace', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan,  'mcmc_acf_bar', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan,  'mcmc_rhat_hist', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan,  'mcmc_neff_hist', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+
+
+preds <- posterior_predict(starling.rstan,  nsamples=250,  summary=FALSE)
+starling.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = starling$MASS,
+                            fittedPredictedResponse = apply(preds, 2, median))
+plot(starling.resids)
+
+
+starling.rstan1 = stan_glmer(MASS ~ MONTH*SITUATION+(MONTH|BIRD),data=starling,
+                            iter=5000, warmup=2000, thin=5, chains=3, refresh=0)
+starling.rstan1 = stan_glmer(MASS ~ MONTH*SITUATION+(MONTH|BIRD),data=starling,
+                             iter=5000, warmup=2000, thin=5, chains=3, refresh=0,
+                             adapt_delta = 0.99)
+#pairs(starling.rstan1,  pars=c('(Intercept)', 'MONTHNov'))
+starling.rstan1 %>% get_variables()
+pairs(starling.rstan1,  regex_pars=c('SITUATION', 'sigma'))
+prior_summary(starling.rstan1)
+
+plot(starling.rstan1,  'mcmc_trace', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan1,  'mcmc_acf_bar', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan1,  'mcmc_rhat_hist', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan1,  'mcmc_neff_hist', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+
+starling.rstan1 = stan_glmer(MASS ~ MONTH*SITUATION+(MONTH|BIRD),data=starling,
+                             iter=10000, warmup=5000, thin=15, chains=3, refresh=0,
+                             adapt_delta = 0.99)
+
+plot(starling.rstan1,  'mcmc_trace', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan1,  'mcmc_acf_bar', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan1,  'mcmc_rhat_hist', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+plot(starling.rstan1,  'mcmc_neff_hist', regex_pars = '^.Intercept|^SITUATION|^MONTH|[sS]igma')
+preds <- posterior_predict(starling.rstan1,  nsamples=250,  summary=FALSE)
+starling.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = starling$MASS,
+                            fittedPredictedResponse = apply(preds, 2, median))
+plot(starling.resids)
+
+(l.1 <- loo(starling.rstan))
+(l.2 <- loo(starling.rstan1))
+loo_compare(l.1, l.2)
+
+as.matrix(starling.rstan) %>% colnames
+posterior_vs_prior(starling.rstan1, color_by='vs', group_by=TRUE, regex_pars=c('^MONTH','^SITUATION','^[sS]igma'), 
+                   facet_args=list(scales='free_y'))
+
+
+g=ggpredict(starling.rstan1) %>% plot
+do.call('grid.arrange',  g)
+ggemmeans(starling.rstan1, ~SITUATION|MONTH) %>% plot
+
+summary(starling.rstan1)
+
+nms <- starling.rstan1 %>% get_variables()
+nms
+wch <- grep('^.Intercept|^MONTH|^SITUATION|[sS]igma', nms)
+tidyMCMC(starling.rstan1$stanfit,conf.int=TRUE, conf.method='HPDinterval',
+         rhat=TRUE, ess=TRUE, pars=nms[wch])
+
+emmeans(starling.rstan1, pairwise~MONTH|SITUATION)
+starling.em = emmeans(starling.rstan1, ~MONTH|SITUATION) %>%
+    gather_emmeans_draws() %>% spread(key=MONTH, value=.value) %>%
+    mutate(Eff=Jan-Nov,
+           PEff=100*(Jan-Nov)/Nov)
+starling.em %>% head
+
+starling.em %>% ungroup %>%
+    dplyr::select(SITUATION,Eff,PEff) %>% group_by(SITUATION) %>% median_hdi
+
+starling.em %>% ungroup %>%
+    dplyr::select(SITUATION,Eff,PEff) %>% group_by(SITUATION) %>%
+    summarize(Prob=sum(PEff>10)/n())
+
+bayes_R2(starling.rstan1, re.form=NA) %>% median_hdi
+bayes_R2(starling.rstan1, re.form=~(1|BIRD)) %>% median_hdi
+bayes_R2(starling.rstan1, re.form=~(MONTH|BIRD)) %>% median_hdi
+
+newdata = emmeans(starling.rstan1, ~MONTH|SITUATION) %>% as.data.frame
+head(newdata)
+ggplot(newdata, aes(y=emmean, x=SITUATION)) +
+    geom_pointrange(aes(ymin=lower.HPD, ymax=upper.HPD, fill=MONTH),
+                    position=position_dodge(width=0.3), shape=21)
+```
+
+<!-- START_PRIVATE-->
+:::
+
+# References
+

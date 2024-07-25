@@ -1,0 +1,315 @@
+---
+title: "Bayesian GLMM Part3"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(rstanarm)   #for fitting models in STAN
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(HDInterval) #for HPD intervals
+library(posterior)  #for posterior draws
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for MCMC diagnostics
+library(rstan)      #for interfacing with STAN
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(DHARMa)     #for residual diagnostics
+library(tidybayes)  #for more tidying outputs
+library(ggeffects)  #for partial plots
+library(broom.mixed)#for tidying MCMC outputs
+library(patchwork)  #for multiple plots
+library(ggridges)   #for ridge plots 
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+![Starlings](../resources/starlings.jpg){#fig-starlings width="200" height="274"}
+
+```{tikz}
+%| label: fig-starling_design
+%| engine: tikz
+%| echo: false
+%| fig-cap: Sampling design for the starling data set
+%| fig-width: 13
+%| fig-height: 6
+%| cache: true
+%| class: tikz
+%| engine-opts:
+%|   template: "../resources/tikz-minimal.tex"
+\tikzstyle{HandLabel} = [font={\fontspec[Scale=1.1]{xkcd}}]
+\tikzstyle{Messy} = [decorate,decoration={random steps,segment length=3pt, amplitude=0.5pt}]
+\tikzset{%
+every node/.style={%
+draw=black,
+inner sep=1mm,
+outer sep=0,
+Messy, HandLabel,
+minimum size=1cm,
+minimum height=8mm,
+align=center,
+anchor=north,
+},
+Rnd/.style={%
+draw=black!90,
+fill=black!30,
+},
+Trt/.style={%
+%rounded corners,
+%Messy, 
+draw=black,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Latent/.style={%
+%rounded corners,
+%Messy, 
+draw=black!40,
+text=black!40,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Th/.style={%
+%rounded corners,
+draw=black!90
+},
+Control/.style={%
+rounded corners,
+draw=green!90,
+top color=green!10,
+bottom color=green!30,
+},
+Comment/.style={%
+draw=none,
+inner sep=0mm,
+outer sep=0mm,
+minimum height=5mm,
+align=right
+},
+}
+
+\forestset{myst/.style={%
+for tree={%
+parent anchor=south, 
+child anchor=north,
+l sep=1cm,
+s sep=0.5cm,
+edge path={\noexpand\path[\forestoption{edge},-{latex}] 
+(!u.parent anchor) |- ($(!u.parent anchor)!.5!(.child anchor)$) -| (.child anchor)
+\forestoption{edge label};}
+}
+}
+}
+
+\begin{forest} myst,
+[,phantom, s=1cm
+[Tree, Trt, name=Situation
+[{tree1}, Rnd, name=Bird
+[Nov, Trt, name=Month]
+[Jan, Trt]
+]
+[{tree2}, Rnd
+[Nov, Trt]
+[Jan, Trt]
+]
+[{tree ...}, Rnd
+[Nov, Trt]
+[Jan, Trt]
+]
+]
+[Nest-box, Trt, name=NB
+[nest-box1, Rnd [Nov, Trt][Jan, Trt]]
+[nest-box2, Rnd [Nov, Trt][Jan, Trt]]
+[{nest-box ...}, Rnd [Nov, Trt][Jan, Trt]]
+]
+[Other, Trt, name=Ot
+[other1, Rnd [Nov, Trt][Jan, Trt]]
+[other2, Rnd [Nov, Trt][Jan, Trt]]
+[{other ...}, Rnd [Nov, Trt][Jan, Trt]]
+]
+]
+\node[left=1cm of Month.west, Comment,anchor=east] (lMonth) {Month};
+\node[Comment,anchor=east] at (lMonth.east |- Bird.west) (lBird) {Bird};
+\node[Comment,anchor=east] at (lMonth.east |- Situation.west) (lSituation) {Situation};
+\node [Comment] at ($(NB) !0.5! (Ot)$) {....};
+\end{forest}
+
+
+```
+
+
+SITUATION   MONTH   MASS   BIRD
+----------- ------- ------ -----------
+tree        Nov     78     tree1
+..          ..      ..     ..
+nest-box    Nov     78     nest-box1
+..          ..      ..     ..
+inside      Nov     79     inside1
+..          ..      ..     ..
+other       Nov     77     other1
+..          ..      ..     ..
+tree        Jan     85     tree1
+..          ..      ..     ..
+
+: Format of starling_full.csv data file {#tbl-starling .table-condensed}
+
+--------------- ------------------------------------------------------------------------------
+**SITUATION**   Categorical listing of roosting situations (tree, nest-box, inside or other)
+**MONTH**       Categorical listing of the month of sampling.
+**MASS**        Mass (g) of starlings.
+**BIRD**        Categorical listing of individual bird repeatedly sampled.
+--------------- ------------------------------------------------------------------------------
+
+: Description of the variables in the starling_full data file {#tbl-starling1 .table-condensed}
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+starling <- read_csv('../data/starling_full.csv', trim_ws = TRUE)
+```
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &= \beta_0 + \boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\boldsymbol{\gamma} &= \gamma_0\\
+\beta_0 &\sim{} \mathcal{N}(0, 100)\\
+\beta &\sim{} \mathcal{N}(0, 10)\\
+\gamma_0 &\sim{} \mathcal{N}(0, \sigma_1^2)\\
+\sigma &\sim{} \mathcal{cauchy}(0, 2)\\
+\sigma_1 &\sim{} \mathcal{cauchy}(0, 2)\\
+\end{align}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
+and $\bf{X}$ is the model matrix representing the overall intercept and effects of roosting situation and month on starling mass.
+$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual birds.
+
+
+
+
+# Fit the model
+
+::: {.panel-tabset}
+
+:::
+    
+# MCMC sampling diagnostics
+
+::: {.panel-tabset}
+
+
+:::
+
+
+# Model validation 
+
+::: {.panel-tabset}
+
+:::
+    
+
+
+
+# Partial effects plots 
+
+::: {.panel-tabset}
+
+:::
+    
+
+# Model investigation 
+
+::: {.panel-tabset}
+
+:::
+
+# Further investigations 
+
+::: {.panel-tabset}
+
