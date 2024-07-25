@@ -1,0 +1,217 @@
+---
+title: "Bayesian GLMM Part4"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+library(tidyverse) #for data wrangling
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(knitr)     #for kable
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(brms)
+library(broom.mixed)
+library(tidybayes)
+library(bayesplot)
+library(standist)   #for visualizing distributions
+library(rstanarm)
+library(cmdstanr)   #for cmdstan
+library(ggeffects)
+library(rstan)
+library(DHARMa)
+library(ggridges)
+library(easystats)     #framework for stats, modelling and visualisation
+library(patchwork)
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+![Crab_shrimp_coral](../resources/crab_shrimp_coral.jpg){#fig-crabs width="400" height="284"}
+
+To investigate synergistic coral defence by mutualist crustaceans,
+@Mckeon-2012-1095 conducted an aquaria experiment in which colonies of a coral
+species were placed in a tank along with a predatory sea star and one of four
+symbiont combinations:
+
+- no symbiont,
+- a crab symbiont
+- a shrimp symbiont
+- both a crab and shrimp symbiont.
+
+The experiments were conducted in a large octagonal flow-through seawater tank
+that was partitioned into eight sections, which thereby permitted two of each of
+the four symbiont combinations to be observed concurrently. The tank was left
+overnight and in the morning, the presence of feeding scars on each coral colony
+was scored as evidence of predation.  The experiments were repeated ten times,
+each time with fresh coral colonies, sea stars and symbiont.
+
+The ten experimental times represent blocks (random effects) within which the
+symbiont type (fixed effect) are nested.
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+mckeon <- read_csv("../data/mckeon.csv", trim_ws = TRUE)
+```
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{N}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_1}\right) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
+and $\bf{X}$ is the model matrix representing the overall intercept and effects of symbionts on the probability of the colony experiencing predation.
+$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual coral colonies.
+
+
+# Fit the model
+
+
+
+# MCMC sampling diagnostics 
+
+# Model validation 
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+### pp check
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  Note, this is not really that useful for models that involve a
+  binomial response
+
+
+This is not really interpretable
+
+- intervals:  plots the observed data overlayed on top of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+::::
+:::
+<!-- END_PRIVATE-->
+# Partial effects plots 
+
+
+# Model investigation
+
+
+# Further analyses
+
+
+# References
