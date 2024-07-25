@@ -1,0 +1,342 @@
+---
+title: "Bayesian GLMM Part2"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(rstanarm)   #for fitting models in STAN
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(HDInterval) #for HPD intervals
+library(posterior)  #for posterior draws
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for MCMC diagnostics
+library(rstan)      #for interfacing with STAN
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(DHARMa)     #for residual diagnostics
+library(tidybayes)  #for more tidying outputs
+library(ggeffects)  #for partial plots
+library(broom.mixed)#for tidying MCMC outputs
+library(patchwork)  #for multiple plots
+library(ggridges)   #for ridge plots 
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+To investigate differential metabolic plasticity in barramundi (*Lates
+calcarifer*), @Norin-2016-369 exposed juvenile barramundi to various
+environmental changes (increased temperature, decreased salinity and
+increased hypoxia) as well as control conditions.  Metabolic
+plasticity was calculated as the percentage difference in standard
+metabolic rate between the various treatment conditions and the
+standard metabolic rate under control conditions.  They were
+interested in whether there was a relationship between metabolic
+plasticity and typical (control) metabolism and how the different
+treatment conditions impact on this relationship.
+
+A total of 60 barramundi juveniles were subject to each of the three
+conditions (high temperature, low salinity and hypoxia) in addition to
+control conditions.  Fish mass was also recorded as a covariate as
+this is known to influence metabolic parameters.
+
+![Barramundi](../resources/barramundi.png){#fig-barramundi width="310"}
+
+```{tikz}
+%| label: fig-norin_design
+%| engine: tikz
+%| echo: false
+%| fig-cap: Sampling design for the norin data set
+%| fig-width: 13
+%| fig-height: 6
+%| cache: true
+%| class: tikz
+%| engine-opts:
+%|   template: "../resources/tikz-minimal.tex"
+\tikzstyle{HandLabel} = [font={\fontspec[Scale=1.1]{xkcd}}]
+\tikzstyle{Messy} = [decorate,decoration={random steps,segment length=3pt, amplitude=0.5pt}]
+\tikzset{%
+every node/.style={%
+draw=black,
+inner sep=1mm,
+outer sep=0,
+Messy, HandLabel,
+minimum size=2.5cm,
+minimum height=8mm,
+align=center,
+anchor=north,
+},
+Rnd/.style={%
+draw=black!90,
+fill=black!30,
+},
+Trt/.style={%
+%rounded corners,
+%Messy, 
+draw=black,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Latent/.style={%
+%rounded corners,
+%Messy, 
+draw=black!40,
+text=black!40,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Th/.style={%
+%rounded corners,
+draw=black!90
+},
+Control/.style={%
+rounded corners,
+draw=green!90,
+top color=green!10,
+bottom color=green!30,
+},
+Comment/.style={%
+draw=none,
+inner sep=0mm,
+outer sep=0mm,
+minimum height=5mm,
+align=right
+},
+}
+
+\forestset{myst/.style={%
+for tree={%
+parent anchor=south, 
+child anchor=north,
+l sep=1cm,
+s sep=0.5cm,
+edge path={\noexpand\path[\forestoption{edge},-{latex}] 
+(!u.parent anchor) |- ($(!u.parent anchor)!.5!(.child anchor)$) -| (.child anchor)
+\forestoption{edge label};}
+}
+}
+}
+
+\begin{forest} myst,
+[,phantom, s=1cm
+[FishID.1, Rnd, name=Random
+[{Low Salinity}, Trt, name=Trial
+[SMR, Trt, name=SMR]
+]
+[{High Salinity}, Trt
+[SMR, Trt]
+]
+[{Hypoxia}, Trt
+[SMR, Trt]
+]
+]
+[FishID.2, Rnd
+[{Low Salinity}, Trt
+[SMR, Trt]
+]
+[{High Salinity}, Trt
+[SMR, Trt]
+]
+[{Hypoxia}, Trt
+[SMR, Trt]
+]
+]
+[..., Comment]
+[FishID.n, Rnd
+[{Low Salinity}, Trt
+[SMR, Trt]
+]
+[{High Salinity}, Trt
+[SMR, Trt]
+]
+[{Hypoxia}, Trt
+[SMR, Trt]
+]
+]
+]
+\node[left=1cm of Trial, Comment] (lTrial) {TRIAL};
+\node[left=1cm of SMR, Comment] (lSMR) {SMR};
+\node[Comment] at (lTrial |- Random.west) {FISHID};
+\end{forest}
+
+```
+
+
+FISHID   MASS    TRIAL             SMR\_contr   CHANGE
+-------- ------- ----------------- ------------ --------
+1        35.69   LowSalinity       5.85         -31.92
+2        33.84   LowSalinity       6.53         2.52
+3        37.78   LowSalinity       5.66         -6.28
+..       ..      ..                ..           ..
+1        36.80   HighTemperature   5.85         18.32
+2        34.98   HighTemperature   6.53         19.06
+3        38.38   HighTemperature   5.66         19.03
+..       ..      ..                ..           ..
+1        45.06   Hypoxia           5.85         -18.61
+2        43.51   Hypoxia           6.53         -5.37
+3        45.11   Hypoxia           5.66         -13.95
+
+: Format of norin.csv data files {#tbl-norin .table-condensed}
+
+---------------- ------------------------------------------------------------------------------------------------------------------------------------------------------
+**FISHID**       Categorical listing of the individual fish that are repeatedly sampled
+**MASS**         Mass (g) of barramundi. Covariate in analysis
+**TRIAL**        Categorical listing of the trial (LowSalinity: 10ppt salinity; HighTemperature: 35 degrees; Hypoxia: 45% air-sat. oxygen.
+**SMR\_contr**   Standard metabolic rate (mg/h/39.4 g of fish) under control trial conditions (35 ppt salinity, 29 degrees, normoxia)
+**CHANGE**       Percentage difference in Standard metabolic rate (mg/h/39.4 g of fish) between Trial conditions and control adjusted for \'regression to the mean\'.
+---------------- ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+: Description of the variables in the norin data file {#tbl-norin1 .table-condensed}
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+norin <- read_csv("../data/norin.csv", trim_ws = TRUE)
+```
+
+
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 \sim{} \mathcal{N}(16, 35)\\
+\beta_{1-6} \sim{} \mathcal{N}(0, 70)\\
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of
+the fixed and random effects parameters respectively and $\bf{X}$ is
+the model matrix representing the overall intercept and effects of
+temperature and (centered) mean fish size on SDA peak.  $\bf{Z}$
+represents a cell means model matrix for the random intercepts
+associated with individual fish.
+
+
+
+# Fit the model 
+
+
+
+# MCMC sampling diagnostics
+
+
+# Partial effects plots
+
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+### conditional_effects
+
+
+### ggpredict
+
+
+### ggemmeans
+
+
+### fitted_draws
+It is not really possible to do this via the fitted draws as it would
+not be marginalising over `MASS` or `FISHID`.
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation
+
+
+# Predictions / further analyses 
+
+
+# Summary figures 
+
+
+# References
+
+
+ 
+ 
