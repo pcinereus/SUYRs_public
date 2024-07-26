@@ -1,0 +1,292 @@
+---
+title: "Bayesian GLMM Part6"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+library(tidyverse) #for data wrangling
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(knitr)     #for kable
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(brms)
+library(broom.mixed)
+library(tidybayes)
+library(bayesplot)
+library(standist)   #for visualizing distributions
+library(rstanarm)
+library(cmdstanr)   #for cmdstan
+library(ggeffects)
+library(rstan)
+library(DHARMa)
+library(ggridges)
+library(easystats)     #framework for stats, modelling and visualisation
+library(patchwork)
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+
+# Scenario
+
+![fanworms](../resources/fanworms.jpg){#fig-fanworms width="157" height="160"}
+
+In an attempt to understand the effects on marine animals of short-term
+exposure to toxic substances, such as might occur following a spill, or
+a major increase in storm water flows, a it was decided to examine the
+toxicant in question, Copper, as part of a field experiment in Hong
+Kong. The experiment consisted of small sources of Cu (small,
+hemispherical plaster blocks, impregnated with copper), which released
+the metal into sea water over 4 or 5 days. The organism whose response
+to Cu was being measured was a small, polychaete worm, Hydroides, that
+attaches to hard surfaces in the sea, and is one of the first species to
+colonize any surface that is submerged. The biological questions focused
+on whether the timing of exposure to Cu affects the overall abundance of
+these worms. The time period of interest was the first or second week
+after a surface being available.
+
+The experimental setup consisted of sheets of black perspex (settlement
+plates), which provided good surfaces for these worms. Each plate had a
+plaster block bolted to its centre, and the dissolving block would
+create a gradient of [Cu] across the plate. Over the two weeks of the
+experiment, a given plate would have plain plaster blocks (Control) or a
+block containing copper in the first week, followed by a plain block, or
+a plain block in the first week, followed by a dose of copper in the
+second week. After two weeks in the water, plates were removed and
+counted back in the laboratory. Without a clear idea of how sensitive
+these worms are to copper, an effect of the treatments might show up as
+an overall difference in the density of worms across a plate, or it
+could show up as a gradient in abundance across the plate, with a
+different gradient in different treatments. Therefore, on each plate,
+the density of worms (\#/cm^2^) was recorded at each of four distances
+from the center of the plate.
+
+
+```{tikz}
+%| label: fig-worms_design
+%| engine: tikz
+%| echo: false
+%| fig-cap: Sampling design for the norin data set
+%| fig-width: 13
+%| fig-height: 6
+%| cache: true
+%| class: tikz
+%| engine-opts:
+%|   template: "../resources/tikz-minimal.tex"
+\tikzstyle{Messy} = [decorate,decoration={random steps,segment length=3pt, amplitude=0.5pt}]
+\tikzstyle{HandTitle} = [font={\fontspec[Scale=2.1]{CabinSketch}}]
+\tikzstyle{HandBoxTitle} = [font={\fontspec[Scale=1.5]{Complete in Him}}]
+\tikzstyle{HandLabel} = [font={\fontspec[Scale=1.1]{Hannahs Messy Handwriting}}] 
+\tikzstyle{Plot} = [rectangle,draw,Messy,fill=white,HandLabel, minimum height=2em]
+\tikzstyle{Plate} = [circle,draw,Messy,fill=white,HandLabel, minimum height=5.5cm]
+\tikzstyle{Dist} = [rectangle,draw,Messy]
+
+\pgfdeclarelayer{Plates}
+\pgfdeclarelayer{Dists}
+\pgfsetlayers{Plates,Dists,main}
+
+\newcommand{\mybox}[2][]{
+\node[Plate,fill=blue!2] (Plate1) {#1};
+\path  (Plate1.north) +(0,-0.3) node [HandLabel] (Dist4Title) {\textbf{Dist 4}};
+% \node[Plot1, right of=Plot1, anchor=east,node distance=2.5cm] (Plot2) {#1};
+\node[Plate,fill=blue!5,minimum height=4.5cm] (Dist3) {#1};
+\path  (Dist3.north) +(0,-0.3) node [HandLabel] (Dist3Title) {\textbf{Dist 3}};
+\node[Plate,fill=blue!10,minimum height=3.5cm] (Dist2) {#1};
+\path  (Dist2.north) +(0,-0.3) node [HandLabel] (Dist2Title) {\textbf{Dist 2}};
+\node[Plate,fill=blue!20,minimum height=2.5cm] (Dist1) {#1};
+\path  (Dist1.north) +(0,-0.3) node [HandLabel] (Dist1Title) {\textbf{Dist 1}};
+\node[Plate,fill=blue!30, minimum height=1.5cm] (Core) {#1};
+% \draw (0,0) circle [Messy,radius=2.25];
+\begin{pgfonlayer}{Plates}
+\path (Plate1.west |- Plate1.north) +(-0.2,+0.5) node (S1nw) {};
+\path (Plate1.east |- Plate1.south) +(+0.2,-0.2) node (S1se) {};
+%% title
+\path  ($ (S1nw.west |- S1nw.north) !0.5! (S1se.east |- S1nw.north)$) +(0,-0) node [HandBoxTitle] (Plate1Title) {\textbf{Plates #2}};
+\path  ($ (S1nw.west |- S1nw.north) !0.5! (S1se.east |- S1nw.north)$) +(0,-0.35) node [HandBoxTitle] (Plate1Title) {\textbf{#1}};
+
+\end{pgfonlayer}
+}
+
+
+\begin{tikzpicture} \path node (Plates1) {
+\begin{tikzpicture}
+\mybox[Control]{1,2,3,4,5}
+\end{tikzpicture}
+};
+\path (Plates1.east) +(3,0) node (Plates2) {
+\begin{tikzpicture}
+\mybox[Week 1]{6,7,8,9,10}
+\end{tikzpicture}
+};
+\path (Plates2.east) +(3,0) node (Plates3) {
+\begin{tikzpicture}
+\mybox[Week 2]{11,12,13,14,15}
+\end{tikzpicture}
+};
+
+\end{tikzpicture}
+```
+
+
+
+COPPER   PLATE   DIST   WORMS  
+-------- ------- ------ -------
+control   200     4      11.50 
+control   200     3      13.00 
+..        ..       ..      ..     
+
+: Format of copper.csv data file {#tbl-copper .table-condensed}
+
+------------ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+**COPPER**   Categorical listing of the copper treatment (control = no copper applied, week 2 = copper treatment applied in second week and week 1= copper treatment applied in first week) applied to whole plates. Factor A (between plot factor).
+**PLATE**    Substrate provided for polychaete worm colonization on which copper treatment applied. These are the plots (Factor B). Numbers in this column represent numerical labels given to each plate.
+**DIST**     Categorical listing for the four concentric distances from the center of the plate (source of copper treatment) with 1 being the closest and 4 the furthest. Factor C (within plot factor)
+**WORMS**    Density (\#/cm~2~) of worms measured. Response variable.
+------------ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+: Description of the variables in the copper data file {#tbl-copper1 .table-condensed}
+ 
+
+
+# Read in the data
+
+```{r}
+#| label: readData
+copper <- read_csv("../data/copper.csv", trim_ws = TRUE)
+```
+
+# Data preparation
+
+Let start by declaring the categorical variables and random effect as factors.
+
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{Pois}(\lambda_i)\\
+ln(\lambda_i) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\end{align}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
+and $\bf{X}$ is the model matrix representing the overall intercept and effects of copper, distance and their interaction on the number of number of worms.
+Area of the place segment was also incorporated as an offset.
+$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual plates.
+
+These data are density of worms.  This is not ideal.  It would be
+better to have the actual counts along with the area and then model
+against a Poisson or Negative Binomial along with having an offset for
+area.  Such an approach would allow us to effectively model density
+whilst also being able to fit a model with a distribution that closely
+matches the data generation process.
+
+Unfortunately, we only have the densities.  As such, our choice of
+model families is somewhat restricted.  Out choices are:
+
+- Gaussian: assuming normality etc
+- log-normal:
+- Gamma with a log link: so long as we can address the presence of zeros in the data
+- Tweedie
+
+
+
+
+# Fit the model 
+
+::: {.panel-tabset}
+
+:::
+
+
+# MCMC sampling diagnostics 
+
+:::
+
+
+# Model validation 
+
+
+# Partial effects plots 
+
+
+# Model investigation 
+
+
+
+# Further investigations 
+
