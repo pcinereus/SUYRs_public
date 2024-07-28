@@ -1,0 +1,659 @@
+---
+title: "Bayesian GLMM Part7"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../public/resources/ws-style.scss]
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(knitr)     #for kable
+library(ggeffects)
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(tidyverse) #for data wrangling
+library(brms)
+library(tidybayes)
+library(broom.mixed)
+library(rstan)
+library(cmdstanr)
+library(patchwork)
+library(DHARMa)
+library(easystats)
+library(modelsummary)
+source("helperFunctions.R")
+```
+
+# Scenario
+
+In an honours thesis from (1992), Mullens was investigating the ways
+that cane toads ( Bufo marinus ) respond to conditions of hypoxia. Toads
+show two different kinds of breathing patterns, lung or buccal,
+requiring them to be treated separately in the experiment. Her aim was
+to expose toads to a range of O~2~ concentrations, and record their
+breathing patterns, including parameters such as the expired volume for
+individual breaths. It was desirable to have around 8 replicates to
+compare the responses of the two breathing types, and the complication
+is that animals are expensive, and different individuals are likely to
+have different O~2~ profiles (leading to possibly reduced power). There
+are two main design options for this experiment;
+
+-   One animal per O~2~ treatment, 8 concentrations, 2 breathing types.
+    With 8 replicates the experiment would require 128 animals, but that
+    this could be analysed as a completely randomized design
+-   One O~2~ profile per animal, so that each animal would be used 8
+    times and only 16 animals are required (8 lung and 8 buccal
+    breathers)
+
+Mullens decided to use the second option so as to reduce the number of
+animals required (on financial and ethical grounds). By selecting this
+option, she did not have a set of independent measurements for each
+oxygen concentration, by repeated measurements on each animal across the
+8 oxygen concentrations.
+
+![Toad](../public/resources/bufo.jpg){#fig-toad width="251" height="290"}
+
+
+BREATH   TOAD   O2LEVEL   FREQBUC   SFREQBUC
+-------- ------ --------- --------- ----------
+lung     a      0         10.6      3.256
+lung     a      5         18.8      4.336
+lung     a      10        17.4      4.171
+lung     a      15        16.6      4.074
+\...     \...   \...      \...      \...
+
+: Format of mullens.csv data file {#tbl-mullens .table-condensed}
+
+-------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+**BREATH**     Categorical listing of the breathing type treatment (buccal = buccal breathing toads, lung = lung breathing toads). This is the between subjects (plots) effect and applies to the whole toads (since a single toad can only be one breathing type - either lung or buccal). Equivalent to Factor A (between plots effect) in a split-plot design
+**TOAD**       These are the subjects (equivalent to the plots in a split-plot design: Factor B). The letters in this variable represent the labels given to each individual toad.
+**O2LEVEL**    0 through to 50 represent the the different oxygen concentrations (0% to 50%). The different oxygen concentrations are equivalent to the within plot effects in a split-plot (Factor C).
+**FREQBUC**    The frequency of buccal breathing - the response variable
+**SFREQBUC**   Square root transformed frequency of buccal breathing - the response variable
+-------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+: Description of the variables in the mullens data file {#tbl-mullens1 .table-condensed}
+
+# Read in the data
+
+```{r}
+#| label: readData
+mullens <- read_csv('../public/data/mullens.csv', trim_ws=TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(mullens)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(mullens)
+```
+
+## str
+```{r}
+str(mullens)
+```
+
+## Easystats (datawizard)
+```{r}
+mullens |> datawizard::data_codebook()
+```
+
+
+## Skim (modelsummary)
+```{r}
+mullens |> modelsummary::datasummary_skim()
+mullens |> modelsummary::datasummary_skim(by = c("BREATH", "O2LEVEL"))
+```
+
+:::
+
+
+<!-- END_PRIVATE-->
+
+# Exploratory data analysis
+
+Model formula:
+$$
+\begin{align}
+y_i \sim{} \mathcal{Pois}(\lambda_i)\\
+ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\end{align}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
+and $\bf{X}$ is the model matrix representing the overall intercept and effects of copper, distance and their interaction on the number of number of worms.
+Area of the place segment was also incorporated as an offset.
+$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual plates.
+
+<!-- START_PRIVATE-->
+In this example, the individual `TOAD`s are the random blocks.  Each toad can only
+be of one `BREATH` type (they are either predominantly buccal breathers or
+predominantly lung breathers).  Hence, `BREATH` is a between `TOAD` (block)
+effect.  The frequency of buccal breathing of ach `TOAD` was measured under
+eight different oxygen levels and thus, these represent the within block effect,
+as will the interaction between breathing type and oxygen level.
+
+The response in this case is a little tricky since it is a proportion, but
+without the full original measurements.  For example a frequency of 50% would
+indicate that half of the breaths taken by the toad during the monitoring phase
+were buccal breaths.  Ideally, it would be good to have the actual counts (both
+the number of buccal breaths and the total number of breaths).  That way, we
+could model the data against a binomial distribution.
+
+As it is, we only have the proportion (as a percentage).  Although we could
+model this against a beta distribution, this could be complicated if there are
+proportions of either 0 or 1 (100).
+
+To help guide us through this and the other typical model assumptions, lets
+start by graphing the frequency of buccal breathing against breathing type and
+oxygen level.  However, before we do, we need to make sure that all categorical
+variables are declared as factors (including the random effect). If we intend
+to model against a beta distribution, we will need a version of the response
+that is represented on a scale between 0 and 1 (but not include 0 or 1).
+
+```{r dataPreparation, results='markdown', eval=TRUE, mhidden=FALSE}
+mullens <- mullens |>
+  mutate(BREATH = factor(BREATH),
+         TOAD = factor(TOAD),
+         pBUC = FREQBUC/100,
+         pzBUC = ifelse(pBUC == 0,0.01, pBUC))
+```
+::: {.panel-tabset}
+## Boxplots
+So starting with the raw response.
+
+```{r eda1a, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(mullens,aes(y=FREQBUC, x=factor(O2LEVEL), color=BREATH)) +
+    geom_boxplot()
+```
+
+**Conclusions:**
+
+- there is a very clear relationship between mean and variance (boxplots that
+  are higher up the y-axis are taller).
+- it might be possible to address this via a logarithmic or root transformation,
+  however this is the least favourable option (particularly root
+  transformations due to issues with back-transformations).
+
+## Scatterplot
+
+If we intend to use a beta distribution, we could repeat the above with the
+scaled response.  Since the rescaling maintains the same ranking and relative
+spacing, the plot will look the same as above, just with a different y-axis.
+However, our interpretation will change.  Under a beta distribution (with logit link), we expect
+that the variance and mean will be related.  We expect that the distributions
+will become more varied and more symmetrical as the expected mean shifts towards
+0.5.  Distributions approaching 0 and 1 will be more asymmetrical and smaller.
+This indeed does seem to be the case here.
+
+Now lets explore the oxygen trends (separately for each breathing type).
+
+```{r eda1b, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(mullens,aes(y=pzBUC, x=O2LEVEL, color=BREATH)) +
+    geom_smooth() + geom_point()
+
+```
+
+**Conclusions:**
+
+- although linearity seems reasonable for the buccal breathers, there is
+definitely evidence of non linearity in the lung breathers.
+- it might be interesting to fit polynomial trends for oxygen concentration.
+
+## Facets
+
+```{r eda1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=7}
+ggplot(mullens,aes(y=pzBUC, x=O2LEVEL, color=BREATH)) +
+  geom_smooth() + geom_point() +
+  facet_wrap(~BREATH+TOAD, scales='free')
+  #facet_grid(TOAD~BREATH)
+```
+
+**Conclusions:**
+
+- it does appear that different toads (within the same breathing type) have very
+different levels of buccal breathing
+- the individual toads also have varying responses to changes in oxygen concentration
+- it might be useful to explore random intercept/slope models.
+
+:::
+<!-- END_PRIVATE-->
+
+# Fit the model 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## beta
+:::: {.panel-tabset}
+### brms
+
+Explore the default priors
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
+mullens.form <- bf(pBUC ~ BREATH*poly(O2LEVEL,3) + (1|TOAD),
+  family=zero_one_inflated_beta())
+get_prior(mullens.form, data =  mullens)
+
+```
+
+
+Start by fitting with priors only
+Remember that when fitting polynomials, they are essentially centered...
+
+```{r fitModel3a, results='markdown', eval=TRUE, mhidden=TRUE}
+mullens |> group_by(BREATH) |>
+    summarise(logit(median(pBUC)),
+              logit(mad(pBUC)))
+median(logit(mullens$pBUC))
+mad(logit(mullens$pBUC))
+
+sd(logit(mullens$pBUC))/apply(model.matrix(~BREATH*poly(O2LEVEL,3), data = mullens), 2, sd)
+
+standist::visualize('gamma(0.01, 0.01)', 'gamma(2,1)', 'gamma(1,1)', xlim=c(0,10))
+standist::visualize('beta(1,1)', xlim=c(0,1))
+priors <- prior(normal(-2, 2), class='Intercept') +
+    prior(normal(0,1), class='b') +
+    ## prior(normal(0,1), class='b', coef = "BREATHlung") +
+    #prior(gamma(2,1), class='sd') +
+    prior(student_t(3, 0, 2), class='sd') +
+    prior(gamma(0.01, 0.01), class='phi') +
+    ## prior(gamma(2, 1), class='phi') +
+    prior(beta(1,1), class='zoi') +
+    prior(beta(1,1), class='coi')
+
+mullens.form <- bf(pBUC ~ BREATH*poly(O2LEVEL,3) + (1|TOAD),
+  family=zero_one_inflated_beta())
+
+mullens.brm <- brm(mullens.form,
+  data=mullens,
+  prior = priors,
+  sample_prior = 'only',
+  iter=5000,
+  warmup=2500,
+  thin=5,
+  chains=3, cores=3,
+  refresh =  0,
+  seed = 123,
+  control=list(adapt_delta=0.99, max_treedepth = 20),
+  backend =  'cmdstan')
+```
+
+
+```{r fitModel3b, results='markdown', eval=TRUE, mhidden=TRUE}
+mullens.brm |> conditional_effects(effects = "O2LEVEL:BREATH") |> plot(points =  TRUE) 
+```
+
+```{r fitModel3c, results='markdown', eval=TRUE, mhidden=TRUE}
+mullens.brm2 <- update(mullens.brm, sample_prior = "yes", refresh =  0,
+  cores = 3, seed =  123)
+priors <- prior(normal(-2, 2), class='Intercept') +
+    prior(normal(0,2), class='b') +
+    prior(student_t(3, 0, 2), class='sd') +
+    prior(gamma(0.01, 0.01), class='phi') +
+    prior(beta(1,1), class='zoi') +
+    prior(beta(1,1), class='coi')
+mullens.brm3 <- update(mullens.brm2, prior =  priors, refresh =  0,
+  cores = 3, seed =  123)
+```
+
+```{r fitModel3d, results='markdown', eval=TRUE, mhidden=TRUE}
+mullens.brm2 |> conditional_effects(effects = "O2LEVEL:BREATH") |> plot(points =  TRUE) 
+mullens.brm2 |> ggpredict(~O2LEVEL|BREATH) |> plot(show_data = TRUE, jitter =  FALSE)
+mullens.brm3 |> conditional_effects(effects = "O2LEVEL:BREATH") |> plot(points =  TRUE) 
+```
+
+```{r fitModel3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 10, fig.height=8}
+mullens.brm2 |> SUYR_prior_and_posterior()
+mullens.brm3 |> SUYR_prior_and_posterior()
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+MCMC sampling diagnostics
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+### stan plots
+
+```{r modelValidation1a, results='markdown', eval=FALSE, mhidden=TRUE}
+mullens.brm3$fit |> stan_trace()
+mullens.brm3$fit |> stan_ac()
+mullens.brm3$fit |> stan_rhat()
+mullens.brm3$fit |> stan_ess()
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model validation
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+:::: {.panel-tabset}
+### posterior probability checks
+
+```{r modelValidation2a, results='markdown', eval=FALSE, mhidden=TRUE}
+mullens.brm3 |> pp_check(type = 'dens_overlay', ndraws=200)
+
+mullens.brm3 |> pp_check(group="BREATH", type='intervals_grouped') 
+mullens.brm3 |> pp_check(group="O2LEVEL", type='intervals_grouped') 
+```
+
+### DHARMa residuals
+
+```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+mullens.resids <- make_brms_dharma_res(mullens.brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(mullens.resids)) +
+               wrap_elements(~plotResiduals(mullens.resids, form = factor(rep(1, nrow(mullens))))) +
+               wrap_elements(~plotResiduals(mullens.resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(mullens.resids))
+```
+:::
+<!-- END_PRIVATE-->
+
+# Partial effects plot
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+:::: {.panel-tabset}
+### Conditional effects
+```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.brm3 |> conditional_effects(effects = "O2LEVEL:BREATH") |> plot(points =  TRUE) 
+```
+## ggpredict
+
+```{r partialPlot2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.brm3 |> ggpredict(~O2LEVEL|BREATH) |> plot(add.data = TRUE, jitter =  FALSE)
+```
+## ggemmeans
+
+```{r partialPlot2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.brm3 |> ggemmeans(~O2LEVEL|BREATH) |> plot(add.data = TRUE, jitter =  FALSE)
+
+newdata <- with(mullens, list(
+  O2LEVEL = seq(min(O2LEVEL), max(O2LEVEL), len =  100),
+  BREATH =  levels(BREATH)))
+
+mullens.em <-
+  mullens.brm3 |>
+  emmeans(~O2LEVEL|BREATH, at = newdata, type = "response") |> 
+  as.data.frame()
+mullens.em |>
+  ggplot(aes(y = response, x = O2LEVEL, colour = BREATH, fill = BREATH)) +
+  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD),
+    alpha =  0.2, colour = NA) +
+  geom_line()
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+:::: {.panel-tabset}
+### summary
+```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.brm2 |> summary()
+```
+### as_draws_df()
+```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.brm3 |>
+  as_draws_df() |>
+  mutate(across(everything(), exp)) |> 
+  dplyr::select(matches("^b_.*|^sd_.*")) |> 
+  summarise_draws(
+    median,
+    HDInterval::hdi,
+    rhat,
+    length,
+    ess_bulk, ess_tail,
+    Pl = ~ mean(.x < 1),
+    Pg = ~ mean(.x > 1)
+  ) |>
+  knitr::kable()
+
+mean(mullens$O2LEVEL)
+0.163/(1+0.163)
+
+mullens.brm3 |>
+  as_draws_df() |>
+  dplyr::select(matches("^b_.*")) |> 
+  exp() |> 
+  summarise_draws(
+    median,
+    HDInterval::hdi,
+    rhat,
+    length,
+    ess_bulk, ess_tail,
+    Pl = ~ mean(.x < 1),
+    Pg = ~ mean(.x > 1)
+  )
+mullens.brm2 |> performance::r2()
+mullens.brm2 |> performance::r2_posterior() |> as.data.frame() |>
+  median_hdci()
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Further investigations
+
+```{r furtherInvestigations1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.brm3 |> emtrends(specs = 'BREATH',  var = 'O2LEVEL',  max.degree = 3)
+mullens.brm3 |> emtrends(specs = 'BREATH',  var = 'O2LEVEL',  max.degree = 3) |> gather_emmeans_draws() |>
+  summarise(median_hdci(.value),
+    Pl = mean(.value < 0),
+    Pg =  mean(.value > 0)
+    )  
+```
+
+```{r furtherInvestigations1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.brm3 |> emmeans(~BREATH|O2LEVEL, at =  list(O2LEVEL = c(0, 21, 50))) |>
+  pairs() |> 
+  gather_emmeans_draws() |>
+  mutate(.value = exp(.value)) |> 
+  summarise(median_hdci(.value),
+    Pl = mean(.value < 1),
+    Pg =  mean(.value > 1)
+    )  
+
+
+mullens.grid <- with(mullens,
+  list(O2LEVEL = seq(min(O2LEVEL), max(O2LEVEL), len = 1000),
+    BREATH = levels(BREATH)))
+## mullens.grid <- with(mullens,
+##   list(O2LEVEL = modelr::seq_range(O2LEVEL, n = 1000),
+##     BREATH = levels(BREATH)))
+
+## At what point does the evidence for the curves being different stop
+mullens.brm3 |> emmeans(~BREATH|O2LEVEL, at =  mullens.grid) |>
+  pairs() |> 
+  gather_emmeans_draws() |>
+  mutate(.value = exp(.value)) |> 
+  summarise(median_hdci(.value),  
+    Pl = mean(.value < 1),
+    Pg =  mean(.value > 1)
+  ) |>
+  filter(Pg < 0.90) |>
+  slice(1:3)
+
+## Find the peak
+newdata <- mullens.brm3 |>
+  emmeans(~O2LEVEL|BREATH,  at = mullens.grid) |>
+  as.data.frame()
+newdata |> group_by(BREATH) |>
+  summarise(value = O2LEVEL[which.max(emmean)])
+## With uncertainty
+mullens.brm3 |>
+  emmeans(~O2LEVEL|BREATH,  at = mullens.grid) |>
+  gather_emmeans_draws() |>
+  group_by(.draw, BREATH) |>
+  summarise(value = O2LEVEL[which.max(.value)]) |>
+  ungroup() |>
+  group_by(BREATH) |>
+  summarise(median_hdci(value))
+
+  
+# Or via Derivatives
+mullens.brm3 |> estimate_slopes(trend =  "O2LEVEL",
+  at = c("BREATH='lung'","O2LEVEL"))
+
+mullens.brm2 |>
+  emtrends(~O2LEVEL|BREATH, var = "O2LEVEL",
+    cov.red = \(x) seq(min(x), max(x), length = 10)
+  ) |>
+  summary() |>
+  ggplot(aes(y = O2LEVEL.trend, x = O2LEVEL, colour =  BREATH)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD, fill = BREATH), alpha = 0.2) +
+  geom_line()
+```
+
+
+# Summary figure
+
+```{r summaryFigure1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mullens.grid <- with(mullens,
+   list(BREATH = levels(BREATH),
+     O2LEVEL = modelr::seq_range(O2LEVEL, n=100)
+     )
+)
+newdata <- mullens.brm2 |>
+    emmeans(~O2LEVEL|BREATH, at = mullens.grid, type = 'response') |>
+    as.data.frame()
+head(newdata)
+ggplot() +
+    geom_ribbon(data = newdata,
+                aes(ymin = lower.HPD, ymax = upper.HPD,
+                    x = O2LEVEL, fill = BREATH), alpha = 0.3)+    
+    geom_line(data = newdata,
+              aes(y = response, x = O2LEVEL, color = BREATH)) +
+    scale_y_continuous('Buccal breathing rate', labels = function(x) 100*x) +
+    theme_classic()
+
+```
+
+
+
+
+```{r old, results='markdown', eval=FALSE, mhidden=TRUE}
+##prior_summary(mullens.brm)
+
+
+## pars <- mullens.brm |> get_variables()
+## wch <- grepl('^b_.*|^sd_.*|phi', pars, perl=TRUE)
+
+## g <- vector('list', length=sum(wch)-1)
+## names(g) <- pars[wch][-1]
+## for (i in pars[wch]) {
+##     print(i)
+##     if (i == 'b_Intercept') next
+##     p <- mullens.brm |> hypothesis(paste0(i,'=0'), class='') |> plot()
+##     g[[i]] <- p[[1]]
+## }
+## patchwork::wrap_plots(g)
+
+stan_trace(mullens.brm$fit, pars = pars[wch])
+stan_ac(mullens.brm$fit, pars = pars[wch])
+stan_rhat(mullens.brm$fit, pars = pars[wch])
+stan_rhat(mullens.brm$fit)
+stan_ess(mullens.brm$fit)
+
+
+preds <- posterior_predict(mullens.brm,  nsamples=250,  summary=FALSE)
+mullens.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = mullens$pBUC,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = FALSE)
+plot(mullens.resids)
+testDispersion(mullens.resids)
+```
+
+# References
+ 
