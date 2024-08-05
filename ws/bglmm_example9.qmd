@@ -1,0 +1,204 @@
+---
+title: "Bayesian GLMM Part9"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(knitr)     #for kable
+library(effects)   #for partial effects plots
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(tidyverse) #for data wrangling
+library(brms)
+library(tidybayes)
+library(bayesplot)
+library(broom.mixed)
+library(rstan)
+library(patchwork)
+library(modelsummary)
+library(DHARMa)
+source('helperFunctions.R')
+```
+
+
+
+# Scenario
+
+Once it is established that mass coral bleaching is occurring on the
+Great Barrier Reef (GBR), a monitoring team is mobilised in both the
+air and water in order to document the scale and extent of the
+bleaching. To better understand the causes and consequences of
+bleaching, one marine ecologist (lets call him Terry) was interested
+in investigating differences in bleaching extent across different reef
+habitats. To do so, aerial surveys were partitioned into four habitats
+(C - crest, F - flank, L - lower, U - upper).
+
+Bleaching is scored categorically according to the following scale.
+
+| Bleaching Score | 2016 Equates to  |
+|-----------------+------------------|
+|               0 | No bleaching     |
+|               1 | 0-10% bleaching  |
+|               2 | 10-30% bleaching |
+|               3 | 30-60% bleaching |
+|               4 | > 60% bleaching  |
+
+The GBR is very large and the extent of coral bleaching is not uniform
+throughout the reef. Hence, Terry wanted to see if the habitat
+patterns were similar throughout the GBR or whether they were
+dependent on the overall bleaching severity.
+
+# Read in the data
+
+2016 data only
+
+```{r readData, results='markdown', eval=TRUE}
+hughes = read_csv('../data/hughes.csv', trim_ws=TRUE)
+glimpse(hughes)
+```
+
+| REEF   | HABITAT | SECTOR | SCORE |
+|--------|---------|--------|-------|
+| 09-357 | C       | North  | 4     |
+| 09-357 | F       | North  | 4     |
+| 09-357 | U       | North  | 3     |
+|        |         |        |       |
+
+
+# Data preparation
+
+
+# Exploratory Data Analysis
+
+Proportional (cumulative link) odds-ratio models are useful when the latent
+(unmeasured) response is recorded on a ordinal (ordered categorical) scale.
+When this is the case, we can calculate the probability of a that an observed
+ordinal score ($y$) is less than or equal to any given level ($i$: category) given a set of
+covariates ($\boldsymbol{X}$) according to the following:
+
+$$ Pr(y\le i|\boldsymbol{X}) =
+\frac{1}{1+e^{-(\theta_i - \boldsymbol{\beta}.\boldsymbol{X})}}\\ $$
+
+where $y$ is the observed categorical response, $\boldsymbol{X}$ is a ($n \times
+p$) effects model matrix, $\boldsymbol{\beta}$ are the $p$ effects parameters
+and $\theta_i$ are the $K-1$ category thresholds
+
+
+
+
+# Fit the model
+
+::: {.panel-tabset}
+
+
+:::
+
+# MCMC sampling diagnostics
+
+::: {.panel-tabset}
+
+
+:::
+
+# Model validation 
+
+::: {.panel-tabset}
+
+
+:::
+
+# Model investigation 
+
+::: {.panel-tabset}
+
+
+:::
+
+
+
+
+# Further investigations 
+
+::: {.panel-tabset}
+
+:::
+
+
+
+
+

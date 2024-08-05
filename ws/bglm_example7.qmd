@@ -1,0 +1,293 @@
+---
+title: "Bayesian GLM Part7"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(standist)      #for exploring distributions
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(HDInterval)    #for HPD intervals
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(posterior)     #for posterior draws
+library(ggeffects)     #for partial effects plots
+library(patchwork)     #for multi-panel figures
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(geoR)     #framework for stats, modelling and visualisation
+library(modelsummary)  #for data and model summaries 
+theme_set(theme_grey()) #put the default ggplot theme back
+source('helperFunctions.R')
+```
+
+# Scenario
+
+@Mitchell-2019 presented a data set in which male guppy fish where
+placed individually into long, narrow and shallow tanks that
+predominately only permitted the fish to swim in two dimensions. The
+activity rate (cumulative distance swam) of each guppy fish was
+remotely recorded via tracking software during 20 minute trials
+conducted each day for 14 days. The order in which individual guppy
+fish were recorded each day was randomised and the time of day of each
+trial was recorded.
+
+The researchers were interested in whether the the guppy fish become
+habituated to the experimental conditions and altered their activity
+patterns over time.
+
+![guppy fish](../resources/guppy.png){#fig-guppy width=70%}
+
+The data are in the file
+**mitchell.csv** in the **data** folder.
+
+| ID   | TOD  | Day | Dist_moved |
+|------|------|-----|------------|
+| A39  | 0.39 | 7   | 3439.93    |
+| A3   | 0.39 | 7   | 2795.08    |
+| A13  | 0.39 | 7   | 5258.79    |
+| \... | \... |     |            |
+
+: Format of the mitchell.csv data file {#tbl-mitchell .table-condensed}
+
+---------------- ---------------------------------------------------
+**ID**:           Individual guppy fish ID - Random variable
+**TOD**:          Time of day of observation as a proportion - Predictor variable
+**Day**:          Day post entry into tank - Predictor variable
+**Dist_moved**:   Total distance (cm) moved in 20 min trial - Response variable
+---------------- ---------------------------------------------------
+ 
+: Description of the variables in the mitchell data file {#tbl-mitchell1 .table-condensed}
+ 
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+mitchell <- read_csv("../data/mitchell.csv", trim_ws = TRUE)
+```
+
+
+# Data preparation
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i/1000 \sim{} \mathcal{Gamma}(\lambda_i)\\
+ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of
+the fixed and random effects parameters respectively and $\bf{X}$ is
+the model matrix representing the overall intercept and effects of day
+and time of day on the total distance moved during the trial. $\bf{Z}$
+represents a cell means model matrix for the random intercepts
+associated with individual guppies.
+
+
+# Fit the model 
+
+```{r}
+#| label: process_more
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+mitchell_sub <- mitchell |>
+    ## filter(ID == "A63") |>
+    filter(ID == "C69") |>
+    droplevels()
+```
+
+
+
+# Model validation 
+
+
+# Refit model
+ 
+
+
+### stan plots
+
+The `brms` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+
+  Ratios all very high.
+
+
+
+### pp check
+
+
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+
+**Conclusions:**
+
+- the simulated residuals do suggest that there might be a dispersion issue 
+- it might be worth exploring either zero-inflation, a negative
+  binomial model, or including a observation-level random effect.
+
+```{r}
+#| label: name
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+
+mitchell.brm3 |> augment() |>
+  ## group_by(ID) |>
+  reframe(ACF = as.numeric(acf(.resid, plot =  FALSE)$acf)) |>
+  ## group_by(ID) |>
+  mutate(N =  1:n()) |> 
+  ## slice(1:12) |> 
+  ungroup() |>
+  group_by(N) |>
+  summarise(ACF = mean(ACF)) |> 
+  ggplot(aes(y =  ACF, x =  N)) +
+  geom_hline(yintercept =  0) +
+  geom_segment(aes(yend =  0, xend =  N))
+mitchell.brm4 |> augment() |>
+  ## group_by(ID) |>
+  reframe(ACF = as.numeric(acf(.resid, plot =  FALSE)$acf)) |>
+  ## group_by(ID) |>
+  mutate(N =  1:n()) |> 
+  ## slice(1:12) |> 
+  ungroup() |>
+  group_by(N) |>
+  summarise(ACF = mean(ACF)) |> 
+  ggplot(aes(y =  ACF, x =  N)) +
+  geom_hline(yintercept =  0) +
+  geom_segment(aes(yend =  0, xend =  N))
+
+```

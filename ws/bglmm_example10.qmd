@@ -1,0 +1,174 @@
+---
+title: "Bayesian GLMM Part10"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(broom)     #for tidy output
+library(knitr)     #for kable
+library(effects)   #for partial effects plots
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(tidyverse) #for data wrangling
+library(brms)
+library(tidybayes)
+library(bayesplot)
+library(broom.mixed)
+library(rstan)
+library(patchwork)
+library(modelsummary)
+library(DHARMa)
+source('helperFunctions.R')
+```
+
+
+# Scenario
+
+For over 35 years, the AIMS long term monitoring program has performed
+benthic surveys of coral reefs on the Great Barrier Reef (GBR). To do
+so the team uses two main survey techniques 1) Manta Tow and 2) Photo
+transects. The current example focuses on data collected using the
+later technique.  
+Within each reef, there are three sites on the north east flank and
+within each site there are five permanent transects. Every year, the
+team return and take photos every meter along the transects. Once back
+in the laboratory, five points from every photo are scored according
+to what is represented underneath the point.
+
+The main objective of long-term monitoring is to be able to report on
+status and trends. Specifically, what is the status of each major
+benthic group (such as hard coral, soft coral and macroalgae) and how
+are they changing (particularly in response to major disturbances).
+
+For this example, we will focus on a single reef (Agincourt Reef
+No.1).
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+ltmp <- read_csv('../data/ltmp.csv', trim_ws=TRUE)
+glimpse(ltmp)
+```
+
+| AIMS_REEF_NAME | REPORT_YEAR | SITE_NO | TRANSECT_NO | HC   | n.points | total.points |
+|----------------|-------------|---------|-------------|------|----------|--------------|
+| Arlington Reef | 2006        | 1       | 1           | 10.0 | 20       | 200          |
+| Arlington Reef | 2006        | 1       | 2           | 10.5 | 21       | 200          |
+|                |             |         |             |      |          |              |
+
+
+# Data preparation
+
+
+# Exploratory Data Analysis
+
+
+
+# Fit the model
+
+::: {.panel-tabset}
+
+
+:::
+
+# MCMC sampling diagnostics
+
+::: {.panel-tabset}
+
+
+:::
+
+# Model validation 
+
+::: {.panel-tabset}
+
+
+:::
+
+# Model investigation 
+
+::: {.panel-tabset}
+
+
+:::
+
+
+# Further investigations 
+
+::: {.panel-tabset}
+
+:::
+
+
