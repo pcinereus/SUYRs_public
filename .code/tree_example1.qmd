@@ -1,0 +1,748 @@
+---
+title: "Regression trees example 1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../public/resources/ws-style.scss]
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache = TRUE, cache.lazy = FALSE, tidy='styler')
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(gbm)         #for gradient boosted models
+library(car)
+library(dismo)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(gridExtra)
+library(patchwork)
+library(easystats)
+```
+
+# Scenario
+
+@Loyn-1987-1987 modelled the abundance of forest birds with six predictor
+variables (patch area, distance to nearest patch, distance to nearest
+larger patch, grazing intensity, altitude and years since the patch had
+been isolated).
+
+![Regent honeyeater](../public/resources/regent_honeyeater_small.jpg){#fig-honeyeater width="165" height="240"}
+
+
+ABUND   DIST   LDIST   AREA   GRAZE   ALT   YR.ISOL
+------- ------ ------- ------ ------- ----- ---------
+..      ..     ..      ..     ..      ..    ..
+
+: Format of loyn.csv data file {#tbl-loyn .table-condensed}
+
+------------- ------------------------------------------------------------------------------
+**ABUND**     Abundance of forest birds in patch- response variable
+**DIST**      Distance to nearest patch - predictor variable
+**LDIST**     Distance to nearest larger patch - predictor variable
+**AREA**      Size of the patch - predictor variable
+**GRAZE**     Grazing intensity (1 to 5, representing light to heavy) - predictor variable
+**ALT**       Altitude - predictor variable
+**YR.ISOL**   Number of years since the patch was isolated - predictor variable
+------------- ------------------------------------------------------------------------------
+
+: Description of the variables in the loyn data file {#tbl-loyn1 .table-condensed}
+
+The aim of the analysis is to investigate the effects of a range of
+predictors on the abundance of forest birds.
+
+We have previously analysed these data in [Example
+4](glm_example4.html) and the Bayesian version ([Example
+4](bglm_example4.html)). On those occasions, we used a multiple linear
+model with scaled predictors (some of which were also log-transformed)
+against a lognormal distribution.
+
+On this occassion we will take a different approach. We will use
+regression trees in order to explore which variables might be
+"important" drivers of bird abundances and the possible nature of any
+relationships and interactions. Such an analysis might help refine
+sensible candidate models to explore via linear modelling, yet might
+also serve as either an analysis in its own right
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+loyn <- read_csv('../public/data/loyn.csv', trim_ws=TRUE)
+glimpse(loyn)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+#| dependson: readData
+
+loyn |> glimpse()
+```
+
+## head
+```{r}
+#| label: headData
+#| dependson: readData
+## Explore the first 6 rows of the data
+loyn |> head()
+```
+
+## str
+```{r}
+#| label: strData
+#| dependson: readData
+loyn |> str()
+```
+
+## Easystats (datawizard)
+
+```{r}
+#| label: easyData
+#| dependson: readData
+loyn |> datawizard::data_codebook()
+```
+:::
+
+<!-- END_PRIVATE-->
+# Exploratory data analysis 
+
+<!-- START_PRIVATE-->
+
+The GRAZE predictor represents grazing intensity.  Note, this was essentially a
+categorical variable with levels 1 (no grazing) through to 5 (intense grazing).
+Although we could attempt to model this as a continuous predictor, such an
+approach would assume that this is a linear scale in which the interval between
+each successive level is the same.  That is, the difference between level 1 and
+2 is the same as the difference between 4 and 5 etc.  Since, these were
+categories, such spacing is not guaranteed.  It might therefore be better to
+model this variable as a categorical variable. 
+
+Finally, even in the absence of issues relating to the range of each predictor
+within each level of GRAZE, it might still be advantageous to centre each
+predictor. Centering will provide computational advantages and also ensure that
+the intercept has a more useful meaning. 
+
+```{r prepareData, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+#| dependson: readData
+loyn <- loyn |> mutate(fGRAZE=factor(GRAZE))
+```
+
+Unlike linear models, regression trees make fewer assumptions about
+the data. For example, normality (distribution), homogeneity of
+variable (dispersion) and linearity are no longer assumed. Rather than
+optimising against a likelihood, regression trees use a **loss
+function**.
+
+Nevertheless, it is always insightful to explore the data prior to
+performing any analyses.
+
+For regression trees, it is also important to consider whether you
+want to impose monotonic relationships. Monotonic relationships are
+those that only advance either positively or negatively. Regression
+trees are inherently non-linear and have the tendency to overfit to
+minor perturbations in the training data. In situations where such
+undulations would lack ecological reasoning, we can specify that a
+specific partial trend must be monotonic.
+
+::: {.panel-tabset}
+## Scatterplot matrix
+
+A scatterplot matrix plots each variable against each other.  It is useful to
+provide boxplots in the diagonals to help explore the distributions.
+
+
+```{r EDA, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+#| dependson: readData
+scatterplotMatrix(~ABUND+DIST+LDIST+AREA+fGRAZE+ALT+YR.ISOL, data=loyn,
+                  diagonal = list(method='boxplot'))
+```
+**Conclusions:**
+
+- on the top row, ABUND is on the y-axis of each plot
+- the second plot from the top left has DIST on the x-axis
+- it is clear from looking at the boxplots on the diagonals that some of the
+  potential predictors (DIST, LDIST and AREA) are not normally distributed.
+- it might be worth log-transforming these variables.  Not only might this help
+  normalise those predictors, it might also improve the linearity between the
+  response and those predictors.
+- we will reserve all other judgements of assumptions until we explore these log-transformations
+
+
+:::
+
+
+<!-- END_PRIVATE-->
+
+
+# Fit the model
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+Now we will specify the gradient boosted model with:
+
+- Gaussian distribution.  This is not the same as the usual 'family'.  It does
+  not directly nominate a modelling family.  Instead it determines the **loss**
+  function that is used to evaluate the tree splits.
+- **var.monotone**: indicates which of the predictors should be constrained to
+  monotonic trends (0: not monotonic, 1: positive monotonic, -1: negative
+  monotonic)
+- **n.trees**: the total number of trees to sequentially fit
+- **interaction.depth**: the number of splits within each tree.  This roughly
+  equates to the order of interactions.  The higher the number, the more complex
+  the interactions can be, however, the faster the potential rate of learning
+- **bag.fraction**: random fraction of data used to fit a single tree
+- **shrinkage**: rate of learning.  The smaller the value, the slower the
+  learning rate.  Typically, values should be between 0.001 and 0.01.
+- **train.fraction**: the proportion of the data used to train the tree. This is
+  for the purpose of determining the balance between over and underfitting and
+  evaluate the accuracy of the fit, however for the former purpose, this is a
+  cruder approach than either out-of-bag or cross validation. Therefore, it is
+  arguably better to set this fraction to 1 (use 100 percent of the data for
+  training) and use either out-of-bag or cross validation and (as we have done
+  here), withhold a fraction of the full data and perform our own accuracy
+  checking.
+- **cv.folds**: the number of cross validation folds.
+
+The values of `n.trees`, `interaction.depth` and `shrinkage` used below are
+purely based on what are typically good starting points.  Nevertheless, they
+will be data set dependent.  We will start off with those values and then evaluate
+whether they are appropriate.
+
+## Fit model
+
+```{r fitModel1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+loyn.gbm <- gbm(ABUND ~ DIST+LDIST+AREA+fGRAZE+ALT+YR.ISOL,
+                  data=loyn,
+                  distribution='gaussian',
+                  var.monotone=c(0,0,1,0,1,1),
+                  n.trees=10000,
+                  interaction.depth=5,
+                  bag.fraction=0.5,
+                  shrinkage=0.01,
+                  train.fraction=1,
+                  n.minobsinnode = 2,
+                  cv.folds=3)
+
+```
+
+## Determine optimum number of trees
+
+We will now determine the optimum number of trees estimated to be required in
+order to achieve a balance between bias (biased towards the exact observations)
+and precision (variability in estimates). Ideally, the optimum number of trees
+should be close to 1000. If it is much less (as in this case), it could imply
+that the tree learned too quickly. On the other hand, if the optimum number of
+trees is very close to the total number of fitted trees, then it suggests that
+the optimum may not actually have occured yet and that more trees should be used
+(or a faster learning rate).
+
+```{r fitModel2, results='markdown', eval=TRUE, mhidden=TRUE}
+(best.iter = gbm.perf(loyn.gbm,method='OOB')) 
+(best.iter = gbm.perf(loyn.gbm,method='cv'))
+```
+
+**Conclusions:** 
+
+- both out-of-bag and cross validation suggest that the total number of trees
+  greatly exceeds the number necessary to achieve the optimum balance between
+  bias and precision.
+- the best iterations for either method is less than 1000 suggesting
+  that the learning rate was too fast
+- it might be worth decreasing the learning rate. 
+- we can probably also reduce the total number of trees (so that it runs a
+  little quicker)
+
+## Refit model
+
+```{r fitModel3, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+loyn.gbm <- gbm(ABUND ~ DIST+LDIST+AREA+fGRAZE+ALT+YR.ISOL,
+                  data=loyn,
+                  distribution='gaussian',
+                  var.monotone=c(0,0,1,0,1,1),
+                  n.trees=5000,
+                  interaction.depth=5,
+                  bag.fraction=0.5,
+                  shrinkage=0.001,
+                  train.fraction=1,
+                  n.minobsinnode = 2,
+                  cv.folds=3)
+
+```
+
+```{r fitModel4, results='markdown', eval=TRUE, mhidden=TRUE}
+(best.iter = gbm.perf(loyn.gbm,method='OOB'))  
+(best.iter = gbm.perf(loyn.gbm,method='cv'))
+```
+
+**Conclusions:** 
+
+- that is better 
+
+:::
+
+<!-- END_PRIVATE-->
+
+# Explore relative influence
+
+<!-- START_PRIVATE-->
+
+If a predictor is an important driver of the patterns in the response, then many
+of the tree splits should feature this predictor.  It thus follows that the
+number of proportion of total splits that features each predictor will be a
+measure of the relative influence of each of the predictors.
+
+```{r relativeInfluence1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=10}
+#| dependson: fitModel3
+summary(loyn.gbm, n.trees=best.iter)  
+```
+
+**Conclusions:**
+
+- shell weight is overwelmingly the most influential predictor.
+- we can also ascribe a kind of signficance to the influence values by
+  determining which of them are greater than $100/p$ where $p$ is the number of
+  predictors.  The logic here is that if all predictors were equally
+  influential, then they would all have a relative influence of $100/p$.  Hence,
+  any predictors that have a relative influence greater than this number must be
+  explaining more than its share (and more than pure chance) and predictors with
+  relative influence lower are explaining less than chance (and therefore not
+  significantly influential).
+
+<!-- END_PRIVATE-->
+
+# Explore partial effects
+
+<!-- START_PRIVATE-->
+
+::: {.panel-tabset}
+
+## Autoplot
+
+```{r partialEffects1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+#| dependson: fitModel3
+ 
+attr(loyn.gbm$Terms,"term.labels")
+plot(loyn.gbm, 3, n.tree=best.iter)
+plot(loyn.gbm, 3, n.tree=best.iter, log = 'x')
+loyn.gbm %>%
+    pdp::partial(pred.var='AREA',
+                 n.trees=best.iter,
+                 recursive=FALSE,
+                 inv.link=I) %>%
+  autoplot()
+
+loyn.gbm %>%
+    pdp::partial(pred.var='AREA',
+                 n.trees=best.iter,
+                 recursive=FALSE,
+                 inv.link=I) %>%
+  autoplot() +
+  scale_x_log10()
+```
+
+Lets use a log x scale so that we can have greater granularity over
+the small patch areas. To do this, it is best to also create a custom
+prediction grid that is evenly spaced on the log scale.
+
+```{r partialEffects1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+#| dependson: fitModel3
+ 
+newdata <- with(loyn, data.frame(lAREA =  seq(min(log(AREA)), max(log(AREA)), len = 100))) |>
+  mutate(AREA = exp(lAREA)) |> 
+  dplyr::select(-lAREA)
+
+loyn.gbm %>%
+  pdp::partial(pred.var='AREA',
+               pred.grid = newdata,
+                 n.trees=best.iter,
+                 recursive=FALSE,
+                 inv.link=I) %>%
+  autoplot() +
+  scale_x_log10()
+```
+
+Recursive indicates that a weighted tree traversal method described by Friedman
+2001 (which is very fast) should be used (only works for gbm).  Otherwise a
+slower brute force method is used. If want to back transform - need to use brute
+force.
+
+## All partials
+
+```{r partialEffects2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=5}
+#| dependson: fitModel3
+ 
+nms <- attr(loyn.gbm$Terms,"term.labels")
+p <- vector('list', length(nms))
+names(p) <- nms
+for (nm in nms) {
+  print(nm)
+  p[[nm]] <- loyn.gbm %>% pdp::partial(pred.var=nm,
+                                 n.trees=best.iter,
+                                 inv.link=I,
+                                 recursive=FALSE,
+                                 type='regression') %>%
+    autoplot() + ylim(0, 30)
+}
+patchwork::wrap_plots(p) 
+patchwork::wrap_plots(p) & theme_classic() 
+
+pp <- map(.x = nms,
+  .f =  ~
+     loyn.gbm %>% pdp::partial(pred.var=.x,
+                                 n.trees=best.iter,
+                                 inv.link=I,
+                                 recursive=FALSE,
+                                 type='regression') %>%
+     autoplot() + ylim(0, 30)
+  )
+
+```
+
+## Explore interactions
+We might also want to explore interactions...
+
+```{r partialEffects3, results='markdown', eval=TRUE, fig.width = 6, fig.height = 6, mhidden=TRUE, cache=FALSE}
+#| dependson: fitModel3
+
+newdata <- with(loyn,
+  expand.grid(lAREA =  seq(min(log(AREA)), max(log(AREA)), len = 100),
+    fGRAZE = levels(fGRAZE))) |>
+  mutate(AREA = exp(lAREA),
+    fGRAZE =  factor(fGRAZE)) |> 
+  dplyr::select(AREA, fGRAZE)
+
+head(newdata)
+loyn.gbm %>%
+    pdp::partial(pred.var=c('AREA','fGRAZE'),
+               pred.grid = newdata,
+               n.trees=best.iter, recursive=TRUE) %>%
+    autoplot() +
+  scale_x_log10() 
+
+## g1 = loyn.gbm %>% pdp::partial(pred.var='SHELL_WEIGHT', n.trees=best.iter,
+##                             recursive=FALSE,inv.link=exp) %>%
+##     autoplot
+## g2 = loyn.gbm %>% pdp::partial(pred.var='HEIGHT', n.trees=best.iter,
+##                             recursive=FALSE,inv.link=exp) %>%
+##     autoplot
+
+
+## g1 + g2
+
+
+newdata <- with(loyn,
+  expand.grid(lAREA =  seq(min(log(AREA)), max(log(AREA)), len = 100),
+    fGRAZE = levels(fGRAZE),
+    DIST = NA, LDIST =  NA, ALT =  NA, YR.ISOL = NA
+  )) |>
+  mutate(AREA = exp(lAREA),
+    fGRAZE =  factor(fGRAZE)) |> 
+  dplyr::select(DIST, LDIST, AREA, fGRAZE, ALT, YR.ISOL)
+loyn.fit <- newdata |>
+  mutate(fit = predict(loyn.gbm,
+    newdata =  newdata,
+    n.trees =  best.iter))
+
+loyn.fit |>
+  ggplot(aes(y =  fit, x =  AREA, colour = fGRAZE)) +
+  geom_line() +
+  scale_x_log10()
+```
+
+```{r partialEffects4, results='markdown', eval=TRUE, fig.width = 4, fig.height = 4, mhidden=TRUE, cache=FALSE}
+#| dependson: fitModel3
+loyn.fit <- loyn.gbm %>%
+    pdp::partial(pred.var=c('AREA','fGRAZE'),
+      pred.grid =  newdata,
+      n.trees=best.iter, recursive=TRUE) |>
+  as.data.frame()
+head(loyn.fit)
+loyn.fit |> ggplot(aes(y =  yhat, x = AREA)) +
+  geom_line(aes(colour = fGRAZE)) +
+  scale_x_log10() +
+  theme_classic()
+  
+```
+:::
+
+<!-- END_PRIVATE-->
+
+# Explore interactions 
+
+<!-- START_PRIVATE-->
+
+::: {.panel-tabset}
+
+Computes Friedman's H-statistic to assess the strength of variable interactions.
+This measures the relative strength of interactions in models
+It is on a scale of 0-1, where 1 is very strong interaction
+In y=β_0+β_1x_1+β_2x_2+β_3x_3..
+H=\frac{β_3}{√{β_1^2+β_2^2+β_3^2}}
+If both main effects are weak, then the H- stat will be unstable.. and could indicate
+a strong interaction.
+
+## One at a time
+
+What were the strong main effects:
+
+ - AREA
+ - fGRAZE
+ - YR.ISOL
+ - ALT
+
+
+```{r Interactions1, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, fig.width=7, fig.height=7}
+attr(loyn.gbm$Terms,"term.labels")
+ 
+interact.gbm(loyn.gbm, loyn,c(3,4), n.tree=best.iter)
+interact.gbm(loyn.gbm, loyn,c(3,4,6), n.tree=best.iter)
+
+```
+
+## All two way interactions
+```{r Interactions3, eval=TRUE, echo=TRUE, mhidden = TRUE}
+terms <- attr(loyn.gbm$Terms,"term.labels")
+loyn.int <- NULL
+for (i in 1:(length(terms)-1)) {
+    for (j in (i+1):length(terms)) {
+        print(paste('i=',i, ' Name = ', terms[i]))
+        print(paste('j=',j, ' Name = ', terms[j]))
+        loyn.int <- rbind(loyn.int,
+                             data.frame(Var1=terms[i], Var2=terms[j],
+                                        "H.stat"=interact.gbm(loyn.gbm, loyn,c(i,j),
+                                                              n.tree=best.iter)
+                                        ))
+    }
+}
+loyn.int %>% arrange(-H.stat)
+```
+
+:::
+
+<!-- END_PRIVATE-->
+
+# Tuning
+
+<!-- START_PRIVATE-->
+
+
+The takes a long time - do over a break
+
+```{r gbmstep1, eval=TRUE, mhidden=TRUE, cache=FALSE, mhidden=TRUE}
+head(loyn)
+set.seed(123)
+loyn.gbm1 <- gbm.step(data=loyn %>% as.data.frame, gbm.x=c(2:5,7,8), gbm.y=1,
+                        tree.complexity=5,
+                        var.monotone=c(1,1,1,1,1,0),
+                        learning.rate=0.001,
+                        bag.fraction=0.5,
+                        family='gaussian',
+  n.trees =  1000)
+```
+
+```{r gbmstep2, eval=TRUE, mhidden=TRUE, cache=FALSE}
+summary(loyn.gbm1)  
+```
+
+
+```{r gbmstep3, eval=TRUE, mhidden=TRUE, cache=FALSE, fig.width=10,  fig.height=10}
+gbm.plot(loyn.gbm1, n.plots=7, write.title = FALSE)  
+```
+
+```{r gbmstep4, eval=TRUE, mhidden=TRUE, cache=FALSE, fig.width=10,  fig.height=10}
+gbm.plot.fits(loyn.gbm1)  
+```
+
+
+```{r gbmstep5, eval=TRUE, mhidden=TRUE, cache=FALSE, fig.width=10,  fig.height=10}
+find.int <- gbm.interactions(loyn.gbm1)
+summary(find.int) 
+find.int$rank.list 
+gbm.perspec(loyn.gbm1,1,2)
+```
+  
+
+<!-- END_PRIVATE-->
+
+# Bootstrapping
+
+<!-- START_PRIVATE-->
+```{r bootstrapping, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 7, fig.height = 5}
+nBoot <- 10
+loyn.pred <- with(loyn,
+                     expand.grid(lAREA = modelr::seq_range(log(AREA), n = 100),
+                                fGRAZE = levels(fGRAZE),
+                                DIST = NA,
+                                LDIST = NA,
+                                ALT = NA,
+                                YR.ISOL = NA)
+) |>
+  mutate(fGRAZE = factor(fGRAZE),
+         AREA = exp(lAREA)) |>
+  dplyr::select(AREA, lAREA, fGRAZE, DIST, LDIST, ALT, YR.ISOL)
+
+loyn.list <- vector('list', nBoot) 
+##loyn.list
+loyn.sum <- vector('list', nBoot) 
+for (i in 1:nBoot) {
+    print(paste0('Boot number: ', i))
+    ## Create random set
+    loyn.rnd <- loyn %>%
+        sample_n(size = n(), replace=TRUE)
+    ## Fit the trees
+    loyn.gbm = gbm(ABUND ~ AREA + fGRAZE + DIST + LDIST + ALT + YR.ISOL,
+                      data=loyn.rnd,
+                      distribution='gaussian',
+                      var.monotone=c(1,0,1,1,1,1),
+                      n.trees=5000,
+                      interaction.depth=5,
+                      bag.fraction=0.5,
+                      shrinkage=0.001,
+                      train.fraction=1,
+                      n.minobsinnode = 2,
+                      cv.folds=3)
+    ## Determine the best number of trees
+    (best.iter = gbm.perf(loyn.gbm,method='cv'))
+    ## predict based on shell weight
+    fit <- predict(loyn.gbm, newdata = loyn.pred, n.trees = best.iter) 
+    loyn.list[[i]] <- data.frame(loyn.pred, Boot = i, Fit = fit)
+    ## relative influence
+    loyn.sum[[i]] <- summary(loyn.gbm, n.trees = best.iter)
+}
+loyn.fit <- do.call('rbind', loyn.list)
+loyn.fit <- loyn.fit %>%
+    group_by(AREA, fGRAZE) %>%
+    ## summarise(Median = median(Fit),
+    ##           Lower = quantile(Fit, p=0.025),
+    ##           Upper = quantile(Fit, p=0.975))
+    ggdist::median_hdci(Fit)       
+g1 <- loyn.fit %>% ggplot(aes(y=Fit, x=AREA, fill=fGRAZE, color=fGRAZE)) +
+    geom_ribbon(aes(ymin=.lower, ymax=.upper), alpha=0.3, color=NA) +
+    geom_line() +
+    scale_fill_viridis_d() +
+  scale_colour_viridis_d() +
+  scale_x_log10() +
+    theme_classic()
+
+loyn.inf <- do.call('rbind', loyn.sum)
+loyn.inf <- loyn.inf %>%
+    group_by(var) %>%
+    ggdist::median_hdci(rel.inf)       
+
+g2 <- loyn.inf %>%
+  arrange(rel.inf) |> 
+  mutate(var =  factor(var, levels = unique(var))) |> 
+  ggplot(aes(y=var, x=rel.inf)) +
+    geom_vline(xintercept=12.5, linetype='dashed') +
+    geom_pointrange(aes(xmin=.lower, xmax=.upper)) +
+    theme_classic()
+
+g2 + patchwork::inset_element(g1, left=0.3, bottom=0.01, right=1, top=0.7)
+g1 + patchwork::inset_element(g2, left=0.5, bottom=0.01, right=1, top=0.4)
+```
+
+```{r}
+library(randomForest)
+loyn.rf = randomForest(ABUND ~ DIST + LDIST + AREA + fGRAZE + ALT + YR.ISOL,
+                       data=loyn, importance=TRUE,
+                       ntree=1000)
+loyn.imp = randomForest::importance(loyn.rf)
+
+
+## Rank by either:
+## *MSE (mean decrease in accuracy)
+## For each tree, calculate OOB prediction error.
+## This also done after permuting predictors.
+## Then average diff of prediction errors for each tree
+## *NodePurity (mean decrease in node impurity)
+## Measure of the total decline of impurity due to each
+## predictor averaged over trees
+100*loyn.imp/sum(loyn.imp)
+varImpPlot(loyn.rf)
+## use brute force
+loyn.rf %>% pdp::partial('AREA') %>% autoplot
+
+
+## loyn.rf.acc <- env %>%
+##     bind_cols(Pred = predict(loyn.rf,
+##                              newdata=env))
+
+## with(loyn.rf.acc,  cor(loyn, Pred))
+
+
+## loyn.rf.acc %>%
+##   ggplot() +
+##   geom_point(aes(y=Pred,  x=loyn)) +
+##   geom_point(data = loyn.acc, aes(y=Pred,  x=loyn), colour = 'red')
+```
+<!-- END_PRIVATE-->
+
+# References

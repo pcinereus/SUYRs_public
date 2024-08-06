@@ -1,0 +1,188 @@
+---
+title: "Bayesian GAM Part3"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r setup, include=FALSE, warnings=FALSE, message=FALSE}
+knitr::opts_chunk$set(cache.lazy = FALSE, tidy='styler')
+```
+ 
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for MCMC diagnostics
+library(DHARMa)     #for residual diagnostics
+library(rstan)      #for interfacing with STAN
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(tidybayes)  #for more tidying outputs
+library(HDInterval) #for HPD intervals
+library(ggeffects)  #for partial plots
+library(broom.mixed)#for summarising models
+library(posterior)  #for posterior draws
+library(ggeffects)  #for partial effects plots
+library(patchwork)  #for multi-panel figures
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(mgcv)
+library(gratia)
+theme_set(theme_grey()) #put the default ggplot theme back
+source('helperFunctions.R')
+```
+
+
+
+# Scenario
+
+The Australian Institute of Marine Science (AIMS) have a long-term
+inshore marine water quality monitoring program in which water samples
+are collected and analysed from sites (reef.alias) across the GBR numerous times 
+per year.  The focus of this program is to report long-term condition and change
+in water quality parameters.
+
+Although we do have latitude and longitudes, the nature of the spatial design
+predominantly reflects a series of transects that start near the mouth of a
+major river and extend northwards, yet mainly within the open coastal zone.  As
+a result, this design is not well suited to any specific spatial analyses (since
+they are mainly one dimensional).
+
+![AIMS water quality monitoring](../resources/AIMS_wq.jpg){#fig-aims width="600" height="325"}
+
+
+LATITUDE LONGITUDE reef.alias Water_Samples Region Subregion Season waterYear DOC
+-------- --------- ---------- ------------- ------ --------- ------ --------- ---
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2008      0.830
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Wet    2008      0.100
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2009      0.282
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Wet    2009      1.27
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2009      0.793
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2010      0.380
+\...     \...      \...       \...          \...   \...      \...   \...      \...
+
+: Format of aims.wq.csv data file {#tbl-aims .table-condensed}
+
+--------------     ---------------------------------------------------------------------
+**LATITUDE**       - Latitudinal coordinate
+**LONGITUDE**      - Longitudinal coordinate
+**reef.alias**     - Internal AIMS reef name
+**Water_Samples**  - Categorical label of who collected the data
+**Region**         - The MMP region
+**Subregion**      - The MMP subregion
+**Season**         - A categorical listing of Wet or Dry
+**waterYear**      - The water year (1st Oct - 30 Sept) to which the data are attached
+**Date**           - The date the sample was collected
+**Mnth**           - The month the sample was collected
+**DOC**            - Nitrite and Nitrate
+--------------     ---------------------------------------------------------------------
+
+: Description of the variables in the aims data file {#tbl-aims1 .table-condensed}
+
+# Read in the data
+
+```{r}
+#| label: readData
+wq <- read_csv("../data/aims.wq1.csv", trim_ws = TRUE)
+```
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i =\beta_0 + f(Date_i) + f(Month_i)
+$$
+
+where $\beta_0$ is the y-intercept. $f(Date)$ and $f(Month)$ indicate the additive smoothing functions of the long-term temporal trends and the annual seasonal trends respectively. 
+
+
+# Data preparations
+
+
+# Simple model (High West only)
+
+
+# MCMC sampling diagnostics 
+
+# Model validation 
+
+# Partial effects plots 
+
+
+# Model investigation 
+
+
+# Explore more models
+# Mixed effects models (all reefs)
+
+
+# Find peak
+
+
+# References

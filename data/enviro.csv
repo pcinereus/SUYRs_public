@@ -1,0 +1,11 @@
+Site,pH,Slope,Pressure,Altitude,Substrate
+Site1,6.1,4.2,101325,2,Quartz
+Site2,6.7,9.2,101352,510,Shale
+Site3,6.8,8.6,101356,546,Shale
+Site4,7,7.4,101372,758,Shale
+Site5,7.2,5.8,101384,813,Shale
+Site6,7.5,8.4,101395,856,Quartz
+Site7,7.5,0.5,101396,854,Quartz
+Site8,7,11.8,101370,734,Shale
+Site9,8.4,8.2,101347,360,Quartz
+Site10,6.2,1.5,101345,356,Quartz
