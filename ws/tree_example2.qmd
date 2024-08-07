@@ -1,0 +1,158 @@
+---
+title: "Regression trees example 1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache = TRUE, cache.lazy = FALSE, tidy='styler')
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(gbm)         #for gradient boosted models
+library(car)
+library(dismo)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(gridExtra)
+library(patchwork)
+library(easystats)
+```
+
+
+# Scenario
+
+@Leathwick-2008-1481 compiled capture data of short-finned eels (_Anguilla
+australis) within New Zealand freshwater streams to explore the distribution of
+the eels for conservation purposes. The goal was to be able to model the
+presence/absence of the eels against a range of environmental characteristics so
+as to predict their more broader occurances and identify which predictors are
+the most important in the predictions.
+
+![eel](../resources/AnguillaAustrRK.jpg){width="350" height="233"}
+
+Format of leathwick.csv data file
+
+Site  Angaus  SegSumT SegTSeas SegLowFlow ... 
+----- ------- ------- -------- ---------- -----
+1     0       16.0       -0.10  1.036     ...
+2     1       18.7        1.51  1.003     ...
+3     0       18.3        0.37  1.001     ...
+4     0       16.7       -3.80  1.000     ...
+5     1       17.2        0.33  1.005     ...
+6     0       15.1        1.83  1.015     ...
+..    ..      ..          ..    ..        ...
+
+-------------- ----------------------------------------------------------------------------------------------------------------------------------------------
+**Site**       Unique label for each site.
+**Angaus**     Presence (1) or absence (0) of _Anguilla australis_ eels
+**SegSumT**    Summer air temperature (degrees celcius) at the river segment
+               scale
+**SegTSeas**   Winter temperature normalised to January temperature at the river
+               segment scale
+**SegLowFlow** Forth root transformed low flow rate at the river segment scale
+**DSDist**     Distance to coast (km) (a downstream predictor)
+**DSDam**      Presence of known downsteam obstructions (a downstream predictor)
+**DSMaxSlope** Maximum downstream slope (a downstream predictor)
+**USAvgT**     Upstream average tempeture (normalised for the river segment)
+**USRainDays** Number of rainy days recorded in the upstream catchment
+**USSlope**    Slope of the river upstream
+**USNative**   Percentage of the upstream riparian vegetation that is native
+**Method**     Method used to capture the eels (categorical predictor)
+**LocSed**     Weighted average of the proportional cover of bed sediment
+               (1=mud, 2=sand, 3=fine gravel, 4=course gravel, 5=cobble, 6=boulder, 7=bedrock)
+-------------- ----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+leathwick <- read_csv('../data/leathwick.csv', trim_ws=TRUE)
+glimpse(leathwick)
+```
+
+
+```{r readData1, results='markdown', eval=TRUE}
+leathwick_test <- read_csv('../data/leathwick_test.csv', trim_ws=TRUE)
+glimpse(leathwick_test)
+```
+
+
+# Exploratory data analysis
+
+
+# Fit the model
+
+
+# Partial plots
+
+
+# Assessing accuracy
+
+
+# References

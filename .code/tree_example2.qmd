@@ -1,0 +1,307 @@
+---
+title: "Regression trees example 1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../public/resources/ws-style.scss]
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache = TRUE, cache.lazy = FALSE, tidy='styler')
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(gbm)         #for gradient boosted models
+library(car)
+library(dismo)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(gridExtra)
+library(patchwork)
+library(easystats)
+```
+
+
+# Scenario
+
+@Leathwick-2008-1481 compiled capture data of short-finned eels (_Anguilla
+australis) within New Zealand freshwater streams to explore the distribution of
+the eels for conservation purposes. The goal was to be able to model the
+presence/absence of the eels against a range of environmental characteristics so
+as to predict their more broader occurances and identify which predictors are
+the most important in the predictions.
+
+![eel](../public/resources/AnguillaAustrRK.jpg){width="350" height="233"}
+
+Format of leathwick.csv data file
+
+Site  Angaus  SegSumT SegTSeas SegLowFlow ... 
+----- ------- ------- -------- ---------- -----
+1     0       16.0       -0.10  1.036     ...
+2     1       18.7        1.51  1.003     ...
+3     0       18.3        0.37  1.001     ...
+4     0       16.7       -3.80  1.000     ...
+5     1       17.2        0.33  1.005     ...
+6     0       15.1        1.83  1.015     ...
+..    ..      ..          ..    ..        ...
+
+-------------- ----------------------------------------------------------------------------------------------------------------------------------------------
+**Site**       Unique label for each site.
+**Angaus**     Presence (1) or absence (0) of _Anguilla australis_ eels
+**SegSumT**    Summer air temperature (degrees celcius) at the river segment
+               scale
+**SegTSeas**   Winter temperature normalised to January temperature at the river
+               segment scale
+**SegLowFlow** Forth root transformed low flow rate at the river segment scale
+**DSDist**     Distance to coast (km) (a downstream predictor)
+**DSDam**      Presence of known downsteam obstructions (a downstream predictor)
+**DSMaxSlope** Maximum downstream slope (a downstream predictor)
+**USAvgT**     Upstream average tempeture (normalised for the river segment)
+**USRainDays** Number of rainy days recorded in the upstream catchment
+**USSlope**    Slope of the river upstream
+**USNative**   Percentage of the upstream riparian vegetation that is native
+**Method**     Method used to capture the eels (categorical predictor)
+**LocSed**     Weighted average of the proportional cover of bed sediment
+               (1=mud, 2=sand, 3=fine gravel, 4=course gravel, 5=cobble, 6=boulder, 7=bedrock)
+-------------- ----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+leathwick <- read_csv('../public/data/leathwick.csv', trim_ws=TRUE)
+glimpse(leathwick)
+```
+
+
+```{r readData1, results='markdown', eval=TRUE}
+leathwick_test <- read_csv('../public/data/leathwick_test.csv', trim_ws=TRUE)
+glimpse(leathwick_test)
+```
+
+<!-- START_PRIVATE-->
+
+```{r preparation, results='markdown', eval=TRUE, hidden=FALSE}
+leathwick <- leathwick %>%
+    mutate(Method=factor(Method),
+           LocSed = as.numeric(LocSed)) %>% 
+    ## LocSed=factor(LocSed)) %>%
+    as.data.frame
+```
+
+```{r preparation1, results='markdown', eval=TRUE, hidden=FALSE}
+leathwick_test <- leathwick_test %>%
+    mutate(Method=factor(Method), 
+           LocSed=as.numeric(LocSed)) %>%
+  as.data.frame()
+```
+
+<!-- END_PRIVATE-->
+
+# Exploratory data analysis
+
+<!-- START_PRIVATE-->
+
+```{r EDA, results='markdown', eval=TRUE, fig.width=15, fig.height=15}
+scatterplotMatrix(~Angaus+SegSumT+SegTSeas+SegLowFlow+DSDist+DSMaxSlope+DSDam+
+                    USAvgT+USRainDays+USSlope+USNative+Method+LocSed,  data=leathwick,
+                  diagonal=list(method='boxplot'))
+```
+
+<!-- END_PRIVATE-->
+
+# Fit the model
+
+<!-- START_PRIVATE-->
+
+In this case, we already have the training and tests sets - there is no need to
+partition out the data.  Nevertheless, it is still worth setting the random seed
+to ensure repeatibility.
+
+```{r fitModel1, results='markdown', eval=TRUE, cache=TRUE}
+set.seed(123)
+
+leathwick.gbm = gbm(Angaus ~ SegSumT+SegTSeas+SegLowFlow+DSDist+DSMaxSlope+DSDam+
+                      USAvgT+USRainDays+USSlope+USNative+Method+LocSed,
+                    data=leathwick, 
+                  distribution='bernoulli',
+                  var.monotone=c(1,1,0,-1,-1,0,1,-1,-1,-1,0,-1),
+                  n.trees=10000,
+                  interaction.depth=5,
+                  bag.fraction=0.5,
+                  shrinkage=0.001,
+                  train.fraction=1,
+                  cv.folds=3)
+```
+
+```{r fitModel2, results='markdown', eval=TRUE, cache=FALSE}
+(best.iter = gbm.perf(leathwick.gbm,method='OOB'))
+(best.iter = gbm.perf(leathwick.gbm,method='cv'))
+```
+
+```{r fitModel3, results='markdown', eval=TRUE, cache=FALSE, fig.width=10, fig.height=10}
+summary(leathwick.gbm, n.trees=best.iter)
+```
+
+<!-- END_PRIVATE-->
+
+# Partial plots
+
+<!-- START_PRIVATE-->
+
+```{r partialPlots1, results='markdown', eval=TRUE, cache=TRUE, fig.width=10, fig.height=10}
+leathwick.gbm %>%
+    pdp::partial(pred.var='SegSumT',
+                 n.trees=best.iter,
+                 inv.link=plogis,
+                 recursive=FALSE,
+                 type='regression') %>%
+    autoplot() +
+    ylim(0,1)
+
+
+nms <- colnames(leathwick)
+p <- vector('list', 12)
+names(p) <- nms[3:14]
+for (nm in nms[3:14]) {
+  print(nm)
+  p[[nm]] <- leathwick.gbm |> pdp::partial(pred.var=nm,
+                                 n.trees=best.iter,
+                                 inv.link=plogis,
+                                 recursive=FALSE,
+                                 type='regression') |>
+    autoplot() + ylim(0, 1)
+}
+ 
+do.call('grid.arrange', p)
+```
+
+<!-- END_PRIVATE-->
+
+# Assessing accuracy
+
+<!-- START_PRIVATE-->
+
+ROC curve: receiver operating characteristic curve
+           performance of a classication model at all thresholds.
+           It plots two components:
+           y-axis: True Positive rate (TP/(TP+FN))
+           x-axis: False Positive rate (FP/(FP+TN))
+AUC: Area under ROC curve
+     an aggregate measure of the performance under all thresolds
+      ranges from 0 (0% correct) to 1 (100% correct).
+max TPR+TNR at:  the threshold. Values above this should be considered 1,
+    otherwise 0 (when classifying)
+    
+```{r Accuracy1, results='markdown', eval=TRUE, cache=FALSE, fig.width=10, fig.height=10}
+leathwick_test %>%
+  bind_cols(Pred = predict(leathwick.gbm,newdata=leathwick_test,
+                           n.tree=best.iter, type='response')) %>%
+  ggplot() +
+  geom_boxplot(aes(y=Pred,  x=as.factor(Angaus_obs))) +
+  geom_point(aes(y=Pred,  x=as.factor(Angaus_obs)), position=position_jitter(width=0.05)) 
+
+
+#preds <- predict.gbm(leathwick.gbm, newdata=leathwick_test,
+#                     n.trees=best.iter,  type='response')
+preds <- leathwick_test |>
+  bind_cols(Pred = predict(leathwick.gbm,newdata=leathwick_test,
+                           n.tree=best.iter, type='response'))
+pres <- preds |> filter(Angaus_obs==1) |> pull(Pred)
+abs <- preds |> filter(Angaus_obs==0) |> pull(Pred)
+e <- dismo::evaluate(p=pres,  a=abs)
+e
+```
+
+## Plot spatial distribution of eels
+
+```{r name, results='markdown', eval=TRUE, fig.width=15, fig.height=15}
+data(Anguilla_grids)
+leathwick.grid = Anguilla_grids
+glimpse(leathwick.grid)
+
+plot(leathwick.grid)
+
+Method <- factor('electric', levels=levels(leathwick$Method))
+Method = as.data.frame(Method)
+
+fit <- predict(leathwick.grid, leathwick.gbm,  const=Method,
+               n.trees=best.iter,  type='response')
+#fit <- mask(fit,  raster(leathwick.grid, 1))
+library(stars)
+fit= stars::st_as_stars(fit)
+
+
+ggplot() +
+  geom_stars(data=fit) +
+  scale_fill_gradient(low='red', high='green', 'Probability\nof occurrance', na.value=NA) +
+  coord_sf(expand=FALSE) +
+  theme_bw()
+```
+ 
+<!-- END_PRIVATE-->
+
+# References
