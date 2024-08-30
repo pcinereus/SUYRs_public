@@ -328,7 +328,7 @@ loyn.gbm <- gbm(ABUND ~ DIST+LDIST+AREA+fGRAZE+ALT+YR.ISOL,
                   distribution='gaussian',
                   var.monotone=c(0,0,1,0,1,1),
                   n.trees=5000,
-                  interaction.depth=5,
+                  interaction.depth=7,
                   bag.fraction=0.5,
                   shrinkage=0.001,
                   train.fraction=1,
@@ -392,18 +392,18 @@ summary(loyn.gbm, n.trees=best.iter)
 attr(loyn.gbm$Terms,"term.labels")
 plot(loyn.gbm, 3, n.tree=best.iter)
 plot(loyn.gbm, 3, n.tree=best.iter, log = 'x')
-loyn.gbm %>%
+loyn.gbm |>
     pdp::partial(pred.var='AREA',
                  n.trees=best.iter,
                  recursive=FALSE,
-                 inv.link=I) %>%
+                 inv.link=I) |>
   autoplot()
 
-loyn.gbm %>%
+loyn.gbm |>
     pdp::partial(pred.var='AREA',
                  n.trees=best.iter,
                  recursive=FALSE,
-                 inv.link=I) %>%
+                 inv.link=I) |>
   autoplot() +
   scale_x_log10()
 ```
@@ -419,12 +419,12 @@ newdata <- with(loyn, data.frame(lAREA =  seq(min(log(AREA)), max(log(AREA)), le
   mutate(AREA = exp(lAREA)) |> 
   dplyr::select(-lAREA)
 
-loyn.gbm %>%
+loyn.gbm |>
   pdp::partial(pred.var='AREA',
                pred.grid = newdata,
                  n.trees=best.iter,
                  recursive=FALSE,
-                 inv.link=I) %>%
+                 inv.link=I) |>
   autoplot() +
   scale_x_log10()
 ```
@@ -444,11 +444,11 @@ p <- vector('list', length(nms))
 names(p) <- nms
 for (nm in nms) {
   print(nm)
-  p[[nm]] <- loyn.gbm %>% pdp::partial(pred.var=nm,
+  p[[nm]] <- loyn.gbm |> pdp::partial(pred.var=nm,
                                  n.trees=best.iter,
                                  inv.link=I,
                                  recursive=FALSE,
-                                 type='regression') %>%
+                                 type='regression') |>
     autoplot() + ylim(0, 30)
 }
 patchwork::wrap_plots(p) 
@@ -456,14 +456,15 @@ patchwork::wrap_plots(p) & theme_classic()
 
 pp <- map(.x = nms,
   .f =  ~
-     loyn.gbm %>% pdp::partial(pred.var=.x,
+     loyn.gbm |> pdp::partial(pred.var=.x,
                                  n.trees=best.iter,
                                  inv.link=I,
                                  recursive=FALSE,
-                                 type='regression') %>%
+                                 type='regression') |>
      autoplot() + ylim(0, 30)
   )
 
+patchwork::wrap_plots(pp) & theme_classic() 
 ```
 
 ## Explore interactions
@@ -480,11 +481,12 @@ newdata <- with(loyn,
   dplyr::select(AREA, fGRAZE)
 
 head(newdata)
-loyn.gbm %>%
-    pdp::partial(pred.var=c('AREA','fGRAZE'),
-               pred.grid = newdata,
-               n.trees=best.iter, recursive=TRUE) %>%
-    autoplot() +
+pdp::partial(loyn.gbm,
+  pred.var=c('AREA','fGRAZE'),
+  pred.grid = newdata,
+  n.trees=best.iter,
+  recursive=TRUE) |>
+  autoplot() +
   scale_x_log10() 
 
 ## g1 = loyn.gbm %>% pdp::partial(pred.var='SHELL_WEIGHT', n.trees=best.iter,
@@ -517,12 +519,16 @@ loyn.fit |>
   scale_x_log10()
 ```
 
+The following no longer works
+
 ```{r partialEffects4, results='markdown', eval=TRUE, fig.width = 4, fig.height = 4, mhidden=TRUE, cache=FALSE}
 #| dependson: fitModel3
-loyn.fit <- loyn.gbm %>%
-    pdp::partial(pred.var=c('AREA','fGRAZE'),
+loyn.fit <- 
+  pdp::partial(loyn.gbm,
+    pred.var=c('AREA','fGRAZE'),
       pred.grid =  newdata,
-      n.trees=best.iter, recursive=TRUE) |>
+    n.trees=best.iter,
+    recursive=TRUE) |>
   as.data.frame()
 head(loyn.fit)
 loyn.fit |> ggplot(aes(y =  yhat, x = AREA)) +
@@ -582,7 +588,7 @@ for (i in 1:(length(terms)-1)) {
                                         ))
     }
 }
-loyn.int %>% arrange(-H.stat)
+loyn.int |> arrange(-H.stat)
 ```
 
 :::
@@ -599,13 +605,18 @@ The takes a long time - do over a break
 ```{r gbmstep1, eval=TRUE, mhidden=TRUE, cache=FALSE, mhidden=TRUE}
 head(loyn)
 set.seed(123)
-loyn.gbm1 <- gbm.step(data=loyn %>% as.data.frame, gbm.x=c(2:5,7,8), gbm.y=1,
-                        tree.complexity=5,
-                        var.monotone=c(1,1,1,1,1,0),
-                        learning.rate=0.001,
-                        bag.fraction=0.5,
-                        family='gaussian',
-  n.trees =  1000)
+loyn.gbm1 <- gbm.step(
+    data = loyn |> as.data.frame(),
+    gbm.x = c(2:5, 7, 8),
+    gbm.y = 1,
+    tree.complexity = 7,
+    var.monotone = c(1, 1, 1, 1, 1, 0),
+    learning.rate = 0.001,
+    bag.fraction = 0.5,
+    family = "gaussian",
+    n.trees = 1000,
+    step.size = 1000,
+  max.trees = 10000)
 ```
 
 ```{r gbmstep2, eval=TRUE, mhidden=TRUE, cache=FALSE}
@@ -626,7 +637,7 @@ gbm.plot.fits(loyn.gbm1)
 find.int <- gbm.interactions(loyn.gbm1)
 summary(find.int) 
 find.int$rank.list 
-gbm.perspec(loyn.gbm1,1,2)
+gbm.perspec(loyn.gbm1, x = 1, y = 3)
 ```
   
 
@@ -638,15 +649,15 @@ gbm.perspec(loyn.gbm1,1,2)
 ```{r bootstrapping, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 7, fig.height = 5}
 nBoot <- 10
 loyn.pred <- with(loyn,
-                     expand.grid(lAREA = modelr::seq_range(log(AREA), n = 100),
-                                fGRAZE = levels(fGRAZE),
-                                DIST = NA,
-                                LDIST = NA,
-                                ALT = NA,
-                                YR.ISOL = NA)
+  expand.grid(lAREA = seq(min(log(AREA)), max(log(AREA)), len = 100),
+    fGRAZE = levels(fGRAZE),
+    DIST = NA,
+    LDIST = NA,
+    ALT = NA,
+    YR.ISOL = NA)
 ) |>
   mutate(fGRAZE = factor(fGRAZE),
-         AREA = exp(lAREA)) |>
+    AREA = exp(lAREA)) |>
   dplyr::select(AREA, lAREA, fGRAZE, DIST, LDIST, ALT, YR.ISOL)
 
 loyn.list <- vector('list', nBoot) 
@@ -655,7 +666,7 @@ loyn.sum <- vector('list', nBoot)
 for (i in 1:nBoot) {
     print(paste0('Boot number: ', i))
     ## Create random set
-    loyn.rnd <- loyn %>%
+    loyn.rnd <- loyn |>
         sample_n(size = n(), replace=TRUE)
     ## Fit the trees
     loyn.gbm = gbm(ABUND ~ AREA + fGRAZE + DIST + LDIST + ALT + YR.ISOL,
@@ -663,7 +674,7 @@ for (i in 1:nBoot) {
                       distribution='gaussian',
                       var.monotone=c(1,0,1,1,1,1),
                       n.trees=5000,
-                      interaction.depth=5,
+                      interaction.depth=7,
                       bag.fraction=0.5,
                       shrinkage=0.001,
                       train.fraction=1,
@@ -678,13 +689,13 @@ for (i in 1:nBoot) {
     loyn.sum[[i]] <- summary(loyn.gbm, n.trees = best.iter)
 }
 loyn.fit <- do.call('rbind', loyn.list)
-loyn.fit <- loyn.fit %>%
-    group_by(AREA, fGRAZE) %>%
+loyn.fit <- loyn.fit |>
+    group_by(AREA, fGRAZE) |>
     ## summarise(Median = median(Fit),
     ##           Lower = quantile(Fit, p=0.025),
     ##           Upper = quantile(Fit, p=0.975))
     ggdist::median_hdci(Fit)       
-g1 <- loyn.fit %>% ggplot(aes(y=Fit, x=AREA, fill=fGRAZE, color=fGRAZE)) +
+g1 <- loyn.fit |> ggplot(aes(y=Fit, x=AREA, fill=fGRAZE, color=fGRAZE)) +
     geom_ribbon(aes(ymin=.lower, ymax=.upper), alpha=0.3, color=NA) +
     geom_line() +
     scale_fill_viridis_d() +
@@ -693,11 +704,11 @@ g1 <- loyn.fit %>% ggplot(aes(y=Fit, x=AREA, fill=fGRAZE, color=fGRAZE)) +
     theme_classic()
 
 loyn.inf <- do.call('rbind', loyn.sum)
-loyn.inf <- loyn.inf %>%
-    group_by(var) %>%
+loyn.inf <- loyn.inf |>
+    group_by(var) |>
     ggdist::median_hdci(rel.inf)       
 
-g2 <- loyn.inf %>%
+g2 <- loyn.inf |>
   arrange(rel.inf) |> 
   mutate(var =  factor(var, levels = unique(var))) |> 
   ggplot(aes(y=var, x=rel.inf)) +
@@ -708,6 +719,108 @@ g2 <- loyn.inf %>%
 g2 + patchwork::inset_element(g1, left=0.3, bottom=0.01, right=1, top=0.7)
 g1 + patchwork::inset_element(g2, left=0.5, bottom=0.01, right=1, top=0.4)
 ```
+
+```{r}
+#| label: bootstrapping_alt
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: true
+set.seed(123)
+
+nBoot <- 10
+
+loyn.boot <-
+    tibble(Boot = 1:nBoot) |>
+    ## Create bootstrapp data sets
+    mutate(data = map(
+        .x = Boot,
+        .f = ~ loyn |>
+            sample_n(size = n(), replace = TRUE)
+    )) |>
+    ## Fit the trees
+    mutate(gbm = map2(
+        .x = data,
+        .y = Boot,
+        .f = ~ {
+            print(paste("Boot=", .y))
+            loyn.gbm <- gbm(ABUND ~ AREA + fGRAZE + DIST + LDIST + ALT + YR.ISOL,
+                data = .x,
+                distribution = "gaussian",
+                var.monotone = c(1, 0, 1, 1, 1, 1),
+                n.trees = 5000,
+                interaction.depth = 7,
+                bag.fraction = 0.5,
+                shrinkage = 0.001,
+                train.fraction = 1,
+                n.minobsinnode = 2,
+                cv.folds = 3
+            )
+        }
+    )) |>
+    ## Determine the best number of trees
+    mutate(best.iter = map(
+        .x = gbm,
+        .f = ~ gbm.perf(.x, method = "cv")
+    )) |>
+    ## predict
+    mutate(fit = map2(
+        .x = gbm,
+        .y = best.iter,
+        .f = ~ newdata |>
+          mutate(fit = predict(.x, newdata = loyn.pred, n.trees = .y))
+    )) |>
+    ## relative influence
+    mutate(infl = map2(
+        .x = gbm,
+        .y = best.iter,
+        .f = ~ summary(.x, n.trees = .y)
+    ))
+loyn.boot[1, "data"][[1]][[1]]
+loyn.boot[2, "data"][[1]][[1]]
+
+loyn.boot[1, "fit"][[1]][[1]]
+
+loyn.fit <- 
+  loyn.boot |>
+  dplyr::select(Boot, fit) |>
+  unnest(fit) |>
+  group_by(AREA, fGRAZE) |>
+  ggdist::median_hdci(fit)
+
+g1 <- loyn.fit |> ggplot(aes(y=fit, x=AREA, fill=fGRAZE, color=fGRAZE)) +
+    geom_ribbon(aes(ymin=.lower, ymax=.upper), alpha=0.3, color=NA) +
+    geom_line() +
+    scale_fill_viridis_d() +
+  scale_colour_viridis_d() +
+  scale_x_log10() +
+    theme_classic()
+
+loyn.infl <- 
+  loyn.boot |>
+  dplyr::select(Boot, infl) |>
+  unnest(infl) |>
+  group_by(var) |>
+  ggdist::median_hdci(rel.inf)
+
+
+g2 <- loyn.inf |>
+  arrange(rel.inf) |> 
+  mutate(var =  factor(var, levels = unique(var))) |> 
+  ggplot(aes(y=var, x=rel.inf)) +
+    geom_vline(xintercept=12.5, linetype='dashed') +
+    geom_pointrange(aes(xmin=.lower, xmax=.upper)) +
+    theme_classic()
+
+g2 + patchwork::inset_element(g1, left=0.3, bottom=0.01, right=1, top=0.7)
+g1 + patchwork::inset_element(g2, left=0.5, bottom=0.01, right=1, top=0.4)
+```
+
+
+
+
+
+
 
 ```{r}
 library(randomForest)
@@ -728,8 +841,9 @@ loyn.imp = randomForest::importance(loyn.rf)
 100*loyn.imp/sum(loyn.imp)
 varImpPlot(loyn.rf)
 ## use brute force
-loyn.rf %>% pdp::partial('AREA') %>% autoplot
-
+loyn.rf |>
+    pdp::partial("AREA") |>
+    autoplot()
 
 ## loyn.rf.acc <- env %>%
 ##     bind_cols(Pred = predict(loyn.rf,
