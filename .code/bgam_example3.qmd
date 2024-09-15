@@ -253,9 +253,11 @@ In the spirit of this, we will begin by building up a temporal model for a
 single reef (Pandora), before moving on to generalise across multiple reefs in a
 mixed effects model.
 
+<!-- END_PRIVATE-->
 
 ## Exploratory data analysis
 
+<!-- START_PRIVATE-->
 ```{r model1a, results='markdown', eval=TRUE, mhidden=TRUE}
 wq.sub <- wq |> filter(reef.alias=='High West') |> droplevels()
 
@@ -294,6 +296,8 @@ wq.sub=wq |> filter(reef.alias=='Pandora', !is.na(DOC))
 wq.sub=wq |> filter(reef.alias=='High West', !is.na(DOC))
 ```
 
+<!-- END_PRIVATE-->
+
 ## Fit the model
 :::: {.panel-tabset}
 ### Assessing default priors 
@@ -326,17 +330,25 @@ The following link provides some guidance about defining priors.
 [https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
 
 
-#### Sample prior only
+::::: {.panel-tabset}
+
+#### Thin-plate spline
+
+##### Sample prior only
 
 I will also overlay the raw data for comparison.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
 wq.form <- bf(DOC ~ s(scale(Dt.num)), family = Gamma(link = "log"))
-wq.sub |> summarise(mean(log(DOC)), sd(log(DOC)))
+wq.sub |> summarise(
+    median(log(DOC)), mad(log(DOC)),
+    mad(log(DOC)) / mad(scale(Dt.num))
+)
+get_prior(wq.form, data = wq.sub)
 priors <- prior(normal(7, 0.2),  class='Intercept') +
   prior(normal(0, 2), class='b') +
   prior(gamma(0.01, 0.01),  class='shape') + 
-  prior(student_t(3, 0, 2), class =  "sds") 
+  prior(student_t(3, 0, 1), class =  "sds") 
 
 wq.brm2 <- brm(wq.form,
                  data = wq.sub,
@@ -345,6 +357,7 @@ wq.brm2 <- brm(wq.form,
                  iter = 5000,
                  warmup = 1000,
                  thin = 5,
+                 chains = 3, cores =  3,
                  backend = 'cmdstan',
                  seed =  123,
                  control =  list(adapt_delta = 0.99, max_treedepth = 20),
@@ -358,7 +371,7 @@ wq.brm2 |> conditional_effects() |>  plot(points=TRUE) |>
   scale_y_log10()
 ```
 
-#### Sample prior and posterior
+##### Sample prior and posterior
 
 ```{r fitModel2c, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
 wq.brm3 <- update(wq.brm2, sample_prior = "yes", cores =  3, refresh =  0)
@@ -373,14 +386,67 @@ wq.brm3 |> conditional_effects(spaghetti = TRUE, ndraws =  250) |>  plot(points=
   scale_y_log10()
 ```
 
+#### Gaussian process
+
+##### Sample prior only
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel2ab, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ gp(Dt.num), family = Gamma(link = "log"))
+wq.sub |> summarise(
+    median(log(DOC)), mad(log(DOC)),
+    mad(log(DOC)) / mad(scale(Dt.num))
+)
+get_prior(wq.form, data = wq.sub)
+priors <- prior(normal(7, 0.2), class = "Intercept") +
+  prior(gamma(0.01, 0.01), class = "shape") +
+  prior(inv_gamma(1.5, 0.05), class = "lscale") +
+  prior(student_t(3, 0, 1), class =  "sdgp") 
+
+wq.brm2b <- brm(wq.form,
+                 data = wq.sub,
+                 prior = priors, 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 thin = 5,
+                 chains = 3, cores =  3,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta = 0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r fitModel2bb, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm2b |> conditional_effects() |>  plot(points=TRUE)
+wq.brm2b |> conditional_effects() |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+##### Sample prior and posterior
+
+```{r fitModel2cb, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.brm3b <- update(wq.brm2b, sample_prior = "yes", cores =  3, refresh =  0)
+```
+
+```{r fitModel2db, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm3b |> conditional_effects() |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+wq.brm3b |> conditional_effects(spaghetti = TRUE, ndraws =  250) |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+:::::
+
 ### Plotting prior and posterior
 
 ```{r fitModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, error = TRUE}
-wq.brm3 |> get_variables()
-wq.brm3 |> hypothesis('bs_sscaleDt.num_1 = 0', class = '') |> plot()
-## wq.brm3 |> hypothesis('bs_sDt.num_1 = 0', class = '') |> plot()
-wq.brm3 |> hypothesis('sds_sscaleDt.num_1 = 0', class = '') |> plot()
-wq.brm3 |> SUYR_prior_and_posterior()
+wq.brm3b |> get_variables()
+wq.brm3b |> hypothesis('sdgp_gpDt.num = 0', class = '') |> plot()
+#wq.brm3b |> SUYR_prior_and_posterior()
 ```
 ::::
 :::
@@ -419,13 +485,16 @@ wq.brm3$fit |> stan_ess()
 ## brms 
 :::: {.panel-tabset}
 
-### pp check
+### Thin-plate spline
+
+::::: {.panel-tabset}
+#### pp check
 
 ```{r modelValidation3a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 wq.brm3 |> pp_check( type='dens_overlay', ndraws=100)
 ```
 
-### DHARMa residuals
+#### DHARMa residuals
 
 ```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
 
@@ -435,6 +504,29 @@ wrap_elements(~testUniformity(wq.resids)) +
   wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
   wrap_elements(~testDispersion(wq.resids))
 ```
+
+:::::
+### Gaussian process
+::::: {.panel-tabset}
+#### pp check
+
+```{r modelValidation3ab, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+wq.brm3b |> pp_check( type='dens_overlay', ndraws=100)
+```
+
+#### DHARMa residuals
+
+```{r modelValidation3bb, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+
+wq.resids <- make_brms_dharma_res(wq.brm3b, integerResponse = FALSE)
+wrap_elements(~testUniformity(wq.resids)) +
+  wrap_elements(~plotResiduals(wq.resids, form = factor(rep(1, nrow(wq.sub))))) +
+  wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
+  wrap_elements(~testDispersion(wq.resids))
+```
+
+:::::
+
 ::::
 :::
 <!-- END_PRIVATE-->

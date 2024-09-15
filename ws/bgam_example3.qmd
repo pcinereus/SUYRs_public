@@ -168,6 +168,55 @@ where $\beta_0$ is the y-intercept. $f(Date)$ and $f(Month)$ indicate the additi
 # Simple model (High West only)
 
 
+## Exploratory data analysis
+
+
+## Fit the model
+:::: {.panel-tabset}
+### Assessing default priors 
+#### conditional_effects
+
+
+### Defining priors 
+
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+
+::::: {.panel-tabset}
+
+#### Thin-plate spline
+
+##### Sample prior only
+
+I will also overlay the raw data for comparison.
+
+
+
+##### Sample prior and posterior
+
+
+
+#### Gaussian process
+
+##### Sample prior only
+
+I will also overlay the raw data for comparison.
+
+
+
+##### Sample prior and posterior
+
+
+:::::
+
+### Plotting prior and posterior
+
+::::
+:::
+<!-- END_PRIVATE-->
+
 # MCMC sampling diagnostics 
 
 # Model validation 

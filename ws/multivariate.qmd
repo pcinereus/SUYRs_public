@@ -80,3 +80,5 @@ knitr::read_chunk("../ws/multivariate_public.R")
 ```{r}
 #| label: readSpider
 ```
+
+# Exploratory data analysis

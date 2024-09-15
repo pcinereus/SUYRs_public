@@ -446,13 +446,14 @@ standist::visualize("student_t(3, 0, 2.5)",
 ```
 
 ```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-priors <-
-    prior(normal(0, 1.75), class = 'Intercept') +
-    prior(normal(0, 3), class = 'b') +
-    prior(student_t(3, 0, 1.75), class = 'sd') 
-
 mckeon.form <- bf(PREDATION | trials(1) ~ SYMBIONT + (1|BLOCK),
                   family=binomial(link='logit'))
+get_prior(mckeon.form, data = mckeon)
+priors <-
+    prior(normal(0, 1.5), class = 'Intercept') +
+    prior(normal(0, 3), class = 'b') +
+    prior(student_t(3, 0, 1.5), class = 'sd') 
+
 mckeon.brm2 <- brm(mckeon.form, 
                   data = mckeon,
                   prior = priors,
@@ -543,20 +544,16 @@ mckeon.brm3 |> SUYR_prior_and_posterior()
 While we are here, we might like to explore a random intercept/slope model
 
 ```{r fitModel2h3, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-priors <-
-    prior(normal(0, 1.75), class = 'Intercept') +
-    prior(normal(0, 5), class = 'b') +
-    ## prior(gamma(2,1), class = 'sd') +
-    ## prior(student_t(3,0,2), class = 'sd', coef = "Intercept", group = "BLOCK") +
-    prior(student_t(3,0,1.75), class = 'sd', coef =  "Intercept", group =  "BLOCK") +
-    prior(student_t(3,0,1.7), class = 'sd') +
-    ## prior(gamma(2,1), class = 'sd') +
-    ## prior(gamma(2,1), class = 'sd') +
-    ## prior(gamma(2,1), class = 'sd', coef = "Intercept", group = "BLOCK") +
-    prior(lkj_corr_cholesky(1), class = 'cor')
-
 mckeon.form <- bf(PREDATION | trials(1) ~ SYMBIONT + (SYMBIONT|BLOCK),
                   family=binomial(link='logit'))
+get_prior(mckeon.form, mckeon)
+priors <-
+    prior(normal(0, 1.5), class = 'Intercept') +
+    prior(normal(0, 3), class = 'b') +
+    prior(student_t(3,0,1.5), class = 'sd', coef =  "Intercept", group =  "BLOCK") +
+    prior(student_t(3,0,2), class = 'sd') +
+    prior(lkj_corr_cholesky(1), class = 'cor')
+
 mckeon.brm4 <- brm(mckeon.form, 
                   data = mckeon,
                   prior = priors,
@@ -1093,6 +1090,21 @@ mckeon.brm3 %>% as_draws_df()
 mckeon.brm3 |> 
   as_draws_df() |> 
   mutate(across(everything(), exp)) |> 
+  summarise_draws(
+    median,
+    HDInterval::hdi,
+    Pl = ~mean(.x < 1),
+    Pg = ~mean(.x > 1),
+    rhat,
+    ess_bulk,
+    ess_tail
+  ) |>
+  knitr::kable()
+
+mckeon.brm3 |>
+    as_draws_df() |>
+    exp() |>
+    dplyr::select(matches("^b_.*|^sd_.*")) |> 
   summarise_draws(
     median,
     HDInterval::hdi,

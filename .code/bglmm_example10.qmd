@@ -250,7 +250,7 @@ ltmp_sub |>
 
 ltmp_sub |>
     ggplot(aes(y = HC, x = REPORT_YEAR)) +
-    geom_line(aes(group = REEF_SITE_TRANSECT), alpha = 0.2) +
+    geom_line(aes(group = REEF_SITE_TRANSECT, colour = REEF_SITE), alpha = 1) +
   geom_point()
 
 give.n <- function(val, ypos){
@@ -275,10 +275,9 @@ Based on this, it might be better to use the most recent year as the reference..
 
 ```{r processData2, results='markdown', eval=TRUE, mhidden=TRUE}
 ltmp_sub <- ltmp_sub |>
-  mutate(
-    fREPORT_YEAR = factor(REPORT_YEAR),
-    fREPORT_YEAR = factor(fREPORT_YEAR, levels = rev(levels(fREPORT_YEAR)))
-  )
+    mutate(
+        fREPORT_YEAR = factor(REPORT_YEAR, levels = rev(sort(unique(REPORT_YEAR))))
+    )
 ```
 :::
 <!-- END_PRIVATE-->
@@ -363,9 +362,7 @@ ltmp_sub |>
         Median = median(qlogis(n.points / total.points)),
         MAD = mad(qlogis(n.points / total.points)),
         N = mean(total.points)
-    ) |>
-    as.data.frame()
-
+    )
 ```
 
 ```{r fitModel2h1, results='markdown', eval=TRUE, cache=TRUE}
@@ -395,6 +392,10 @@ ltmp_sub.brm2 <- brm(ltmp_sub.form,
 ltmp_sub.brm2 |>
   conditional_effects(conditions = data.frame(total.points = 200)) |>
   plot(points = TRUE)
+
+ltmp_sub.brm2 |>
+  conditional_effects(conditions = data.frame(total.points = 200)) |>
+  plot()
 ```
 
 The above seem sufficiently wide whilst at the same time not providing any encouragement for the sampler
@@ -420,8 +421,8 @@ ltmp_sub.brm3 |>
 ### Plotting prior and posterior
 
 ```{r posterior2h2, results='markdown', eval=TRUE}
-ltmp_sub.brm3 %>% get_variables()
-ltmp_sub.brm3 %>% hypothesis('fREPORT_YEAR2021=0') %>% plot
+ltmp_sub.brm3 |> get_variables()
+ltmp_sub.brm3 |> hypothesis('fREPORT_YEAR2021=0') %>% plot
 ```
 
 ```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
@@ -557,8 +558,8 @@ ltmp_sub.brm3$fit |>
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
-ltmp_sub.brm3$fit |> 
-    stan_ac(pars = pars)
+ltmp_sub.brm3$fit |>
+    stan_ac(pars = pars[1:15])
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -626,7 +627,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, fig.width=6, fig.height=4}
-ltmp_sub.brm3 |> pp_check(type = 'dens_overlay', nsamples = 100)
+ltmp_sub.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100)
 ```
 The model draws appear to be consistent with the observed data.
 
@@ -681,6 +682,15 @@ wrap_elements(~testUniformity(ltmp_sub.resids)) +
                wrap_elements(~testDispersion(ltmp_sub.resids)) 
 ```
 
+```{r modelValidation6aaa, results='markdown', eval=TRUE, fig.width=8, fig.height=10}
+resids2 <- recalculateResiduals(ltmp_sub.resids, group = unique(ltmp_sub$REPORT_YEAR))
+testTemporalAutocorrelation(resids2, time = unique(ltmp_sub$REPORT_YEAR))
+
+library(geoR)
+autocor_check(ltmp_sub, ltmp_sub.brm3, variable =  "fREPORT_YEAR", n.sim =  250)
+
+
+```
 ::::
 <!-- END_PRIVATE-->
 
@@ -786,19 +796,30 @@ ltmp_sub.brm3 |>
 ### Effects
 
 ```{r postHoc1b, results='markdown', eval=TRUE, echo=TRUE, width = 10, height = 3}
-
+newdata <- list(fREPORT_YEAR = c(2011, 2012))
 ltmp_sub.brm3 |>
   emmeans(~fREPORT_YEAR,
-    at = list(fREPORT_YEAR = c(2011, 2012)),
+    at = newdata,
     type = "response"
     )
 
 ltmp_sub.brm3 |>
+  emmeans(~fREPORT_YEAR,
+    at = newdata,
+    type = "response"
+  ) |>
+  pairs(reverse = TRUE)
+
+
+ltmp_sub.brm3 |>
     emmeans(~fREPORT_YEAR,
-        at = list(fREPORT_YEAR = c(2011, 2012)),
+        at = data.frame(fREPORT_YEAR = c("2017", "2018", "2000", "2001", "2002", "2003", "2004", "2005")),
         type = "response"
     ) |>
-    pairs(reverse = TRUE)
+    regrid() |> 
+  contrast(method = list(fREPORT_YEAR = c(1/2, 1/2, rep(-1/6, 6))))
+
+
 
 ltmp_sub.brm3 |>
     emmeans(~fREPORT_YEAR,
