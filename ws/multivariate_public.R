@@ -39,9 +39,6 @@ library(mvabund)      # for model-based multivariate analyses
 library(scales)
 library(ggvegan)      ## ggplot support for vegan
 library(ggrepel)      ## for geom_text_repel
-library(glmmTMB)      # more model-based multivariate analyses
-library(gllvm)        # yet more model-based multivariate analyses
-library(EcolUtils)    # other multivariate analyses
 ## ----end
 
 
