@@ -90,6 +90,64 @@ spider.abund |>
 
 ## From here on, it is up to you to create your chunks etc
 
+### Univariate measures
+
+## diversity and richness
+spider.abund.comp <- spider.abund |>
+  mutate(Site = factor(1:n())) |>
+  pivot_longer(cols = -Site, names_to = "Species", values_to = "Abundance") |>
+  group_by(Site) |>
+  mutate(diversity = diversity(Abundance, index = "shannon")) |>
+  mutate(specnumber = specnumber(Abundance)) |>
+  ungroup()
+spider.abund.comp |>
+  ungroup() |>
+  group_by(Site) |>
+  summarise(
+    diversity = unique(diversity),
+    specnumber = unique(specnumber)
+  ) |>
+  ggplot(aes(x = Site, y = diversity * 3)) +
+  geom_blank() +
+  geom_line(aes(x = as.numeric(Site))) +
+  geom_line(aes(x = as.numeric(Site), y = specnumber), color = "red") +
+  scale_y_continuous(
+    name = "Diversity",
+    label = function(x) x / 3, ,
+    sec.axis = sec_axis(~ . * 1,
+      name = "Species number"
+    )
+  ) +
+  theme_classic() +
+  theme(axis.title.y.right = element_text(color = "red"))
+
+## rarefaction
+spider.abund.comp |>
+  ungroup() |>
+  group_by(Site) |>
+  summarise(
+    diversity = unique(diversity),
+    specnumber = unique(specnumber),
+    rarefy = rarefy(Abundance, sample = min(rowSums(spider.abund)))    
+  ) |>
+  ggplot(aes(x = Site, y = rarefy)) +
+  geom_blank() +
+  geom_line(aes(x = as.numeric(Site))) +
+  geom_line(aes(x = as.numeric(Site), y = specnumber), color = "red") +
+  scale_y_continuous(
+    name = "Rarefy",
+    ## label = function(x) x / 3, ,
+    sec.axis = sec_axis(~ . * 1,
+      name = "Species number"
+    )
+  ) +
+  theme_classic() +
+  theme(axis.title.y.right = element_text(color = "red"))
+
+
+
+## More EDA
+
 spider.abund |>
   ggpairs(lower = list(continuous = "smooth"),
     diag = list(continuous = "density"),
@@ -165,8 +223,40 @@ theta <- c(seq(-pi, pi, length = 50), seq(pi, -pi, length = 50))
 circle <- data.frame(PC1 = r * cos(theta), PC2 = r * sin(theta))
 g <- g + geom_path(data = circle, aes(y=PC2,x=PC1), color = muted('white'), size = 1/2, alpha = 1/3)
 g
-    
 
+
+## de-emphasize those that are inside the circle (to prevent cluttering)
+spider.rda.scores.sites <- spider.rda.scores |>
+  filter(score == "sites") |>
+  mutate(Flag = factor(ifelse(sqrt(PC1^2 + PC2^2) > r, 1, 0)))
+spider.rda.scores.species <- spider.rda.scores |>
+  filter(score == "species") |>
+  mutate(Flag = factor(ifelse(sqrt(PC1^2 + PC2^2) > r, 1, 0)))
+
+g <-
+  ggplot(data = NULL, aes(y=PC2, x=PC1)) +
+  geom_hline(yintercept=0, linetype='dotted') +
+  geom_vline(xintercept=0, linetype='dotted') +
+  geom_point(data=spider.rda.scores.sites, aes(alpha = Flag), show.legend = FALSE) +
+  geom_text(data=spider.rda.scores.sites,
+    aes(label=label, alpha = Flag), hjust=-0.2, show.legend = FALSE) +
+  geom_segment(data=spider.rda.scores.species,
+    aes(y=0, x=0, yend=PC2, xend=PC1, alpha = Flag),
+    arrow=arrow(length=unit(0.3,'lines')), color='red', show.legend = FALSE) +
+  geom_text_repel(data=spider.rda.scores.species,
+    aes(y=PC2*1.1, x=PC1*1.1, label=label, alpha = Flag),
+    color='red', show.legend = FALSE) +
+  geom_path(data = circle, aes(y=PC2,x=PC1),
+    color = muted('white'), size = 1/2, alpha = 1/3) +
+  scale_y_continuous(paste(names(eig[2]), sprintf('(%0.1f%% explained var.)',
+    100 * eig[2]/sum(eig))))+
+  scale_x_continuous(paste(names(eig[1]), sprintf('(%0.1f%% explained var.)',
+    100 * eig[1]/sum(eig)))) +
+  theme_bw()
+g
+
+  
+# Envfit
 spider.env |>
   cor() |> 
   corrplot(type = 'upper',
@@ -381,6 +471,12 @@ macnally <- read.csv('../data/macnally_full.csv',strip.white=TRUE)
 head(macnally)
 macnally[1:5,1:5]
 
+macnally <- macnally |>
+  mutate(HABITAT = factor(HABITAT, levels = c(
+    "Mixed", "Gipps.Manna",
+    "Montane Forest", "Foothills Woodland", "Box-Ironbark", "River Red Gum"
+  )))
+
 macnally.mds <- metaMDS(macnally[,-1], k=2,  plot=TRUE)
 macnally.mds
 
@@ -421,13 +517,53 @@ g <-
 g
 
 
+g1 <-
+    ggplot(data = NULL, aes(y=NMDS2, x=NMDS1)) +
+    geom_hline(yintercept=0, linetype='dotted') +
+    geom_vline(xintercept=0, linetype='dotted') +
+    geom_point(data=macnally.mds.scores %>% filter(score=='sites'),
+               aes(color=HABITAT)) 
+g1
+
 g + ggforce::geom_mark_ellipse(data=macnally.mds.scores |> filter(score=='sites'),
                       aes(y=NMDS2, x=NMDS1, fill=HABITAT), expand=0) 
 ## For the following you will be asked to install concaveman
-g + ggforce::geom_mark_hull(data=macnally.mds.scores |> filter(score=='sites'),
-                      aes(y=NMDS2, x=NMDS1, fill=HABITAT), expand=0) 
-g + ggforce::geom_mark_hull(data=macnally.mds.scores |> filter(score=='sites'),
-                      aes(y=NMDS2, x=NMDS1, fill=HABITAT), expand=0, concavity = 20) 
+## g + ggforce::geom_mark_hull(data=macnally.mds.scores |> filter(score=='sites'),
+##                       aes(y=NMDS2, x=NMDS1, fill=HABITAT), expand=0) 
+## g + ggforce::geom_mark_hull(data=macnally.mds.scores |> filter(score=='sites'),
+##                       aes(y=NMDS2, x=NMDS1, fill=HABITAT), expand=0, concavity = 20) 
+
+
+macnally.hull = macnally.mds.scores %>%
+    filter(score=='sites') %>%
+  group_by(HABITAT) %>%
+  slice(chull(NMDS1, NMDS2))
+
+g + geom_polygon(data=macnally.hull, aes(y=NMDS2,x=NMDS1, fill=HABITAT),
+  alpha=0.6, colour = "black")+
+  theme_classic()
+g
+
+## spider plots
+centroids <- macnally.mds.scores |>
+  filter(score == "sites") |>
+  group_by(HABITAT) |>
+  summarise(across(c(NMDS1, NMDS2), list(c = mean)))
+
+macnally.mds.scores <- macnally.mds.scores |>
+  full_join(centroids)
+
+macnally.mds.scores.centroids <- macnally.mds.scores |>
+  filter(score == "sites") |>
+  group_by(HABITAT) |>
+  summarise(across(c(NMDS1, NMDS2), list(c = mean)))
+macnally.mds.scores <- macnally.mds.scores |>
+  full_join(macnally.mds.scores.centroids)
+g1 + geom_segment(data = macnally.mds.scores,
+  aes(x = NMDS1_c, xend = NMDS1, y = NMDS2_c, yend = NMDS2, colour = HABITAT)) + geom_polygon(data=macnally.hull, aes(y=NMDS2,x=NMDS1, fill=HABITAT),
+  alpha=0.3, colour = "black")+
+  theme_classic()
+
 
 
 Xmat <- model.matrix(~-1+HABITAT, data=macnally)
@@ -446,7 +582,25 @@ g <- g +
 g
 
 
-simper(macnally.std, macnally$HABITAT)
+macnally.dist <- vegdist(macnally[,-1], 'bray')
+## bioenv(macnally.dist, macnally$HABITAT)
+##                       decostand(macnally$,"standardize"))
+
+adonis2(macnally.dist ~ HABITAT, data=macnally)
+mm <-  model.matrix(~-1 + HABITAT, data=macnally)
+## adonis2(macnally.dist ~ mm)
+head(mm)
+colnames(mm) <-gsub("HABITAT","",colnames(mm))
+mm <- data.frame(mm)
+macnally.adonis<-adonis2(macnally.dist ~ Box.Ironbark + Foothills.Woodland + Gipps.Manna +
+                       Montane.Forest + River.Red.Gum, data=mm,
+                    perm=9999)
+macnally.adonis
+
+library(pairwiseAdonis)
+pairwise.adonis(macnally.dist, macnally$HABITAT)
+
+
 
 macnally.disp <- betadisper(macnally.dist, macnally$HABITAT)
 boxplot(macnally.disp)
@@ -462,6 +616,10 @@ plot(macnally.disp)
 anova(macnally.disp)
 permutest(macnally.disp, pairwise = TRUE)
 TukeyHSD(macnally.disp)
+
+
+macnally.std <- wisconsin(macnally[,c(-1)]^0.25)
+simper(macnally.std, macnally$HABITAT)
 ## END MDS ------------------------------------------------------
 
 ## Another analysis -------------------------------------
@@ -491,8 +649,8 @@ dune.adonis
 library(pairwiseAdonis)
 pairwise.adonis(dune.dist, dune$MANAGEMENT)
 
-library(EcolUtils)
-adonis.pair(dune.dist, dune$MANAGEMENT, nper = 10000)
+## library(EcolUtils)
+## adonis.pair(dune.dist, dune$MANAGEMENT, nper = 10000)
 
 dune.simper=simper(dune[,-1], dune[,1], permutations = 999)
 summary(dune.simper)
@@ -764,4 +922,70 @@ g
 
 
 ## ----end
+
+## mvgam
+library(mvgam)
+
+spider_abund <- spider.abund |>
+  as_tibble() |>
+  mutate(time = 1:n()) |>
+  pivot_longer(
+    cols = c(everything(), -time),
+    names_to = "species", values_to = "abund"
+  ) |>
+  mutate(series = factor(species))
+
+spider_abund |>
+  summarise(
+    Median = log(median(abund)),
+    Mean = log(mean(abund)),
+    MAD = log(mad(abund)),
+    SD = log(sd(abund))
+  )
+
+get_mvgam_priors(
+  abund ~ 1,
+  trend_model = AR(),
+  data = spider_abund,
+  use_lv = TRUE,
+  n_lv = 2,
+  family = poisson()
+)
+
+mod_mvgam <- mvgam(abund ~ 1,
+  trend_model = AR(),
+  data = spider_abund,
+  use_lv = TRUE,
+  n_lv = 2,
+  family = poisson(),
+  return_model_data = TRUE,
+)
+
+mod_mvgam |> summary()
+plot(mod_mvgam, type = 'residuals', series = 1)
+## plot(mod_mvgam, type = 'residuals', series = 2)
+##  plot(mod_mvgam, type = 'factors')
+
+## site scores
+mcmc <- mvgam:::mcmc_chains(mod_mvgam$model_output, "LV")
+betas <- apply(mcmc, 2, median)
+beta1 <- betas[seq(1, 56, 2)]
+beta2 <- betas[seq(2, 56, 2)]
+b <- data.frame(
+  beta1 = beta1,
+  beta2 = beta2, site = 1:28
+)
+## species scores
+scores <- mvgam:::mcmc_chains(mod_mvgam$model_output, "lv_coefs")
+b_scores <- apply(scores, 2, median)
+beta1 <- b_scores[seq(1, 24, 2)]
+beta2 <- b_scores[seq(2, 24, 2)]
+scores<- data.frame(
+  beta1 = scales::rescale(beta1, from = range(beta1), to = range(b$beta1)),
+  beta2 = scales::rescale(beta2, from = range(beta2), to = range(b$beta2)), species = colnames(spider_abund)
+)
+
+ggplot(b, aes(x = beta2, y = beta1)) +
+  geom_text(aes(label = site)) +
+  geom_text(data = scores, aes(x = beta2, y = beta1, label = species), color = "red")
 
