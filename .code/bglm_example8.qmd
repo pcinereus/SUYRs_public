@@ -1,0 +1,1000 @@
+---
+title: "Bayesian GLM Part8"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../public/resources/ws-style.scss]
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+library(tidyverse)
+library(brms)
+library(dagitty)
+library(ggdag)
+library(patchwork)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+To investigate the effects of low light and a herbicide (diuron) on
+algae, @King_2022 set up an experiment in which algae were exposed to
+different combinations of light levels and diuron concentration. Over
+a 72 hour period, chlorophyll-a fluorescence and cell density were
+measured.
+
+The data are in the file
+**king.csv** in the **data** folder.
+
+
+| Time | Light | Diuron | Block | t0       | celld     | lncelld     | PI          |
+|------|-------|--------|-------|----------|-----------|-------------|-------------|
+| 72   | 20    | 0.11   | 2     | 35.24612 | 125.94344 | 4.835832917 | 1.012390192 |
+| 72   | 20    | 0.11   | 3     | 39.6347  | 114.65852 | 4.74195832  | 0.929296694 |
+| 72   | 20    | 0.11   | 4     | 34.61918 | 167.32148 | 5.119916992 | 0.977363859 |
+| 72   | 20    | 0.33   | 2     | 35.4551  | 126.77936 | 4.842448253 | 1.02771364  |
+| 72   | 20    | 0.33   | 3     | 45.69512 | 155.20064 | 5.044718731 | 0.95016989  |
+| 72   | 20    | 0.33   | 4     | 46.53104 | 162.72392 | 5.092055022 | 0.972060034 |
+| 72   | 20    | 1      | 2     | 48.62084 | 165.85862 | 5.111135739 | 0.914524138 |
+| \... | \...  | \...   | \...  | \...     | \...      | \...        | \...        |
+
+: Format of the king.csv data file {#tbl-king .table-condensed}
+
+---------------- ---------------------------------------------------
+**Time**:        Hour of measurements
+**Light**:       Light level treatment (5, 20, 80μmol photons m-2 s-1) - Predictor variable
+**Diuron**:      Diuron herbicide concentration (0, 0.11, 0.33, 1, 3μg/L) - Predictor variable
+**Block**:       Block - we will ignore this for now
+**t0**:          Cell density at time 0
+**celld**        Cell density at treatment level - Response variable
+**PI**           Photosynthetic inhibition (%), photosynthetic yield (as a % of controls) - Response variable
+---------------- ---------------------------------------------------
+ 
+: Description of the variables in the king data file {#tbl-king .table-condensed}
+
+# Read in the data
+
+```{r}
+#| label: readData
+king <- read_csv("../public/data/king.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(king)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(king)
+```
+
+## str
+```{r}
+str(king)
+```
+
+## Easystats (datawizard)
+```{r}
+king |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+king |> modelsummary::datasummary_skim()
+king |> modelsummary::datasummary_skim(by = "Block")
+```
+
+:::
+<!-- END_PRIVATE-->
+
+# Process data
+
+```{r}
+#| label: processData
+#| eval: false
+king <- king |>
+    mutate(
+      fLight = factor(Light),
+      fDiuron = factor(Diuron),
+      Block = factor(Block)
+    )
+```
+
+
+# Research questions
+
+- Q1: estimate the effect of light on photosynthetic inhibition
+- Q2: estimate the effect of photosynthetic inhibition on algal cell density
+- Q3: estimate the effect of light on algal cell density
+- Q4: estimate the effect of diuron (herbicide) on photosynthetic inhibition
+- Q5: estimate the effect of diuron (herbicide) on algal cell density
+
+# Naive approach
+
+<!-- START_PRIVATE-->
+
+```{r}
+#| label: eda_mod0a
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: true
+#| fig-width: 13
+#| fig-height: 4
+g1 <-
+    king |>
+    ggplot(aes(y = PI, x = Diuron, colour = factor(Light))) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme_classic()
+g2 <- 
+  king |>
+  ggplot(aes(y = celld, x = PI, colour = factor(Light))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_classic()
+g3 <- 
+  king |>
+  ggplot(aes(y = celld, x = Diuron, colour = factor(Light))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_classic()
+g1 + g2 + g3 + plot_layout(guides = "collect")
+```
+ 
+Response: PI
+
+```{r}
+#| label: brms_mod0a
+#| eval: true
+#| echo: true
+#| cache: true
+form <- bf(PI ~ scale(Diuron) * factor(Light))
+## summarise data to help inform priors
+king |>
+    group_by(Light) |>
+    summarise(PI_mu = median(PI), PI_sd = sd(PI), PI_mad = mad(PI))
+
+## define priors
+priors <- prior(normal(1.4, 0.3), class = "Intercept") +
+  prior(normal(0, 0.5), class = "b") +
+  prior(student_t(3, 0, 0.3), class = "sigma")
+## fit the mode
+king_brms0a <- brm(
+  form,
+  prior = priors,
+  data = king,
+  refresh = 0,
+  backend = "cmdstanr"
+)
+```
+
+```{r}
+#| label: brms_mod0a_sum
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+summary(king_brms0a)
+```
+
+**Conclusions:**
+
+- increasing diuron concentration associated with decreasing photosynthetic inhibition ()
+- increasing light is associated with decreasing photosynthetic inhibition 
+
+
+Response: cell density
+
+```{r}
+#| label: brms_mod0b
+#| eval: true
+#| echo: true
+#| cache: true
+form <- bf(celld ~ scale(Diuron) + scale(PI) + Light)
+## summarise data to help inform priors
+king |>
+    group_by(Light) |>
+    summarise(celld_mu = median(celld), celld_sd = sd(celld), celld_mad = mad(celld))
+
+## define priors
+priors <- prior(normal(150, 50), class = "Intercept") +
+  prior(normal(0, 20), class = "b") +
+  prior(student_t(3, 0, 50), class = "sigma")
+## fit the mode
+king_brms0b <- brm(
+  form,
+  prior = priors,
+  data = king |> mutate(Light = factor(Light)),
+  refresh = 0,
+  backend = "cmdstanr"
+)
+```
+
+```{r}
+#| label: brms_mod0b_sum
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+summary(king_brms0b)
+```
+
+**Conclusions:**
+
+- no effect of diuron concentration on algal cell density
+- no effect of photosynthetic inhibition on algal cell density
+- no effect of light on algal cell density
+
+<!-- END_PRIVATE-->
+
+# Structural Causal Modelling
+
+
+1. Create a conceptual model of the system of interest
+
+2. Choose a statistical test
+
+3. Test the consistency of your conceptual model with the data
+
+4. Identify biases (confounding, overcontrol, collider) that you need
+   to adjust for when testing the cause of interest
+
+5. Test for causality with the appropriate statistical test
+
+6. Repeat steps 3-5 for each cause of interest
+
+7. Repeat steps 1-6 for other conceptual models
+
+# Step 1 - conceptual model
+
+@King_2022 hypothesised that photosynthetic inhibition would be
+effected by light levels and that the diuron herbicide would effect
+photosynthesis by blocking certain chemical reactions. In tern,
+changes in photosynthesis could have an effect on algal cell density.
+Furthermore, diuron might also have a direct effect on cell density by
+causing cell damage.
+
+Lets start by creating a DAG that reflects this conceptual model.
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: dag
+#| eval: true
+#| cache: false
+king_dag <- dagify(
+    celld ~ PI + Diuron,
+    PI ~ Light + Diuron,
+    exposure =  "Light",
+    outcome = "celld"
+)
+ggdag(king_dag, text = TRUE, text_size = 2.5) +
+  theme_dag_blank()
+```
+<!-- END_PRIVATE-->
+
+# Step 2 - choose a statistical test
+
+For the main inference tests we will fit Bayesian generalized linear
+models, however, for the purpose of testing the consistency of our
+conceptual model (DAG) with data, we will just use more simple
+frequentist analyses.
+
+# Step 3 - test the consistency of the DAG with observed data
+
+Lets now determine what all the implied assumptions (conditional independencies) of our DAG are.
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: implied conditional independencies
+#| eval: true
+#| cache: false
+dagitty::impliedConditionalIndependencies(king_dag) 
+```
+
+**Conclusions**:
+
+- Diuron is independent of Light
+- Light is independent of celld when conditioned on both Diuron and PI
+
+<!-- END_PRIVATE-->
+
+And challenge those assumptions with the data.
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: local tests
+#| eval: true
+#| cache: false
+tests <- localTests(x = king_dag, data = king)
+tests
+```
+
+**Conclusions**:
+
+- it seems that our conceptual model is consistent with the data.
+
+<!-- END_PRIVATE-->
+
+# Step 4 - identify biases that need to be adjusted for
+
+Our goal is to be able to investigate the effects of light and diuron
+on both algal photosynthesis and cell density. So lets explore each
+one separately, starting with photosynthesis.
+
+::: {.panel-tabset}
+
+## Total effect of Light on photosynthesis
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: ggdag paths 1
+#| eval: true
+#| cache: false
+#| fig-width: 7
+#| fig-height: 5
+ggdag_paths(king_dag, from = "Light", to = "PI", text_col = "black", shadow = TRUE) +
+    theme_dag_blank(panel.border = element_rect(fill = NA)) 
+```
+
+**Conclusions**:
+
+- there is a single direct path
+
+```{r}
+#| label: adjustment sets 1a
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Light", 
+  outcome = "PI",
+  type = "minimal",
+  effect = "total")
+```
+
+We can also ask whether there are any other optional covariates that
+we could include without introducing biases.
+
+```{r}
+#| label: adjustment sets 1b
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Light", 
+  outcome = "PI",
+  type = "canonical",
+  effect = "total")
+```
+
+- we could also include diuron
+
+```{r}
+#| label: adjustment sets 1c
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Light", 
+  outcome = "PI",
+  type = "minimal",
+  effect = "direct")
+```
+
+<!-- END_PRIVATE-->
+
+## Total Light on cell density
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: ggdag paths 2
+#| eval: true
+#| cache: false
+#| fig-width: 7
+#| fig-height: 5
+ggdag_paths(king_dag, from = "Light", to = "celld", text_col = "black", shadow = TRUE) +
+    theme_dag_blank(panel.border = element_rect(fill = NA)) 
+```
+
+**Conclusions**:
+
+- there is a single path
+  - a pipe (`Light -> PI -> celld`)
+
+```{r}
+#| label: adjustment sets 2a
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Light", 
+  outcome = "celld",
+  type = "minimal",
+  effect = "total")
+```
+
+- to explore the total effects of Light on celld, we do not condition on anything
+
+We can also ask whether there are any other optional covariates that
+we could include without introducing biases.
+
+```{r}
+#| label: adjustment sets 2b
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Light", 
+  outcome = "celld",
+  type = "canonical",
+  effect = "total")
+```
+
+- we could also include diuron
+
+The conceptual model does not include a direct pathway from Light to cell density,
+but if we wanted to examine this, what would we need to condition on?
+
+```{r}
+#| label: adjustment sets 2c
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Light", 
+  outcome = "celld",
+  type = "minimal",
+  effect = "direct")
+```
+
+- we would need to include both Diuron and PI
+
+<!-- END_PRIVATE-->
+## Total photosynthesis on cell density
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: ggdag paths 4
+#| eval: true
+#| cache: false
+#| fig-width: 7
+#| fig-height: 5
+ggdag_paths(king_dag, from = "PI", to = "celld", text_col = "black", shadow = TRUE) +
+    theme_dag_blank(panel.border = element_rect(fill = NA)) 
+```
+
+**Conclusions**:
+
+- there is are two paths
+  - direct (`PI -> celld`)
+  - a forl (`PI <- Diuron -> celld`) 
+    - this is a backdoor
+    - we want to block this path
+
+```{r}
+#| label: adjustment sets 4a
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "PI", 
+  outcome = "celld",
+  type = "minimal",
+  effect = "total")
+```
+
+- to explore the total effects of photosynthesis inhibition on cell
+  density, we **must** condition on diuron
+
+We can also ask whether there are any other optional covariates that
+we could include without introducing biases.
+
+```{r}
+#| label: adjustment sets 4b
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "PI", 
+  outcome = "celld",
+  type = "canonical",
+  effect = "total")
+```
+
+- we could also include light, but we already know that we must
+  include diuron
+
+The conceptual model also includes a direct pathway from PI to cell density,
+so if we wanted to examine this, what would we need to condition on?
+
+```{r}
+#| label: adjustment sets 4c
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "PI", 
+  outcome = "celld",
+  type = "minimal",
+  effect = "direct")
+```
+
+- again, as a minimum, we **must** condition on diuron
+
+<!-- END_PRIVATE-->
+
+
+## Diuron on cell density
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: ggdag paths 3
+#| eval: true
+#| cache: false
+#| fig-width: 12
+#| fig-height: 5
+ggdag_paths(king_dag, from = "Diuron", to = "celld", text_col = "black", shadow = TRUE) +
+    theme_dag_blank(panel.border = element_rect(fill = NA)) 
+```
+
+**Conclusions**:
+
+- there are two paths
+  - one is a pipe (`Diron -> PI -> celld`)
+  - one is direct (`Diuron -> celld`)
+
+```{r}
+#| label: adjustment sets 3a
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Diuron", 
+  outcome = "celld",
+  type = "minimal",
+  effect = "total")
+```
+
+- to explore the total effects of Diuron on cell density, we do not
+  condition on any other covariate
+
+
+We can also ask whether there are any other optional covariates that
+we could include without introducing biases.
+
+```{r}
+#| label: adjustment sets 3b
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Diuron", 
+  outcome = "celld",
+  type = "canonical",
+  effect = "total")
+```
+
+- we could also include Light
+
+If we wanted to examine the direct effects of Diuron on cell density,
+what would we need to condition on?
+
+```{r}
+#| label: adjustment sets 3c
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Diuron", 
+  outcome = "celld",
+  type = "minimal",
+  effect = "direct")
+```
+
+- we would need to include PI
+
+<!-- END_PRIVATE-->
+
+## Diuron on photosynthetic inhibition
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: ggdag paths 5
+#| eval: true
+#| cache: false
+#| fig-width: 12
+#| fig-height: 5
+ggdag_paths(king_dag, from = "Diuron", to = "PI", text_col = "black", shadow = TRUE) +
+    theme_dag_blank(panel.border = element_rect(fill = NA)) 
+```
+
+**Conclusions**:
+
+- there are two paths
+  - one is a pipe (`Diron -> PI -> celld`)
+  - one is direct (`Diuron -> celld`)
+
+```{r}
+#| label: adjustment sets 5a
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Diuron", 
+  outcome = "PI",
+  type = "minimal",
+  effect = "total")
+```
+
+- to explore the total effects of Diuron on cell density, we do not
+  condition on any other covariate
+
+
+We can also ask whether there are any other optional covariates that
+we could include without introducing biases.
+
+```{r}
+#| label: adjustment sets 5b
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Diuron", 
+  outcome = "PI",
+  type = "canonical",
+  effect = "total")
+```
+
+- we could also include Light
+
+If we wanted to examine the direct effects of Diuron on cell density,
+what would we need to condition on?
+
+```{r}
+#| label: adjustment sets 5c
+#| eval: true
+#| cache: false
+adjustmentSets(king_dag,
+  exposure = "Diuron", 
+  outcome = "PI",
+  type = "minimal",
+  effect = "direct")
+```
+
+- we would need to include PI
+
+<!-- END_PRIVATE-->
+
+:::
+
+
+**Conclusions**:
+
+- Response: PI
+  - Light
+    - can include diuron
+  - Diuron
+    - 
+- Response: celld
+  - Light
+    - total: can include diuron
+    - direct: must include PI and diuron
+  - PI
+    - total: must include diuron
+    - total: can also include Light
+    - direct: must include diuron
+  - Diuron
+    - total: can include Light
+    - direct: must include PI
+
+# Step 5 - test for causality
+
+::: {.panel-tabset}
+
+## Total effect of Light on photosynthesis
+
+```{r}
+#| label: processData
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: false
+```
+
+### Exploratory data analysis
+
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: eda_mod1a
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: true
+king |>
+    ggplot(aes(y = PI, x = Diuron, fill = fLight)) +
+    geom_boxplot() +
+    theme_classic()
+```
+ 
+```{r}
+#| label: brms_mod1a
+#| eval: true
+#| echo: true
+#| cache: true
+form <- bf(PI ~ fLight * scale(Diuron))
+## summarise data to help inform priors
+king |>
+    group_by(fLight) |>
+    summarise(PI_mu = median(PI), PI_sd = sd(PI), PI_mad = mad(PI))
+
+## define priors
+priors <- prior(normal(1.4, 0.3), class = "Intercept") +
+  prior(normal(0, 0.5), class = "b") +
+  prior(student_t(3, 0, 0.3), class = "sigma")
+## fit the mode
+king_brms1a <- brm(
+  form,
+  prior = priors,
+  data = king,
+  refresh = 0,
+  backend = "cmdstanr"
+)
+```
+
+```{r}
+#| label: brms_mod1a_sum
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+summary(king_brms1a)
+```
+
+**Conclusions:** 
+
+- increasing light reduces photosynthetic inhibition
+- increasing diuron reduces photosynthetic inhibition
+
+<!-- END_PRIVATE-->
+
+## Total effect of Light on cell density
+
+### Exploratory data analysis
+
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: eda_mod2a
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: true
+king |>
+    ggplot(aes(y = celld, x = Diuron, fill = fLight)) +
+    geom_boxplot() +
+    theme_classic()
+```
+ 
+```{r}
+#| label: brms_mod2a
+#| eval: true
+#| echo: true
+#| cache: true
+form <- bf(celld ~ fLight * scale(Diuron))
+## summarise data to help inform priors
+king |>
+    group_by(fLight) |>
+    summarise(celld_mu = median(celld), celld_sd = sd(celld), celld_mad = mad(celld))
+
+## define priors
+priors <- prior(normal(150, 50), class = "Intercept") +
+  prior(normal(0, 30), class = "b") +
+  prior(student_t(3, 0, 50), class = "sigma")
+## fit the mode
+king_brms2a <- brm(
+  form,
+  prior = priors,
+  data = king,
+  refresh = 0,
+  backend = "cmdstanr"
+)
+```
+
+```{r}
+#| label: brms_mod2a_sum
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+summary(king_brms2a)
+```
+
+**Conclusions:** 
+
+- increasing light increases algal cell density (although only at 20 units)
+- increasing diuron concentration reduces algal cell density
+- however, there is an interaction between diuron and light levels
+
+<!-- END_PRIVATE-->
+
+## Total effect of photosynthetic inhibition on cell density
+
+### Exploratory data analysis
+
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: eda_mod3a
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: true
+king |>
+    ggplot(aes(y = celld, x = PI, fill = fLight)) +
+    geom_boxplot() +
+    theme_classic()
+```
+ 
+```{r}
+#| label: brms_mod3a
+#| eval: true
+#| echo: true
+#| cache: true
+form <- bf(celld ~ scale(PI) * fLight * scale(Diuron))
+## summarise data to help inform priors
+king |>
+    group_by(fLight) |>
+    summarise(celld_mu = median(celld), celld_sd = sd(celld), celld_mad = mad(celld))
+
+## define priors
+priors <- prior(normal(150, 50), class = "Intercept") +
+  prior(normal(0, 30), class = "b") +
+  prior(student_t(3, 0, 50), class = "sigma")
+## fit the mode
+king_brms3a <- brm(
+  form,
+  prior = priors,
+  data = king,
+  refresh = 0,
+  backend = "cmdstanr"
+)
+```
+
+```{r}
+#| label: brms_mod3a_sum
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+summary(king_brms3a)
+```
+
+**Conclusions:** 
+
+- no evidence that photosynthetic inhibition has an effect on algal cell density
+- but ignore diuron and light
+
+<!-- END_PRIVATE-->
+
+## Total effect of diuron on cell density
+
+### Exploratory data analysis
+
+<!-- START_PRIVATE-->
+```{r}
+#| label: eda_mod4a
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: true
+king |>
+    ggplot(aes(y = celld, x = Diuron, fill = fLight)) +
+    geom_boxplot() +
+    theme_classic()
+```
+ 
+```{r}
+#| label: brms_mod4a
+#| eval: true
+#| echo: true
+#| cache: true
+form <- bf(celld ~ fLight * scale(Diuron))
+## summarise data to help inform priors
+king |>
+    group_by(fLight) |>
+    summarise(celld_mu = median(celld), celld_sd = sd(celld), celld_mad = mad(celld))
+
+## define priors
+priors <- prior(normal(150, 50), class = "Intercept") +
+  prior(normal(0, 30), class = "b") +
+  prior(student_t(3, 0, 50), class = "sigma")
+## fit the mode
+king_brms4a <- brm(
+  form,
+  prior = priors,
+  data = king,
+  refresh = 0,
+  backend = "cmdstanr"
+)
+```
+
+```{r}
+#| label: brms_mod4a_sum
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+summary(king_brms4a)
+```
+
+**Conclusions:** 
+
+- increasing light levels increase algal cell density
+- increasing diuron concentration decreases algal cell density
+- there is evidence of an interaction between light and diuron concentration
+
+<!-- END_PRIVATE-->
+
+
+:::

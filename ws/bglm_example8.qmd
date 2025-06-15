@@ -1,0 +1,281 @@
+---
+title: "Bayesian GLM Part8"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+library(tidyverse)
+library(brms)
+library(dagitty)
+library(ggdag)
+library(patchwork)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+To investigate the effects of low light and a herbicide (diuron) on
+algae, @King_2022 set up an experiment in which algae were exposed to
+different combinations of light levels and diuron concentration. Over
+a 72 hour period, chlorophyll-a fluorescence and cell density were
+measured.
+
+The data are in the file
+**king.csv** in the **data** folder.
+
+
+| Time | Light | Diuron | Block | t0       | celld     | lncelld     | PI          |
+|------|-------|--------|-------|----------|-----------|-------------|-------------|
+| 72   | 20    | 0.11   | 2     | 35.24612 | 125.94344 | 4.835832917 | 1.012390192 |
+| 72   | 20    | 0.11   | 3     | 39.6347  | 114.65852 | 4.74195832  | 0.929296694 |
+| 72   | 20    | 0.11   | 4     | 34.61918 | 167.32148 | 5.119916992 | 0.977363859 |
+| 72   | 20    | 0.33   | 2     | 35.4551  | 126.77936 | 4.842448253 | 1.02771364  |
+| 72   | 20    | 0.33   | 3     | 45.69512 | 155.20064 | 5.044718731 | 0.95016989  |
+| 72   | 20    | 0.33   | 4     | 46.53104 | 162.72392 | 5.092055022 | 0.972060034 |
+| 72   | 20    | 1      | 2     | 48.62084 | 165.85862 | 5.111135739 | 0.914524138 |
+| \... | \...  | \...   | \...  | \...     | \...      | \...        | \...        |
+
+: Format of the king.csv data file {#tbl-king .table-condensed}
+
+---------------- ---------------------------------------------------
+**Time**:        Hour of measurements
+**Light**:       Light level treatment (5, 20, 80μmol photons m-2 s-1) - Predictor variable
+**Diuron**:      Diuron herbicide concentration (0, 0.11, 0.33, 1, 3μg/L) - Predictor variable
+**Block**:       Block - we will ignore this for now
+**t0**:          Cell density at time 0
+**celld**        Cell density at treatment level - Response variable
+**PI**           Photosynthetic inhibition (%), photosynthetic yield (as a % of controls) - Response variable
+---------------- ---------------------------------------------------
+ 
+: Description of the variables in the king data file {#tbl-king .table-condensed}
+
+# Read in the data
+
+```{r}
+#| label: readData
+king <- read_csv("../data/king.csv", trim_ws = TRUE)
+```
+
+
+# Process data
+
+```{r}
+#| label: processData
+#| eval: false
+king <- king |>
+    mutate(
+      fLight = factor(Light),
+      fDiuron = factor(Diuron),
+      Block = factor(Block)
+    )
+```
+
+
+# Research questions
+
+- Q1: estimate the effect of light on photosynthetic inhibition
+- Q2: estimate the effect of photosynthetic inhibition on algal cell density
+- Q3: estimate the effect of light on algal cell density
+- Q4: estimate the effect of diuron (herbicide) on photosynthetic inhibition
+- Q5: estimate the effect of diuron (herbicide) on algal cell density
+
+# Naive approach
+
+
+# Structural Causal Modelling
+
+
+1. Create a conceptual model of the system of interest
+
+2. Choose a statistical test
+
+3. Test the consistency of your conceptual model with the data
+
+4. Identify biases (confounding, overcontrol, collider) that you need
+   to adjust for when testing the cause of interest
+
+5. Test for causality with the appropriate statistical test
+
+6. Repeat steps 3-5 for each cause of interest
+
+7. Repeat steps 1-6 for other conceptual models
+
+# Step 1 - conceptual model
+
+@King_2022 hypothesised that photosynthetic inhibition would be
+effected by light levels and that the diuron herbicide would effect
+photosynthesis by blocking certain chemical reactions. In tern,
+changes in photosynthesis could have an effect on algal cell density.
+Furthermore, diuron might also have a direct effect on cell density by
+causing cell damage.
+
+Lets start by creating a DAG that reflects this conceptual model.
+
+
+# Step 2 - choose a statistical test
+
+For the main inference tests we will fit Bayesian generalized linear
+models, however, for the purpose of testing the consistency of our
+conceptual model (DAG) with data, we will just use more simple
+frequentist analyses.
+
+# Step 3 - test the consistency of the DAG with observed data
+
+Lets now determine what all the implied assumptions (conditional independencies) of our DAG are.
+
+
+And challenge those assumptions with the data.
+
+
+# Step 4 - identify biases that need to be adjusted for
+
+Our goal is to be able to investigate the effects of light and diuron
+on both algal photosynthesis and cell density. So lets explore each
+one separately, starting with photosynthesis.
+
+::: {.panel-tabset}
+
+## Total effect of Light on photosynthesis
+
+
+## Total Light on cell density
+
+## Total photosynthesis on cell density
+
+
+
+## Diuron on cell density
+
+
+## Diuron on photosynthetic inhibition
+
+
+:::
+
+
+**Conclusions**:
+
+- Response: PI
+  - Light
+    - can include diuron
+  - Diuron
+    - 
+- Response: celld
+  - Light
+    - total: can include diuron
+    - direct: must include PI and diuron
+  - PI
+    - total: must include diuron
+    - total: can also include Light
+    - direct: must include diuron
+  - Diuron
+    - total: can include Light
+    - direct: must include PI
+
+# Step 5 - test for causality
+
+::: {.panel-tabset}
+
+## Total effect of Light on photosynthesis
+
+```{r}
+#| label: processData
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: false
+```
+
+### Exploratory data analysis
+
+
+
+## Total effect of Light on cell density
+
+### Exploratory data analysis
+
+
+
+## Total effect of photosynthetic inhibition on cell density
+
+### Exploratory data analysis
+
+
+
+## Total effect of diuron on cell density
+
+### Exploratory data analysis
+
+
+
+:::
