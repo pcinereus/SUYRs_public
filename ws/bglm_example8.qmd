@@ -229,7 +229,7 @@ one separately, starting with photosynthesis.
   - Light
     - can include diuron
   - Diuron
-    - 
+    - can also have light 
 - Response: celld
   - Light
     - total: can include diuron
@@ -242,12 +242,17 @@ one separately, starting with photosynthesis.
     - total: can include Light
     - direct: must include PI
 
+PI: ~ Light + Diuron
+Celld (total): ~ Light + Diuron
+
+
 # Step 5 - test for causality
 
 ::: {.panel-tabset}
 
 ## Total effect of Light on photosynthesis
 
+<!-- START
 ```{r}
 #| label: processData
 #| results: hide
@@ -259,22 +264,66 @@ one separately, starting with photosynthesis.
 ### Exploratory data analysis
 
 
+```{r}
+#| label: eda_mod1a
+#| results: hide
+#| eval: true
+#| echo: true
+#| cache: true
+king |>
+    ggplot(aes(y = PI, x = Diuron, fill = fLight)) +
+    geom_boxplot() +
+    theme_classic()
+```
+ 
+```{r}
+#| label: brms_mod1a
+#| eval: true
+#| echo: true
+#| cache: true
+form <- bf(PI ~ fLight * scale(Diuron))
+## summarise data to help inform priors
+king |>
+    group_by(fLight) |>
+    summarise(PI_mu = median(PI), PI_sd = sd(PI), PI_mad = mad(PI))
+
+## define priors
+priors <- prior(normal(1.4, 0.3), class = "Intercept") +
+  prior(normal(0, 0.5), class = "b") +
+  prior(student_t(3, 0, 0.3), class = "sigma")
+## fit the mode
+king_brms1a <- brm(
+  form,
+  prior = priors,
+  data = king,
+  refresh = 0,
+  backend = "cmdstanr"
+)
+```
+
+```{r}
+#| label: brms_mod1a_sum
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+summary(king_brms1a)
+```
+
+**Conclusions:** 
+
+- increasing light reduces photosynthetic inhibition
+- increasing diuron reduces photosynthetic inhibition
+
+<!-- END_PRIVATE-->
 
 ## Total effect of Light on cell density
-
-### Exploratory data analysis
-
 
 
 ## Total effect of photosynthetic inhibition on cell density
 
-### Exploratory data analysis
-
-
 
 ## Total effect of diuron on cell density
-
-### Exploratory data analysis
 
 
 
