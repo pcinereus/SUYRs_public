@@ -67,6 +67,7 @@ options(tinytex.engine = "xelatex")
 
 Load the necessary libraries
 
+
 ```{r}
 #| label: libraries
 #| output: false
@@ -130,34 +131,33 @@ king <- read_csv("../public/data/king.csv", trim_ws = TRUE)
 ::: {.panel-tabset}
 
 ## glimpse
+
 ```{r}
 #| label: examinData
 glimpse(king)
 ```
 
 ## head
+
 ```{r}
 ## Explore the first 6 rows of the data
 head(king)
 ```
 
 ## str
+
 ```{r}
 str(king)
 ```
 
 ## Easystats (datawizard)
+
 ```{r}
 king |> datawizard::data_codebook()
 ```
 
-## Skim (modelsummary)
-```{r}
-king |> modelsummary::datasummary_skim()
-king |> modelsummary::datasummary_skim(by = "Block")
-```
-
 :::
+
 <!-- END_PRIVATE-->
 
 # Process data
@@ -181,6 +181,7 @@ king <- king |>
 - Q3: estimate the effect of light on algal cell density
 - Q4: estimate the effect of diuron (herbicide) on photosynthetic inhibition
 - Q5: estimate the effect of diuron (herbicide) on algal cell density
+
 
 # Naive approach
 
@@ -214,8 +215,12 @@ g3 <-
   theme_classic()
 g1 + g2 + g3 + plot_layout(guides = "collect")
 ```
- 
-Response: PI
+
+::: {.panel-tabset}
+
+## Response: PI
+
+
 
 ```{r}
 #| label: brms_mod0a
@@ -257,7 +262,7 @@ summary(king_brms0a)
 - increasing light is associated with decreasing photosynthetic inhibition 
 
 
-Response: cell density
+## Response: cell density
 
 ```{r}
 #| label: brms_mod0b
@@ -283,7 +288,7 @@ king_brms0b <- brm(
   backend = "cmdstanr"
 )
 ```
-
+ 
 ```{r}
 #| label: brms_mod0b_sum
 #| results: markup
@@ -299,6 +304,7 @@ summary(king_brms0b)
 - no effect of photosynthetic inhibition on algal cell density
 - no effect of light on algal cell density
 
+:::
 <!-- END_PRIVATE-->
 
 # Structural Causal Modelling
@@ -728,13 +734,14 @@ adjustmentSets(king_dag,
 :::
 
 
+<!-- START_PRIVATE-->
 **Conclusions**:
 
 - Response: PI
   - Light
     - can include diuron
   - Diuron
-    - 
+    - can also have light 
 - Response: celld
   - Light
     - total: can include diuron
@@ -747,12 +754,18 @@ adjustmentSets(king_dag,
     - total: can include Light
     - direct: must include PI
 
+PI: ~ Light + Diuron
+Celld (total): ~ Light + Diuron
+
+<!-- END_PRIVATE-->
+
 # Step 5 - test for causality
 
 ::: {.panel-tabset}
 
 ## Total effect of Light on photosynthesis
 
+<!-- START_PRIVATE
 ```{r}
 #| label: processData
 #| results: hide
@@ -764,7 +777,6 @@ adjustmentSets(king_dag,
 ### Exploratory data analysis
 
 
-<!-- START_PRIVATE-->
 ```{r}
 #| label: eda_mod1a
 #| results: hide
@@ -820,10 +832,10 @@ summary(king_brms1a)
 
 ## Total effect of Light on cell density
 
+<!-- START_PRIVATE-->
 ### Exploratory data analysis
 
 
-<!-- START_PRIVATE-->
 ```{r}
 #| label: eda_mod2a
 #| results: hide
@@ -880,10 +892,10 @@ summary(king_brms2a)
 
 ## Total effect of photosynthetic inhibition on cell density
 
+<!-- START_PRIVATE-->
 ### Exploratory data analysis
 
 
-<!-- START_PRIVATE-->
 ```{r}
 #| label: eda_mod3a
 #| results: hide
@@ -939,9 +951,9 @@ summary(king_brms3a)
 
 ## Total effect of diuron on cell density
 
+<!-- START_PRIVATE-->
 ### Exploratory data analysis
 
-<!-- START_PRIVATE-->
 ```{r}
 #| label: eda_mod4a
 #| results: hide
