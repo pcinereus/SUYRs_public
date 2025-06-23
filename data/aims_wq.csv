@@ -1,0 +1,1754 @@
+reef.alias,Date,NOx,Region,Subregion,Site,Season
+Barren Island,2005-08-23,0.025,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2006-01-04,0.059598333333333336,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2006-08-23,0.03,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2007-03-06,0.0457925,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2007-10-02,0.2508625,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2007-10-03,0.03,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2008-02-25,0.101648,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2008-07-29,0.037750000000000006,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2008-10-04,0.128079,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2009-02-16,0.171679,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2009-06-07,0.0993975,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2009-06-08,0.04910166666666667,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2009-10-01,0.031543,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2010-02-23,0.13328375,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2010-06-30,0.176905,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2010-07-01,0.01,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2010-09-30,0.15310375,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2011-02-15,0.46769,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2011-02-16,0.01,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2011-06-15,0.176455,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2011-06-16,0.04078,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2011-09-26,0.09868125,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2012-02-12,0.13571,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2012-06-12,0.15109,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2012-06-13,0.12255,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2012-10-04,0.14877625,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2013-02-24,0.20144875,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2013-06-12,0.13783,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2013-10-02,0.18848875,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2014-02-14,0.248967,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2014-06-22,0.1537,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2014-06-23,0.0597,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2014-09-16,0.0681025,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2014-09-17,0.11281666666666668,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2015-05-12,NA,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2020-11-30,0.0675,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2021-02-04,0.14666666666666667,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2021-02-05,NA,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2021-03-09,0.0525,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2021-04-08,0.0225,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2021-05-06,0.0675,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2021-06-02,0.0675,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2021-06-15,0.0275,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2021-07-19,0.0575,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2021-07-28,0.0575,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2021-09-23,0.4175,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2021-11-15,0.0625,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2021-12-01,0.035,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2022-01-19,0.075,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2022-02-02,0.0425,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2022-03-24,0.0425,Fitzroy,Fitzroy,Barren Island,Wet
+Barren Island,2022-05-05,0.0625,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2022-05-29,0.3175,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2022-07-12,0.030000000000000002,Fitzroy,Fitzroy,Barren Island,Dry
+Barren Island,2022-07-25,0.0375,Fitzroy,Fitzroy,Barren Island,Dry
+Bedarra Island,2015-03-26,0.095555,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2015-06-24,0.04495,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2015-09-18,0.0349,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2015-12-10,0.01,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2016-02-05,0.0955575,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2016-03-30,0.2806975,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2016-07-04,0.0497075,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2016-10-11,0.01,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2016-12-19,0.043579999999999994,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2017-03-21,0.01,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2017-04-27,0.048285,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2017-05-11,0.076165,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2017-09-28,0.023935,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2017-12-08,0.028720000000000002,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2018-02-13,0.025,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2018-04-19,0.1988025,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2018-05-11,0.05147333333333333,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2018-10-10,0.01,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2018-12-05,0.01,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2019-02-10,1.525,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2019-03-08,0.0225,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2019-05-26,0.01,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2019-10-10,0.025,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2019-12-06,0.09,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2020-02-05,0.05,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2020-03-06,0.035,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2020-04-13,0.1625,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2020-10-21,0.042499999999999996,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2020-12-09,0.0225,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2021-02-12,0.255,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2021-04-08,0.35500000000000004,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2021-06-10,0.14500000000000002,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2021-09-30,0.115,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Bedarra Island,2021-12-10,0.04,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2022-02-09,0.155,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2022-03-28,0.0675,Wet Tropics,Tully Herbery,Bedarra Island,Wet
+Bedarra Island,2022-06-05,0.1325,Wet Tropics,Tully Herbery,Bedarra Island,Dry
+Between Tam Oshanter and Timana,2015-03-26,0.0702275,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2015-06-24,0.5924725,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2015-09-18,0.04813666666666667,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2015-12-10,0.01,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2016-02-06,0.020565,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2016-03-30,0.07899,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2016-07-04,0.44284249999999997,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2016-10-11,0.01,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2016-12-19,0.032947500000000005,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2017-03-21,0.19291,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2017-04-27,0.01,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2017-05-10,1.3652075,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2017-09-28,0.01,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2017-12-08,0.0271775,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2018-02-13,0.025,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2018-05-10,0.068105,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2018-10-11,0.01,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2018-12-05,0.04,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2019-02-10,1.3225,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2019-03-08,0.2,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2019-05-25,1.78,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2019-10-10,0.035,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2019-12-06,0.01,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2020-02-05,0.052500000000000005,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2020-03-06,0.0275,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2020-04-13,0.4475,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2020-10-21,0.0325,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2020-12-09,0.0225,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2021-02-12,0.06,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2021-04-08,0.2175,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2021-06-10,0.335,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2021-09-30,0.060000000000000005,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Between Tam Oshanter and Timana,2021-12-10,0.0375,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2022-02-09,0.0525,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2022-03-28,0.48000000000000004,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Wet
+Between Tam Oshanter and Timana,2022-06-06,0.1825,Wet Tropics,Tully Herbert,Between Tam Oshanter and Timana,Dry
+Burdekin River mooring,2015-03-24,0.16770000000000002,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2015-05-31,0.133465,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2015-09-23,0.01,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2016-01-21,0.0979675,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2016-03-21,0.0504475,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2016-06-20,0.023125,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2017-01-20,0.10485,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2017-03-21,0.069845,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2017-03-23,NA,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2017-07-07,0.0431125,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2017-09-07,0.02205,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2018-01-31,0.12249999999999998,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2018-03-16,1.495,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2018-05-31,0.0271625,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2018-09-19,0.025,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2018-10-14,NA,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2019-01-24,0.135,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2019-03-12,0.29750000000000004,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2019-03-28,NA,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2019-06-14,0.01,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2019-08-29,NA,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2019-09-16,0.03,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2020-01-20,0.025,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2020-03-09,0.615,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2020-06-13,NA,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2020-07-10,0.0975,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2020-09-23,0.14250000000000002,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2020-12-11,NA,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2021-01-27,0.42000000000000004,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2021-02-08,1.5574999999999999,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2021-06-05,0.3225,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2021-09-26,0.14500000000000002,Burdekin,Burdekin,Burdekin River mooring,Dry
+Burdekin River mooring,2022-01-05,0.42500000000000004,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2022-02-05,0.6950000000000001,Burdekin,Burdekin,Burdekin River mooring,Wet
+Burdekin River mooring,2022-06-02,0.755,Burdekin,Burdekin,Burdekin River mooring,Dry
+Cape Tribulation,2005-09-16,0.025,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2006-01-22,0.01,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2006-10-30,0.0708375,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2007-04-20,0.03,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2007-10-14,0.0837475,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2008-03-30,0.045,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2008-10-11,0.048350000000000004,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2009-02-26,0.11364,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2009-06-15,0.056667499999999996,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2009-10-12,0.03180875,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2010-03-04,0.043038,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2010-06-27,0.03234,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2010-10-07,0.02218166666666667,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2011-02-09,0.01,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2011-06-21,0.030673333333333334,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2011-10-02,0.0867475,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2012-02-19,0.077765,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2012-06-07,0.08723500000000001,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2012-10-12,0.10882166666666666,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2013-02-15,0.09105,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2013-06-19,0.10836166666666666,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2013-10-12,0.08887833333333334,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2014-02-04,0.16201333333333334,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2014-07-03,0.041925,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2014-09-24,0.09880333333333334,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2015-02-19,0.1003,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2015-06-16,0.053454999999999996,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2015-11-01,0.0525925,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2016-02-26,0.051872499999999995,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2016-06-25,0.01,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2016-10-24,0.0528125,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2017-02-11,0.0287925,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2017-06-21,0.0525475,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2017-11-09,0.029425,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2018-03-01,0.01,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2018-05-31,0.058332499999999995,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2018-11-01,0.01,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2019-02-08,0.1075,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2019-06-19,0.01,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2019-10-21,0.0425,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2020-02-04,0.01,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2020-07-14,0.125,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2020-09-29,0.1525,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2021-02-14,0.05,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2021-06-12,0.09,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Cape Tribulation,2021-10-03,0.0525,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2022-02-12,0.0375,Wet Tropics,Barron Daintree,Cape Tribulation,Wet
+Cape Tribulation,2022-06-08,0.1,Wet Tropics,Barron Daintree,Cape Tribulation,Dry
+Daydream/West Molle Island,2005-08-27,0.025,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2006-01-09,0.0458,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2006-08-18,0.040932500000000004,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2007-02-12,0.04325,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2007-10-05,0.032307,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2008-02-15,0.182057,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2008-07-25,0.159151,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2008-09-30,0.097077,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2009-02-19,0.250112,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2009-06-10,0.037099,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2009-10-05,0.061091,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2010-02-25,0.122382,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2010-07-03,0.115272,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2010-10-01,0.072864,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2011-02-19,0.357838,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2011-06-18,0.165215,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2011-09-28,0.080475,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2012-02-13,0.066034,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2012-06-15,0.175368,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2012-10-06,0.12142800000000001,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2013-02-21,0.509446,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2013-06-15,0.3766975,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2013-10-04,0.140148,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2014-02-10,1.2049925,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2014-02-11,1.3690066666666667,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2014-06-25,0.134935,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2014-09-18,0.08358800000000001,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Dry
+Daydream/West Molle Island,2015-03-06,0.145735,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Daydream/West Molle Island,2015-03-07,NA,Mackay Whitsunday,Mackay Whitsunday,Daydream/West Molle Island,Wet
+Double Cone Island,2005-08-27,0.027290000000000002,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2006-01-09,0.0490825,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2006-08-18,0.03,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2007-02-13,0.050415,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2007-10-06,0.051761,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2008-02-14,0.2009475,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2008-02-15,0.04317666666666666,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2008-04-03,NA,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2008-07-26,0.1850075,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2008-07-27,0.091645,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2008-10-02,0.08957,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2009-02-20,0.326891,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2009-06-10,0.030546,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2009-10-06,0.036311,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2010-02-27,0.059296999999999996,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2010-07-03,0.085801,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2010-10-02,0.062434,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2011-02-19,0.082278,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2011-06-18,0.0512,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2011-09-24,0.08804000000000001,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2011-09-25,0.04599,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2012-02-09,0.055224999999999996,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2012-02-10,0.07562166666666667,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2012-06-15,0.135611,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2012-10-07,0.083769,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2013-02-20,0.31647000000000003,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2013-02-21,0.29131833333333335,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2013-06-15,0.1940075,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2013-06-16,0.094604,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2013-10-06,0.159474,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2014-02-09,1.3040825,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2014-02-10,0.531965,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2014-06-26,0.042202222222222224,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2014-09-18,0.08614222222222223,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2015-03-05,0.12480666666666668,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2015-07-11,NA,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2015-07-15,0.10296999999999999,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2015-10-25,0.01,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2016-01-07,0.0850225,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2016-02-17,0.045535,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2016-03-22,0.132015,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2016-05-04,NA,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2016-06-26,0.0760725,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2016-09-20,0.130505,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2017-01-13,0.23611749999999998,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2017-02-17,0.14079999999999998,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2017-03-15,0.0344575,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2017-05-27,0.35506499999999996,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2017-06-29,NA,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2017-09-05,0.10160999999999999,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2018-01-13,0.0325,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2018-02-18,0.08750000000000001,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2018-04-25,0.23232,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2018-06-09,0.0397875,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2018-09-07,0.04,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2019-02-02,0.01,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2019-02-19,0.6775,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2019-03-19,0.03,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2019-05-30,0.0325,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2019-07-10,NA,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2019-09-18,0.04,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2020-01-16,0.05,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2020-02-11,0.12,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2020-05-24,0.2425,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2020-06-13,NA,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2020-06-22,0.01,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2020-10-08,0.075,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2021-02-07,0.1575,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2021-02-23,0.21,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2021-03-15,0.0675,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2021-06-05,0.8175,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2021-09-26,0.17750000000000002,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Cone Island,2022-01-15,0.0275,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2022-02-05,0.16,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2022-03-10,0.10250000000000001,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Wet
+Double Cone Island,2022-06-02,0.01,Mackay Whitsunday,Mackay Whitsunday,Double Cone Island,Dry
+Double Island,2005-09-17,0.025,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2006-01-23,0.024285,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2006-10-30,0.03,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2007-04-20,0.03,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2008-03-28,0.045,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2008-08-07,0.035,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2008-10-11,0.091025,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2009-02-25,0.035,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2009-06-15,0.01,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2009-10-11,0.033468333333333336,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2010-03-03,0.01,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2010-06-26,0.020395,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2010-10-07,0.01,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2011-02-10,0.01,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2011-06-21,0.02722166666666667,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2011-10-02,0.080635,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2012-02-20,0.07883,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2012-06-07,0.08461333333333333,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2012-10-12,0.13866333333333333,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2013-02-15,0.054266666666666664,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2013-06-19,0.09482833333333333,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2013-10-12,0.174085,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2014-02-05,0.153245,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2014-07-03,0.11778166666666666,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2014-09-24,0.10669166666666667,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2015-02-18,0.07359,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2015-06-17,0.0448175,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2015-11-01,0.028433333333333335,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2016-02-26,0.01,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2016-06-25,0.01,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2016-10-24,0.01,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2017-02-11,0.02666,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2017-06-21,0.050205,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2017-11-09,0.0589675,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2018-03-01,0.085,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2018-05-31,0.044185,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2018-11-01,0.01,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2019-02-08,0.07,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2019-06-19,0.01,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2019-10-21,0.05,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2020-02-04,0.01,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2020-07-14,0.0675,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2020-09-29,0.41250000000000003,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2021-02-15,0.20750000000000002,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2021-06-12,0.1075,Wet Tropics,Barron Daintree,Double Island,Dry
+Double Island,2021-10-04,0.435,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2022-02-13,0.04,Wet Tropics,Barron Daintree,Double Island,Wet
+Double Island,2022-06-09,0.0725,Wet Tropics,Barron Daintree,Double Island,Dry
+Dunk Island,2007-10-16,0.03,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2007-10-17,0.03,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2007-12-18,NA,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2008-03-25,0.05684,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2008-08-04,0.040767500000000005,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2008-10-12,0.10539,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2009-02-26,0.0848975,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2009-06-16,0.05531125,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2009-10-12,0.0872575,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2010-03-04,0.067412,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2010-06-24,0.30351,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2010-06-25,0.05866333333333333,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2010-06-28,0.09647,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2010-10-05,0.11041999999999999,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2010-10-06,0.0266575,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2011-02-11,0.10822,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2011-02-12,0.066865,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2011-06-23,0.033273333333333335,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2011-06-24,0.0441475,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2011-10-05,0.1052875,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2011-12-14,0.6182650000000001,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2012-02-17,0.07048625,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2012-06-10,0.091075,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2012-10-10,0.1111725,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2013-02-17,0.3775525,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2013-02-18,0.2662325,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2013-06-21,0.10724,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2013-06-22,0.17672,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2013-10-10,0.14078857142857143,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2014-02-07,0.44321375,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2014-07-01,0.13181571428571429,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2014-09-21,0.3882025,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2014-09-22,0.03084,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2015-02-21,0.0611825,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2015-03-26,0.02501,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2015-07-24,0.06796250000000001,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2015-09-18,0.01,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2015-12-10,0.01,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2016-02-05,0.01,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2016-03-30,0.09527000000000001,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2016-07-04,0.26327,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2016-07-08,NA,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2016-10-11,0.0240975,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2016-12-19,0.11562,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2017-03-07,NA,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2017-03-21,0.0765625,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2017-04-27,0.0376425,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2017-05-11,0.030412500000000002,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2017-08-06,NA,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2017-09-28,0.045215000000000005,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2017-12-08,0.0203325,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2018-02-13,0.01,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2018-04-19,0.07134,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2018-05-11,0.050485,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2018-06-02,NA,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2018-10-11,0.0225,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2018-12-05,0.01,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2019-02-09,1.395,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2019-03-08,0.01,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2019-05-26,0.2675,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2019-06-18,NA,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2019-10-10,0.04,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2019-12-06,0.01,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2020-02-01,NA,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2020-02-06,0.0275,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2020-03-06,0.01,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2020-04-13,0.34,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2020-05-31,NA,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2020-10-21,0.035,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2020-12-09,0.045,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2021-02-12,0.305,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2021-04-08,0.3775,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2021-06-09,NA,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2021-06-10,0.19,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2021-09-30,0.2725,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island,2021-12-10,0.04,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2022-02-09,0.0675,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2022-03-28,0.17,Wet Tropics,Tully Herbery,Dunk Island,Wet
+Dunk Island,2022-06-05,0.06999999999999999,Wet Tropics,Tully Herbery,Dunk Island,Dry
+Dunk Island South East,2015-03-25,0.02656,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2015-06-24,0.025,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2015-09-18,0.05803666666666667,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2015-12-10,0.01,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2016-02-05,0.0257725,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2016-03-30,0.1014375,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2016-07-04,0.0817225,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2016-10-11,0.01,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2016-12-19,0.0376875,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2017-03-20,0.13423000000000002,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2017-04-26,0.01,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2017-05-11,0.029732500000000002,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2017-09-27,0.02904,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2017-12-07,0.0240125,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2018-02-12,0.0475,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2018-04-19,0.06592,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2018-05-11,0.09187,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2018-10-10,0.01,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2018-12-04,0.01,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2019-02-09,0.4225,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2019-03-08,0.075,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2019-05-26,0.045,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2019-10-10,0.0525,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2019-12-05,0.095,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2020-02-06,0.03,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2020-03-05,0.0825,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2020-04-13,0.1,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2020-10-20,0.03,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2020-12-09,0.0275,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2021-02-11,0.055,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2021-04-07,0.25,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2021-06-09,0.8125,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2021-09-30,0.08,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Dunk Island South East,2021-12-09,0.0425,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2022-02-10,0.075,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2022-03-28,0.0525,Wet Tropics,Tully Herbery,Dunk Island South East,Wet
+Dunk Island South East,2022-06-05,0.1925,Wet Tropics,Tully Herbery,Dunk Island South East,Dry
+Fairlead Buoy,2005-09-17,0.025,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2006-01-24,0.01,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2006-10-29,0.03,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2007-04-19,0.03,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2007-10-15,0.03,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2008-03-28,0.045,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2008-08-07,0.035,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2008-10-10,0.04012,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2009-02-25,0.0722675,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2009-06-14,0.0523475,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2009-10-10,0.028110000000000003,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2010-03-03,0.01,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2010-06-26,0.07123,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2010-10-06,0.0230375,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2011-02-10,0.01,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2011-06-20,0.025320000000000002,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2011-10-01,0.0973975,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2012-02-20,0.08057,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2012-06-06,0.1092125,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2012-10-11,0.17427,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2013-02-14,0.020417499999999998,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2013-06-18,0.08173,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2013-10-12,0.1302075,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2014-02-05,0.12170500000000001,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2014-07-02,0.10720249999999999,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2014-09-23,0.0911375,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2015-02-18,0.073445,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2015-06-17,0.048895,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2015-11-01,NA,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2016-02-25,0.049045,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2016-06-24,0.0247975,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2016-10-23,0.02444,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2017-02-10,0.0234275,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2017-06-20,0.01,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2017-11-08,0.0727225,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2018-02-28,0.0275,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2018-05-30,0.0942225,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2018-10-31,0.1925,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2019-02-07,0.030000000000000002,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2019-06-18,0.01,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2019-10-20,0.0475,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2020-02-03,0.01,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2020-07-15,0.075,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2020-09-30,0.085,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2021-02-15,0.0925,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2021-06-12,0.0275,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fairlead Buoy,2021-10-04,0.20500000000000002,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2022-02-13,0.0425,Wet Tropics,Barron Daintree,Fairlead Buoy,Wet
+Fairlead Buoy,2022-06-09,0.05,Wet Tropics,Barron Daintree,Fairlead Buoy,Dry
+Fitzroy Island coral site,2007-10-11,0.0799525,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2007-10-12,0.03,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2007-12-16,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2008-03-27,0.0751525,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2008-08-05,0.09028,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2008-08-06,0.035,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2008-10-10,0.13528,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2009-02-24,0.2138375,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2009-06-14,0.070982,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2009-10-10,0.144778,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2010-03-02,0.037381,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2010-06-27,0.034523,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2010-10-08,0.298245,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2011-02-10,0.037241666666666666,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2011-02-11,0.207575,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2011-06-22,0.143447,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2011-10-03,0.1534525,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2012-02-18,0.209729,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2012-06-08,0.263415,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2012-10-11,0.141523,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2013-02-16,0.165917,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2013-06-20,0.148427,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2013-10-11,0.1481311111111111,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2014-02-05,0.520542,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2014-07-02,0.12749,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2014-09-23,0.24874200000000002,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2015-02-19,0.42383,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2015-02-20,0.055415,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2015-03-27,0.01,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2015-07-26,0.050320000000000004,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2015-08-04,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2015-10-21,0.03214666666666667,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2015-12-11,0.043125,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2016-02-27,0.049272500000000004,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2016-03-30,0.13880499999999998,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2016-03-31,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2016-07-05,0.047917499999999995,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2016-07-19,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2016-10-12,0.05118333333333333,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2016-12-17,0.14309,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2017-03-07,0.10210999999999999,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2017-04-26,0.3170075,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2017-05-12,0.38000500000000004,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2017-06-26,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2017-09-27,0.04058,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2017-12-07,0.02125,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2018-02-12,0.060000000000000005,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2018-04-20,0.08648249999999999,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2018-05-10,0.10664,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2018-06-03,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2018-10-09,0.030000000000000002,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2018-12-04,0.025,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2019-02-07,0.16,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2019-03-07,0.1,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2019-05-27,0.045,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2019-07-22,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2019-10-09,0.0475,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2019-12-05,0.0275,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2020-02-03,0.1525,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2020-03-05,0.065,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2020-04-12,0.17500000000000002,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2020-07-19,NA,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2020-10-20,0.065,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2020-12-07,0.0275,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2021-02-14,0.14,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2021-04-07,0.375,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2021-06-11,0.155,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy Island coral site,2021-10-02,0.095,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2021-12-09,0.3925,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2022-02-11,0.025,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2022-03-29,0.0575,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Wet
+Fitzroy Island coral site,2022-06-07,0.33,Wet Tropics,Johnstone Russell Mulgrave,Fitzroy Island coral site,Dry
+Fitzroy River Mouth,2020-11-29,1.3925,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2021-02-03,0.8775,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2021-03-09,0.7,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2021-04-08,0.2375,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2021-05-06,0.08,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2021-05-31,0.81,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2021-06-14,0.8175,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2021-07-18,0.545,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2021-07-27,0.5625,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2021-09-21,0.20500000000000002,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2021-11-14,0.46,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2021-11-30,1.45,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2022-01-18,1.0925,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2022-02-02,1.2875,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2022-03-23,1.565,Fitzroy,Fitzroy,Fitzroy River Mouth,Wet
+Fitzroy River Mouth,2022-05-04,1.1575,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2022-05-30,2.0425,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2022-07-11,1.2975,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Fitzroy River Mouth,2022-07-24,0.4275,Fitzroy,Fitzroy,Fitzroy River Mouth,Dry
+Geoffrey Bay,2005-09-20,0.025,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2006-01-31,0.01,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2006-10-27,0.05795,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2007-04-15,0.674225,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2007-10-06,0.03,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2007-10-07,0.03,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2007-12-13,NA,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2008-03-24,0.14569625,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2008-06-03,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2008-07-31,0.08338999999999999,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2008-08-01,0.04476,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2008-10-07,0.16764125000000002,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2009-02-21,0.9358075,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2009-02-22,0.124695,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2009-06-11,0.01,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2009-06-12,0.0701725,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2009-10-07,0.036283750000000003,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2010-02-27,0.34033875,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2010-07-03,0.21761875,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2010-10-03,0.34904,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2010-10-04,0.1882375,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2011-02-14,0.14075875,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2011-06-18,0.0838,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2011-09-29,0.41673625000000003,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2012-02-14,0.10748125,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2012-02-21,NA,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2012-06-10,0.1626725,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2012-10-07,0.7882224999999999,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2012-10-08,0.21675750000000002,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2013-02-19,0.14316,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2013-06-16,0.22804625,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2013-10-06,0.2829725,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2013-10-07,0.1323925,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2014-02-19,1.6225825,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2014-02-20,0.52659,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2014-06-28,0.09762625,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2014-09-19,0.08996,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2014-09-20,0.0617975,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2015-02-22,0.5526549999999999,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2015-02-23,0.041765,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2015-03-22,0.5607525,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2015-05-28,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2015-05-30,0.1598975,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2015-09-16,0.055735,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2015-09-28,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2016-01-14,0.06165,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2016-03-07,0.2015075,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2016-06-08,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2016-06-21,0.058589999999999996,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2016-09-18,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2017-01-18,0.0397625,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2017-03-16,0.0640225,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2017-04-30,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2017-06-06,0.0251725,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2017-09-12,0.10049,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2018-01-29,0.4275,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2018-03-14,0.065,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2018-06-02,0.044247499999999995,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2018-09-04,0.0275,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2019-01-22,0.245,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2019-03-12,0.17,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2019-05-07,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2019-06-13,0.045,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2019-09-04,0.11,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2020-01-21,0.0775,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2020-03-08,0.135,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2020-07-08,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2020-07-09,0.0775,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2020-09-21,NA,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2020-09-22,0.23,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2021-01-25,0.1375,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2021-02-10,0.2725,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2021-06-07,0.4925,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2021-09-28,0.08,Burdekin,Burdekin,Geoffrey Bay,Dry
+Geoffrey Bay,2022-01-06,0.01,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2022-02-07,0.095,Burdekin,Burdekin,Geoffrey Bay,Wet
+Geoffrey Bay,2022-06-03,0.0725,Burdekin,Burdekin,Geoffrey Bay,Dry
+Green Island,2005-09-17,0.02844666666666667,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2006-01-24,NA,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2006-10-29,0.03480833333333333,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2007-04-18,0.041725,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2007-10-16,0.03,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2008-03-27,0.192535,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2008-08-07,0.04170666666666667,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2008-10-10,0.069,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2009-02-25,0.0657675,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2009-06-14,0.05036,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2009-10-10,0.029443,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2010-03-03,0.035048333333333334,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2010-06-25,0.035513333333333334,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2010-10-06,0.038995,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2011-02-10,0.16435666666666668,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2011-06-20,0.030133333333333335,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2011-10-01,0.12243499999999999,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2012-02-20,0.08230333333333334,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2012-06-06,0.10385333333333333,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2012-10-11,0.15920166666666669,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2013-02-14,0.06692333333333333,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2013-06-18,0.09976333333333333,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2013-10-11,0.12048,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2014-02-05,0.16901,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2014-07-02,0.111885,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2014-09-23,0.08643166666666667,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2015-02-18,0.08012999999999999,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2015-06-17,0.036615,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2015-10-31,0.0216075,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2016-02-25,0.07251,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2016-06-24,0.01,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2016-10-23,0.07752333333333333,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2017-02-10,0.021425,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2017-06-20,0.0752975,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2017-11-08,0.1111925,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2018-02-28,0.14666666666666667,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2018-05-30,0.0348975,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2018-10-31,0.01,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2019-02-07,0.155,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2019-06-18,0.01,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2019-10-20,0.04,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2020-02-03,0.0275,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2020-07-13,0.075,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2020-09-28,0.08750000000000001,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2021-02-14,0.35250000000000004,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2021-06-11,0.025,Wet Tropics,Barron Daintree,Green Island,Dry
+Green Island,2021-10-02,0.055,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2022-02-11,0.060000000000000005,Wet Tropics,Barron Daintree,Green Island,Wet
+Green Island,2022-06-07,0.035,Wet Tropics,Barron Daintree,Green Island,Dry
+Haughton 2,2015-03-25,0.0604575,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2015-06-01,0.035615,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2015-09-23,0.05859,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2016-01-22,0.01,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2016-03-21,0.056675,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2016-06-24,0.021975,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2017-01-20,0.03256333333333333,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2017-03-21,0.02336,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2017-07-05,0.465155,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2017-09-06,0.104405,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2018-01-30,0.035,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2018-03-15,0.025,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2018-06-02,0.01,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2018-09-27,0.0575,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2019-01-24,0.2,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2019-03-13,0.01,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2019-07-03,0.0625,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2019-09-17,0.0825,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2020-01-16,0.0275,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2020-03-06,0.0425,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2020-07-11,0.14,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2020-09-04,0.535,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2021-01-27,0.01,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2021-02-09,1.8199999999999998,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2021-06-06,0.21750000000000003,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2021-09-27,0.11000000000000001,Burdekin,Burdekin,Haughton 2,Dry
+Haughton 2,2022-01-05,0.06,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2022-02-06,0.1225,Burdekin,Burdekin,Haughton 2,Wet
+Haughton 2,2022-06-03,0.28250000000000003,Burdekin,Burdekin,Haughton 2,Dry
+High Island,2005-09-18,0.030966666666666667,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2006-01-26,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2006-10-29,0.0418775,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2007-04-17,0.05284,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2007-10-10,0.036563,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2007-12-17,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2008-03-27,0.297132,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2008-08-05,0.05566600000000001,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2008-10-10,0.12493,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2009-02-24,0.473839,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2009-06-14,0.09110900000000001,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2009-10-10,0.11363300000000001,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2010-03-02,0.027098,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2010-06-28,0.1546511111111111,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2010-10-08,0.347738,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2011-02-11,0.212921,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2011-06-22,0.114386,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2011-10-03,0.31079249999999997,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2011-10-04,0.12128333333333334,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2012-02-18,0.104679,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2012-06-06,0.291285,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2012-10-11,0.165546,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2013-02-17,0.134986,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2013-06-21,0.124366,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2013-10-13,0.2525225,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2013-10-14,0.06357333333333333,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2014-02-06,0.762035,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2014-07-01,0.045895,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2014-09-22,0.068101,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2015-02-17,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2015-03-27,0.52133,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2015-07-26,0.0971775,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2015-08-04,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2015-10-22,0.10122666666666667,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2015-12-11,0.05335,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2016-02-28,0.148955,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2016-03-31,0.81506,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2016-07-05,0.042715,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2016-07-21,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2016-10-12,0.034195,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2016-12-18,0.0392975,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2017-03-07,0.0594325,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2017-04-26,0.028265,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2017-05-12,0.09334,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2017-06-25,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2017-09-27,0.1488925,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2017-12-07,0.0585275,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2018-02-12,0.05,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2018-04-20,0.052680000000000005,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2018-05-10,0.04148,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2018-06-04,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2018-10-08,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2018-10-09,0.01,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2018-12-04,0.01,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2019-02-07,0.8175,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2019-03-07,0.1575,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2019-05-27,0.34,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2019-07-20,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2019-10-09,0.0475,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2019-12-05,0.33,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2020-02-02,0.26,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2020-03-05,0.17750000000000002,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2020-04-11,0.3125,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2020-07-20,NA,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2020-10-20,0.055,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2020-12-08,0.0275,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2021-02-13,0.205,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2021-04-07,0.385,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2021-06-11,0.35750000000000004,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+High Island,2021-10-02,0.10250000000000001,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2021-12-09,0.17500000000000002,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2022-02-11,0.06,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2022-03-29,0.0275,Wet Tropics,Johnstone Russell Mulgrave,High Island,Wet
+High Island,2022-06-07,0.49,Wet Tropics,Johnstone Russell Mulgrave,High Island,Dry
+Humpy Island,2005-08-23,0.025,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2006-01-04,0.07902999999999999,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2006-08-23,0.03,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2007-03-05,0.113215,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2007-10-03,0.03,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2008-02-25,0.046855,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2008-07-29,0.10290375,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2008-10-04,0.24746300000000002,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2009-02-17,0.22876083333333333,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2009-06-08,0.0593225,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2009-08-14,NA,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2009-10-02,0.02792,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2010-02-23,0.16663,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2010-02-24,0.076003,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2010-07-01,0.0959475,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2010-09-30,0.07057125,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2011-02-16,0.131781,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2011-06-16,0.06201285714285714,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2011-09-26,0.07176571428571428,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2012-02-11,0.3484925,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2012-06-13,0.123712,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2012-10-04,0.27666625,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2013-02-23,0.136332,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2013-06-13,0.06924,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2013-10-02,0.20663875,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2014-02-14,0.152852,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2014-06-22,0.08775625,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2014-09-16,0.062055714285714283,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2015-05-10,NA,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2020-11-30,0.35750000000000004,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2021-02-03,0.28500000000000003,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2021-02-04,NA,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2021-03-10,0.025,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2021-04-09,0.0225,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2021-05-07,0.042499999999999996,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2021-06-01,0.12,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2021-06-15,0.05,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2021-07-18,0.055,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2021-07-27,0.07,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2021-09-22,0.20500000000000002,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2021-11-15,0.06,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2021-12-01,0.0525,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2022-01-18,0.14250000000000002,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2022-02-01,0.1075,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2022-03-23,0.0475,Fitzroy,Fitzroy,Humpy Island,Wet
+Humpy Island,2022-05-04,0.049999999999999996,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2022-05-30,0.1675,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2022-07-11,0.01,Fitzroy,Fitzroy,Humpy Island,Dry
+Humpy Island,2022-07-24,0.01,Fitzroy,Fitzroy,Humpy Island,Dry
+Mission Bay,2005-09-17,0.025,NA,NA,Mission Bay,Dry
+Mission Bay,2006-01-24,0.01,NA,NA,Mission Bay,Wet
+Mission Bay,2006-10-29,0.03,NA,NA,Mission Bay,Wet
+Mission Bay,2007-04-19,0.03,NA,NA,Mission Bay,Dry
+Mission Bay,2007-10-15,0.03,NA,NA,Mission Bay,Wet
+Mission Bay,2008-03-28,0.054377499999999995,NA,NA,Mission Bay,Wet
+North Keppel Island,2020-11-30,0.435,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2021-02-03,0.3825,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2021-03-09,0.045,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2021-04-08,0.0275,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2021-05-07,0.0325,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2021-06-02,0.245,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2021-06-15,0.0725,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2021-07-19,0.07250000000000001,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2021-07-28,0.0575,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2021-09-23,0.115,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2021-11-15,0.07,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2021-12-01,0.035,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2022-01-19,0.0275,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2022-01-31,0.045000000000000005,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2022-03-23,0.0625,Fitzroy,Fitzroy,North Keppel Island,Wet
+North Keppel Island,2022-05-04,0.04,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2022-05-28,0.2625,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2022-07-11,0.0325,Fitzroy,Fitzroy,North Keppel Island,Dry
+North Keppel Island,2022-07-25,0.0825,Fitzroy,Fitzroy,North Keppel Island,Dry
+O'Connell River,2021-02-07,0.6975,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Wet
+O'Connell River,2021-02-22,0.06,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Wet
+O'Connell River,2021-03-15,0.4225,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Wet
+O'Connell River,2021-06-04,0.3025,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Dry
+O'Connell River,2021-09-25,0.0825,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Dry
+O'Connell River,2022-01-15,0.060000000000000005,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Wet
+O'Connell River,2022-02-04,0.135,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Wet
+O'Connell River,2022-03-10,0.3275,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Wet
+O'Connell River,2022-06-01,0.3775,Mackay Whitsunday,Mackay Whitsunday,O'Connell River,Dry
+Oconnell River mouth,2015-03-05,0.1569875,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2015-07-16,0.0386725,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2015-10-24,0.01,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2016-01-07,0.01,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2016-02-18,0.180845,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2016-03-22,0.08840250000000001,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2016-06-26,0.01,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2016-09-20,0.0398425,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2017-01-14,0.35771,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2017-02-17,NA,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2017-03-15,0.0362325,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2017-05-27,0.26349,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2017-09-06,0.01,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2018-01-14,0.0525,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2018-02-19,0.10250000000000001,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2018-04-26,0.2593825,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2018-06-10,0.0728875,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2018-09-08,0.037500000000000006,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2019-02-01,4.7675,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2019-02-19,0.185,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2019-03-20,0.01,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2019-05-29,0.09,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2019-09-19,0.0425,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2020-01-16,0.0625,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2020-02-11,0.0725,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Oconnell River mouth,2020-05-23,0.5775,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2020-06-21,0.10500000000000001,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Dry
+Oconnell River mouth,2020-10-08,0.025,Mackay Whitsunday,Mackay Whitsunday,Oconnell River mouth,Wet
+Pandora Reef,2005-09-19,0.025,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2006-01-29,0.01,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2006-10-27,0.03,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2007-04-15,0.03,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2007-10-08,0.06896625,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2007-12-15,NA,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2008-03-24,0.20055,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2008-03-25,0.045,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2008-08-02,0.1555925,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2008-10-08,0.35313125,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2009-02-22,0.2576525,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2009-06-13,0.10167857142857142,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2009-10-08,0.18943875,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2010-03-05,0.27117874999999997,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2010-06-29,0.043640000000000005,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2010-10-05,0.12053625,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2011-02-13,0.01,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2011-06-19,0.06977,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2011-09-30,0.13655,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2012-02-15,0.09539375,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2012-06-17,0.1417625,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2012-10-08,0.093535,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2013-02-19,0.37040625,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2013-06-17,0.09579857142857143,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2013-10-07,0.49159,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2013-10-08,0.1397,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2014-02-16,0.46192500000000003,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2014-02-17,0.09146499999999999,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2014-06-28,0.1769525,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2014-06-29,0.0427075,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2014-09-20,0.35070875,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2015-02-16,0.1001875,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2015-03-23,0.03144,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2015-05-31,0.028852500000000003,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2015-06-15,0.051750000000000004,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2015-06-17,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2015-09-17,0.4514875,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2015-09-29,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2016-01-15,0.01,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2016-03-08,0.02688,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2016-05-09,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2016-06-22,0.0930775,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2016-09-19,0.066775,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2017-01-19,0.264045,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2017-03-17,0.1513475,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2017-05-09,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2017-06-17,0.01,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2017-09-13,0.01,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2018-01-30,0.1325,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2018-03-15,0.04,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2018-05-09,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2018-05-28,0.1797625,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2018-09-05,0.025,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2019-01-23,0.01,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2019-03-13,0.21500000000000002,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2019-06-14,0.01,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2019-06-20,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2019-09-05,0.0575,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2020-01-22,0.04,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2020-03-10,0.025,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2020-07-09,0.0475,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2020-09-20,0.10250000000000001,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2020-09-21,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2021-01-26,0.01,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2021-02-10,0.4275,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2021-02-16,NA,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2021-06-07,NA,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2021-06-08,0.085,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2021-09-29,0.18250000000000002,Burdekin,Burdekin,Pandora Reef,Dry
+Pandora Reef,2022-01-06,0.33999999999999997,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2022-02-08,0.025,Burdekin,Burdekin,Pandora Reef,Wet
+Pandora Reef,2022-06-04,0.065,Burdekin,Burdekin,Pandora Reef,Dry
+Peak West,2020-11-30,0.23750000000000002,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2021-02-03,0.5900000000000001,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2021-03-10,0.01,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2021-04-09,0.0225,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2021-05-07,0.01,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2021-06-01,1.27,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2021-06-15,0.0425,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2021-07-18,0.0525,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2021-07-27,0.065,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2021-09-22,0.0725,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2021-11-14,0.0625,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2021-11-30,0.1625,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2022-01-18,0.11000000000000001,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2022-02-01,0.0675,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2022-03-23,0.0225,Fitzroy,Fitzroy,Peak West,Wet
+Peak West,2022-05-04,0.34249999999999997,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2022-05-29,0.5549999999999999,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2022-07-11,0.0325,Fitzroy,Fitzroy,Peak West,Dry
+Peak West,2022-07-24,0.20750000000000002,Fitzroy,Fitzroy,Peak West,Dry
+Pelican Island,2005-08-23,0.025,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2006-01-05,0.035,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2006-08-26,0.041162500000000005,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2007-03-06,0.0338125,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2007-10-04,0.069245,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2008-02-24,0.7030025,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2008-04-02,0.1284475,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2008-07-28,0.47121999999999997,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2008-10-04,0.253965,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2009-02-17,0.1594925,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2009-06-08,0.05860125,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2009-10-01,0.03163125,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2010-02-23,1.7056025,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2010-02-24,0.388035,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2010-07-01,0.028384285714285713,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2010-09-29,0.07254125,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2011-02-16,0.2974375,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2011-02-17,0.51744,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2011-06-16,0.04137875,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2011-09-26,0.06683499999999999,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2011-09-27,0.0524475,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2012-02-11,0.07459625,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2012-06-13,0.10972,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2012-10-04,0.4348725,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2012-10-05,0.2637275,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2013-02-23,0.04335625,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2013-06-13,0.054127499999999995,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2013-10-02,0.09706625,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2014-02-14,0.38075375,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2014-06-22,0.10461374999999999,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2014-09-16,0.18971,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2015-05-09,NA,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2020-11-30,0.4375,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2021-02-02,0.1875,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2021-03-10,0.0325,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2021-04-09,0.0325,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2021-05-07,0.07250000000000001,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2021-06-01,0.275,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2021-06-15,0.055,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2021-07-18,0.065,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2021-07-27,0.0525,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2021-09-22,0.06999999999999999,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2021-11-15,0.0675,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2021-12-01,0.052500000000000005,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2022-01-18,0.01,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2022-01-31,0.08,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2022-03-23,0.01,Fitzroy,Fitzroy,Pelican Island,Wet
+Pelican Island,2022-05-04,0.125,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2022-05-29,0.6475,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2022-07-11,0.030000000000000002,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelican Island,2022-07-24,0.065,Fitzroy,Fitzroy,Pelican Island,Dry
+Pelorus / Orpheus Island,2005-09-19,0.025,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2006-10-28,0.0634575,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2007-04-15,0.035242499999999996,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2007-10-09,0.048068999999999994,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2007-12-15,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2008-03-25,0.055008999999999995,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2008-08-02,0.084728,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2008-10-08,0.098069,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2009-02-22,0.6363258333333334,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2009-06-17,0.031342,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2009-10-08,0.077365,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2010-03-01,0.03994333333333334,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2010-06-24,0.054843333333333334,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2010-10-04,0.07563,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2010-10-05,0.01,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2011-02-12,0.142635,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2011-02-13,0.09276333333333334,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2011-06-19,0.03974,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2011-09-30,0.12548600000000001,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2012-02-15,0.11364750000000001,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2012-02-16,0.06803000000000001,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2012-06-17,0.099245,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2012-10-09,0.22881400000000002,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2013-02-18,0.209738,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2013-06-17,0.08146111111111111,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2013-10-08,0.193597,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2014-02-07,0.20786749999999998,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2014-02-08,0.16176,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2014-06-29,0.1318525,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2014-06-30,0.07728666666666667,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2014-09-20,0.12270375,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2015-02-21,0.30909000000000003,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2015-02-22,0.08942,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2015-03-23,0.059195,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2015-05-31,0.0517325,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2015-06-16,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2015-09-17,0.06025,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2015-09-29,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2016-01-15,0.05919,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2016-03-08,0.25339,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2016-05-09,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2016-06-22,0.01,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2016-09-19,0.0642875,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2017-01-19,0.1728475,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2017-03-17,0.068035,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2017-05-09,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2017-06-17,0.0302875,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2017-09-13,0.0329825,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2018-01-30,0.025,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2018-03-15,0.0475,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2018-05-11,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2018-05-29,0.021425,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2018-09-05,0.0275,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2019-01-23,0.01,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2019-03-13,0.06999999999999999,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2019-05-09,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2019-06-14,0.0725,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2019-09-05,0.0925,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2020-01-22,0.1375,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2020-03-09,0.0225,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2020-07-11,NA,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2020-07-12,0.1125,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2020-09-21,0.0475,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2021-01-26,0.035,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2021-02-10,0.14,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2021-06-08,0.06999999999999999,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2021-09-29,0.09,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pelorus / Orpheus Island,2022-01-06,0.1525,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2022-02-08,0.0975,Burdekin,Burdekin,Pelorus / Orpheus Island,Wet
+Pelorus / Orpheus Island,2022-06-04,0.125,Burdekin,Burdekin,Pelorus / Orpheus Island,Dry
+Pine Island,2007-10-05,0.04251125,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2008-02-15,0.12914375,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2008-07-26,0.0538025,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2008-10-01,0.13134300000000002,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2009-02-19,0.394316,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2009-06-09,0.033926,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2009-10-03,0.041645,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2010-02-25,0.08821999999999999,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2010-07-03,0.158708,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2010-10-01,0.098379,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2011-02-18,0.5191790000000001,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2011-06-17,0.25074444444444444,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2011-09-28,0.099075,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2012-02-13,0.06472699999999999,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2012-06-14,0.4624125,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2012-06-15,0.28816833333333336,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2012-10-06,0.124325,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2013-02-21,0.554991,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2013-06-15,0.328515,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2013-10-05,0.24565700000000001,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2014-02-11,1.4855049999999999,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2014-02-12,1.442365,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2014-06-24,0.24130333333333331,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2014-09-18,0.091361,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2015-03-06,0.1654175,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2015-07-10,NA,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2015-07-15,0.0843975,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2015-10-25,0.037005,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2016-01-07,0.021337500000000002,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2016-02-17,0.2603525,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2016-03-22,0.4101925,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2016-06-27,0.09600249999999999,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2016-09-20,0.18937666666666667,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2017-01-13,0.836415,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2017-02-17,0.6339600000000001,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2017-03-16,0.247475,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2017-05-27,0.86435,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2017-07-05,NA,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2017-09-06,0.048537500000000004,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2017-10-10,NA,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2018-01-13,0.047499999999999994,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2018-02-18,0.155,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2018-04-25,0.65074,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2018-06-09,0.13961,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2018-06-16,NA,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2018-09-07,0.0925,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2019-02-01,0.7925,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2019-02-19,0.3975,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2019-03-19,0.085,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2019-05-30,0.195,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2019-07-10,NA,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2019-09-19,0.04,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2020-01-17,0.12,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2020-02-11,0.1725,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2020-05-24,0.5575,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2020-06-15,NA,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2020-06-22,0.1275,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2020-10-08,0.0225,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2021-02-07,0.5275000000000001,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2021-02-23,0.12250000000000001,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2021-03-15,0.35000000000000003,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2021-06-04,1.1075000000000002,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2021-09-25,0.2,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Pine Island,2022-01-15,0.1325,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2022-02-04,0.42,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2022-03-10,0.08750000000000001,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Wet
+Pine Island,2022-06-01,0.09,Mackay Whitsunday,Mackay Whitsunday,Pine Island,Dry
+Port Douglas,2005-09-16,0.029166666666666667,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2006-01-23,0.02857,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2006-10-30,0.03,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2007-04-20,0.08541499999999999,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2007-10-14,0.035385,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2008-03-28,0.045,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2008-08-07,0.0398,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2008-10-11,0.0886075,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2009-02-25,0.035,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2009-06-15,0.047565,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2009-10-11,0.03791166666666667,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2010-03-03,0.0282,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2010-06-26,0.01,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2010-10-07,0.01,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2011-02-09,0.01,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2011-06-21,0.0316825,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2011-10-02,0.09084,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2012-02-20,0.06378166666666667,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2012-06-07,0.08897166666666667,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2012-10-12,0.1095225,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2013-02-15,0.0730475,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2013-06-19,0.08404999999999999,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2013-10-12,0.0574275,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2014-02-05,0.12119666666666667,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2014-07-03,0.11266166666666666,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2014-09-24,0.11507833333333334,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2015-02-19,0.318795,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2015-06-17,0.04016,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2015-11-01,0.0282125,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2016-02-26,0.01,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2016-06-25,0.01,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2016-10-24,0.01,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2017-02-11,0.0507025,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2017-06-21,0.1112975,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2017-11-09,0.02827,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2018-03-01,0.01,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2018-05-31,0.036095,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2018-11-01,0.01,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2019-02-08,0.16,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2019-06-19,0.075,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2019-10-21,0.045,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2020-02-04,0.03,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2020-07-14,0.12250000000000001,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2020-09-29,0.1025,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2021-02-15,0.2025,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2021-06-12,1.16,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Port Douglas,2021-10-03,0.060000000000000005,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2022-02-12,0.0325,Wet Tropics,Barron Daintree,Port Douglas,Wet
+Port Douglas,2022-06-08,0.1075,Wet Tropics,Barron Daintree,Port Douglas,Dry
+Repulse Islands dive mooring,2015-03-06,0.1191325,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2015-07-11,NA,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2015-07-16,0.035785000000000004,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2015-10-24,0.020503333333333335,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2016-01-08,0.01,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2016-02-18,0.046385,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2016-03-22,0.39117,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2016-06-27,0.1823025,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2016-09-21,0.19357,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2017-01-14,0.8428450000000001,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2017-02-17,0.14959250000000002,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2017-03-16,0.21518749999999998,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2017-05-27,0.3081275,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2017-06-29,NA,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2017-09-05,0.066105,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2017-10-10,NA,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2018-01-13,0.0625,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2018-02-19,0.225,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2018-04-25,0.090795,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2018-06-10,0.04796,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2018-06-16,NA,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2018-09-07,0.0675,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2018-09-08,NA,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2019-01-31,1.5125,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2019-02-20,0.1575,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2019-03-20,0.07,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2019-05-29,0.07,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2019-09-18,0.0675,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2020-01-17,0.0475,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2020-02-11,0.1825,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2020-05-23,0.4225,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2020-06-14,NA,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2020-06-22,0.055,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2020-10-07,0.01,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2021-02-07,0.85,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2021-02-22,0.43000000000000005,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2021-03-15,0.185,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2021-06-04,0.31,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2021-09-25,0.095,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+Repulse Islands dive mooring,2022-01-15,0.6825,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2022-02-04,0.26,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2022-03-10,0.26666666666666666,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Wet
+Repulse Islands dive mooring,2022-06-01,0.115,Mackay Whitsunday,Mackay Whitsunday,Repulse Islands dive mooring,Dry
+RM3,2015-03-27,0.01,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2015-07-26,0.09776750000000001,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2015-10-22,0.116775,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2015-12-11,0.01,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2016-02-27,0.0540725,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2016-03-31,0.202555,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2016-07-05,0.038033333333333336,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2016-10-12,0.01,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2016-12-18,0.03125666666666667,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2017-03-07,0.0359325,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2017-04-26,0.01,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2017-05-12,0.0729675,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2017-09-27,0.038275000000000003,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2017-12-07,0.0573975,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2018-02-11,0.025,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2018-04-20,0.0377325,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2018-05-10,0.0323175,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2018-10-09,0.01,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2018-12-03,0.01,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2019-02-07,0.385,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2019-03-06,0.12250000000000001,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2019-05-27,0.0325,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2019-10-08,0.0375,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2019-12-04,0.12,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2020-02-03,0.0525,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2020-03-04,0.0775,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2020-04-11,0.14250000000000002,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2020-10-19,0.0675,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2020-12-08,0.0275,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2021-02-13,0.2575,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2021-04-06,0.3425,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2021-06-11,0.8375,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+RM3,2021-10-02,0.3125,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2021-12-08,0.27,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2022-02-11,0.057499999999999996,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2022-03-29,0.08499999999999999,Wet Tropics,Johnstone Russell Mulgrave,RM3,Wet
+RM3,2022-06-07,0.425,Wet Tropics,Johnstone Russell Mulgrave,RM3,Dry
+Russell Island (Franklands),2005-09-18,0.025,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2006-01-27,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2006-10-29,0.0832425,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2007-04-17,0.0677025,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2007-10-09,0.1307725,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2007-10-10,0.03,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2007-12-16,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2008-03-26,0.100275,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2008-08-04,0.088884,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2008-10-09,0.174335,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2009-02-23,0.18826400000000001,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2009-06-13,0.055928,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2009-10-09,0.089916,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2010-03-01,0.0709925,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2010-03-02,0.03367166666666667,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2010-06-25,0.062037777777777775,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2010-10-06,0.085939,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2011-02-11,0.1431725,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2011-06-23,0.0433775,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2011-10-04,0.181517,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2012-02-17,0.05942,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2012-02-18,0.063785,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2012-06-09,0.11426499999999999,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2012-10-10,0.2402291666666667,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2013-02-17,0.10983333333333334,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2013-06-21,0.0895175,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2013-10-10,0.27412,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2013-10-11,0.13926428571428573,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2014-02-06,0.24518583333333333,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2014-07-02,0.051991,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2014-09-23,0.139019,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2015-02-17,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2015-02-18,0.10641,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2015-03-27,0.03377,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2015-06-17,0.0691,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2015-07-26,0.062095,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2015-08-03,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2015-10-22,0.11225666666666666,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2015-12-11,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2016-02-28,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2016-03-31,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2016-07-05,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2016-07-20,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2016-10-12,0.04774,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2016-12-18,0.0470175,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2017-03-07,0.0568575,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2017-04-26,0.024884999999999997,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2017-05-12,0.621125,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2017-08-06,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2017-09-27,0.027450000000000002,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2017-12-07,0.0208025,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2018-02-12,0.175,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2018-04-19,0.1029125,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2018-05-09,0.0728425,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2018-06-04,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2018-10-09,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2018-10-10,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2018-12-04,0.12250000000000001,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2019-02-06,0.33999999999999997,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2019-03-07,0.0425,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2019-05-27,0.11,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2019-07-20,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2019-10-09,0.125,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2019-12-05,0.10250000000000001,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2020-02-02,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2020-02-03,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2020-03-05,0.11750000000000001,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2020-04-11,0.1625,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2020-07-20,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2020-10-20,0.0225,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2020-12-08,0.0675,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2021-02-13,0.105,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2021-04-07,0.2025,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2021-06-10,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2021-06-11,0.57,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell Island (Franklands),2021-10-01,0.0675,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2021-12-09,0.1,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2022-02-10,0.25,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2022-03-29,0.12,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Wet
+Russell Island (Franklands),2022-06-06,0.4625,Wet Tropics,Johnstone Russell Mulgrave,Russell Island (Franklands),Dry
+Russell-Mulgrave River mooring,2015-02-17,1.432795,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2015-02-20,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2015-03-26,0.2444425,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2015-07-25,2.2649375,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2015-10-21,0.0892075,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2015-12-11,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2016-02-28,0.06994,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2016-03-31,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2016-07-05,0.676395,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2016-07-20,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2016-10-12,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2016-10-23,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2016-12-18,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2017-02-10,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2017-03-06,0.3507325,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2017-04-25,0.0536625,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2017-05-12,0.1620075,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2017-06-20,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2017-09-26,0.194825,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2017-11-08,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2017-12-07,0.0457575,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2018-02-11,0.23,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2018-02-28,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2018-04-20,0.6900550000000001,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2018-05-10,0.3303825,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2018-05-30,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2018-10-09,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2018-10-31,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2018-12-03,0.0325,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2019-02-07,0.46749999999999997,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2019-03-06,0.2925,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2019-04-26,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2019-05-26,0.3075,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2019-06-18,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2019-10-08,0.057499999999999996,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2019-10-20,NA,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2019-12-04,0.07,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2020-02-02,0.25,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2020-02-03,0.2225,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2020-03-04,0.065,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2020-04-11,2.445,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2020-07-13,0.265,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2020-09-28,0.05,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2020-10-19,0.03,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2020-12-08,0.0225,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2021-02-13,0.305,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2021-04-06,0.17250000000000001,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2021-06-11,1.9374999999999998,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Russell-Mulgrave River mooring,2021-10-01,0.30833333333333335,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2021-12-08,0.325,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2022-02-10,0.049999999999999996,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2022-03-29,0.01,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Wet
+Russell-Mulgrave River mooring,2022-06-07,1.455,Wet Tropics,Johnstone Russell Mulgrave,Russell-Mulgrave River mooring,Dry
+Seaforth Island,2015-03-06,0.169355,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2015-07-10,NA,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2015-07-15,0.1079625,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2015-10-24,0.05096,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2015-10-25,NA,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2016-01-08,0.0279275,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2016-02-17,0.0880625,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2016-03-22,0.2393025,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2016-06-27,0.10944000000000001,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2016-09-21,0.1221225,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2017-01-13,0.60119,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2017-01-14,NA,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2017-02-17,0.17051,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2017-03-16,0.185125,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2017-05-27,0.524275,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2017-06-28,NA,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2017-09-06,0.0526725,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2018-01-14,0.01,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2018-02-19,0.0825,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2018-04-26,0.34959250000000003,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2018-06-10,0.0896525,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2018-09-08,0.06,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2019-02-01,0.405,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2019-02-20,0.15250000000000002,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2019-03-19,0.035,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2019-05-28,NA,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2019-05-30,0.075,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2019-09-19,0.105,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2020-01-17,0.025,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2020-02-12,0.235,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2020-05-24,0.345,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2020-06-14,NA,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2020-06-22,0.025,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2020-10-08,0.01,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2021-02-06,0.16,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2021-02-23,0.125,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2021-03-16,0.38,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2021-06-04,0.52,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2021-09-25,0.0925,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Seaforth Island,2022-01-16,0.105,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2022-02-04,0.1625,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2022-03-10,0.17500000000000002,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Wet
+Seaforth Island,2022-06-01,0.060000000000000005,Mackay Whitsunday,Mackay Whitsunday,Seaforth Island,Dry
+Snapper Island coral site,2006-10-30,0.03,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2007-04-20,0.03,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2007-10-13,0.36136999999999997,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2007-10-14,0.03,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2008-03-29,0.1722925,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2008-03-30,0.045,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2008-08-06,0.09947,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2008-10-11,0.11201125,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2009-02-25,0.43048,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2009-06-15,0.07542249999999999,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2009-06-16,0.14484750000000002,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2009-10-11,0.11210285714285714,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2010-03-03,0.2019,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2010-06-26,0.5875625,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2010-06-27,0.0403375,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2010-10-07,0.14221125,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2011-02-08,0.67255,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2011-02-09,0.049272500000000004,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2011-06-21,0.13314625,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2011-10-02,0.44871625000000004,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2012-02-19,0.07428625,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2012-06-07,0.18039,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2012-06-08,0.2450475,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2012-10-12,0.2598225,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2013-02-15,0.35722624999999997,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2013-06-19,0.42722499999999997,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2013-06-20,0.13731,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2013-10-12,0.3210675,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2013-10-13,0.085835,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2014-02-04,0.30399375,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Snapper Island coral site,2014-07-04,0.08252374999999999,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2014-09-24,0.1879325,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2014-09-25,0.0539625,Wet Tropics,Barron Daintree,Snapper Island coral site,Dry
+Snapper Island coral site,2015-02-19,0.17489,Wet Tropics,Barron Daintree,Snapper Island coral site,Wet
+Tully River Mouth mooring,2015-02-16,1.7898524999999998,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2015-02-21,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2015-03-26,0.1325625,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2015-06-24,1.67318,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2015-09-17,0.1313925,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2015-12-10,0.01,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2016-02-05,0.0279,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2016-03-29,0.20989750000000001,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2016-07-04,0.830085,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2016-07-07,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2016-10-11,0.0445375,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2016-10-22,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2016-12-19,0.02534,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2017-02-09,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2017-03-21,1.6568025,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2017-04-27,0.0222825,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2017-05-11,0.39875,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2017-06-19,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2017-09-28,0.0419825,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2017-11-07,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2017-12-08,0.08216,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2018-02-13,0.0275,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2018-02-27,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2018-04-18,0.408455,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2018-05-10,0.044899999999999995,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2018-05-29,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2018-10-11,0.01,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2018-10-30,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2018-12-05,0.01,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2019-02-10,1.2475,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2019-03-08,0.21000000000000002,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2019-04-27,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2019-05-25,1.2225,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2019-06-17,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2019-10-10,0.17,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2019-10-19,NA,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2019-12-06,0.045,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2020-02-01,0.69,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2020-02-05,0.0775,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2020-03-06,0.23249999999999998,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2020-04-13,0.41750000000000004,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2020-07-12,0.01,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2020-09-27,0.075,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2020-10-21,0.035,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2020-12-09,0.03,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2021-02-11,0.18500000000000003,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2021-04-08,0.7,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2021-06-08,0.1575,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2021-09-29,0.17666666666666667,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Tully River Mouth mooring,2021-12-10,0.0475,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2022-02-09,0.08833333333333333,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2022-03-28,0.385,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Wet
+Tully River Mouth mooring,2022-06-04,0.25,Wet Tropics,Tully Herbery,Tully River Mouth mooring,Dry
+Yongala IMOS NRS,2015-03-24,0.0849125,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2015-04-30,0.055035,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2015-06-01,0.06515,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2015-06-18,0.033755,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2015-08-04,0.025,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2015-08-25,0.0583125,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2015-09-23,0.0240525,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2015-10-27,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2015-11-11,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2015-12-03,0.0287025,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2016-01-22,0.1040275,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2016-02-15,0.08062749999999999,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2016-03-21,0.030795,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2016-05-03,0.0570975,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2016-06-01,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2016-06-24,0.2507425,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2016-07-25,0.034555,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2016-08-23,NA,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2016-09-27,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2016-10-12,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2016-11-08,0.1054125,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2016-12-07,0.076,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2017-01-20,0.195855,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2017-02-20,0.0485925,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2017-03-22,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2017-04-26,0.05081,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2017-05-28,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2017-07-05,0.021642500000000002,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2017-07-24,0.038135,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2017-08-16,0.133465,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2017-09-06,0.025320000000000002,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2017-10-25,0.0256175,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2017-11-30,0.03995,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2017-12-15,0.02641,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2018-01-30,0.025,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2018-02-20,0.06,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2018-03-29,0.07,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2018-04-26,0.083955,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2018-06-02,0.040185,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2018-06-21,0.02523,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2018-07-20,0.0325,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2018-08-17,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2018-09-27,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2018-10-11,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2018-11-23,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2018-12-13,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2019-01-24,0.057499999999999996,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2019-02-13,0.0475,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2019-03-13,0.08750000000000001,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2019-05-07,0.19,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2019-05-28,0.035,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2019-07-03,0.01,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2019-08-08,0.05,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2019-08-26,0.085,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2019-09-17,0.0475,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2019-10-09,0.155,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2019-11-07,0.0575,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2019-12-02,0.0575,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2020-01-16,0.06,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2020-02-12,0.0425,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2020-03-06,0.11000000000000001,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2020-04-22,0.04,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2020-06-11,0.3175,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2020-07-10,0.030000000000000002,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2020-08-02,0.06,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2020-09-04,0.2225,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2021-01-27,0.125,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2021-02-09,0.08499999999999999,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2021-06-06,0.7675000000000001,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2021-09-27,0.2125,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yongala IMOS NRS,2022-01-23,0.0675,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2022-02-06,0.0275,Burdekin,Burdekin,Yongala IMOS NRS,Wet
+Yongala IMOS NRS,2022-06-03,0.08750000000000001,Burdekin,Burdekin,Yongala IMOS NRS,Dry
+Yorkey's Knob,2005-09-17,0.025,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2006-01-23,0.01,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2006-10-30,0.0601775,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2007-04-19,0.04437,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2007-10-15,0.03,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2008-03-28,0.045,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2008-08-07,0.035,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2008-10-11,0.0734625,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2009-02-25,0.055985,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2009-06-15,0.05342,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2009-10-11,0.039112499999999994,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2010-03-03,0.025105,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2010-06-26,0.0282625,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2010-10-07,0.01,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2011-02-10,0.01,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2011-06-21,0.0662725,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2011-10-02,0.1010975,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2012-02-20,0.0886425,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2012-06-07,0.1015175,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2012-10-12,0.18971500000000002,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2013-02-15,0.0332375,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2013-06-19,0.09629333333333334,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2013-10-12,0.1527375,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2014-02-05,0.2159625,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2014-07-03,0.11334,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2014-09-24,0.0639425,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2015-02-18,0.1323675,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2015-06-17,0.0810325,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2015-11-01,0.031013333333333334,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2016-02-26,0.01,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2016-06-25,0.0346725,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2016-10-24,0.046454999999999996,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2017-02-11,0.021335,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2017-06-21,0.2927475,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2017-11-09,0.0325575,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2018-03-01,0.037500000000000006,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2018-05-31,0.0864725,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2018-11-01,0.01,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2019-02-08,0.45,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2019-06-19,0.0625,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2019-10-21,0.0325,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2020-02-04,0.0225,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2020-07-15,0.09999999999999999,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2020-09-28,0.0625,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2021-02-14,0.225,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2021-06-12,0.41000000000000003,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
+Yorkey's Knob,2021-10-03,0.0625,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2022-02-12,0.0325,Wet Tropics,Barron Daintree,Yorkey's Knob,Wet
+Yorkey's Knob,2022-06-09,0.1325,Wet Tropics,Barron Daintree,Yorkey's Knob,Dry
