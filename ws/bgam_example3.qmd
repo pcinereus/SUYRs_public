@@ -56,7 +56,7 @@ bibliography: ../resources/references.bib
 ```{r setup, include=FALSE, warnings=FALSE, message=FALSE}
 knitr::opts_chunk$set(cache.lazy = FALSE, tidy='styler')
 ```
- 
+
 # Preparations
 
 Load the necessary libraries
@@ -97,9 +97,8 @@ source('helperFunctions.R')
 ```
 
 
-
 # Scenario
-
+    
 The Australian Institute of Marine Science (AIMS) have a long-term
 inshore marine water quality monitoring program in which water samples
 are collected and analysed from sites (reef.alias) across the GBR numerous times 
@@ -115,7 +114,7 @@ they are mainly one dimensional).
 ![AIMS water quality monitoring](../resources/AIMS_wq.jpg){#fig-aims width="600" height="325"}
 
 
-LATITUDE LONGITUDE reef.alias Water_Samples Region Subregion Season waterYear DOC
+LATITUDE LONGITUDE reef.alias Water_Samples Region Subregion Season waterYear NOx
 -------- --------- ---------- ------------- ------ --------- ------ --------- ---
 -16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2008      0.830
 -16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Wet    2008      0.100
@@ -138,7 +137,7 @@ LATITUDE LONGITUDE reef.alias Water_Samples Region Subregion Season waterYear DO
 **waterYear**      - The water year (1st Oct - 30 Sept) to which the data are attached
 **Date**           - The date the sample was collected
 **Mnth**           - The month the sample was collected
-**DOC**            - Nitrite and Nitrate
+**NOx**            - Nitrite and Nitrate
 --------------     ---------------------------------------------------------------------
 
 : Description of the variables in the aims data file {#tbl-aims1 .table-condensed}
@@ -147,7 +146,8 @@ LATITUDE LONGITUDE reef.alias Water_Samples Region Subregion Season waterYear DO
 
 ```{r}
 #| label: readData
-wq <- read_csv("../data/aims.wq1.csv", trim_ws = TRUE)
+#| cache: false
+wq <- read_csv("../data/aims_wq.csv", trim_ws = TRUE)
 ```
 
 
@@ -155,8 +155,10 @@ wq <- read_csv("../data/aims.wq1.csv", trim_ws = TRUE)
 
 Model formula:
 $$
-y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
-\mu_i =\beta_0 + f(Date_i) + f(Month_i)
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &=\beta_0 + f(Date_i) + f(Month_i)
+\end{align}
 $$
 
 where $\beta_0$ is the y-intercept. $f(Date)$ and $f(Month)$ indicate the additive smoothing functions of the long-term temporal trends and the annual seasonal trends respectively. 
@@ -165,7 +167,7 @@ where $\beta_0$ is the y-intercept. $f(Date)$ and $f(Month)$ indicate the additi
 # Data preparations
 
 
-# Simple model (High West only)
+# Simple model (Double Island)
 
 
 ## Exploratory data analysis
@@ -191,6 +193,8 @@ The following link provides some guidance about defining priors.
 ##### Sample prior only
 
 I will also overlay the raw data for comparison.
+
+sds- wiggliness parameter
 
 
 
@@ -228,6 +232,8 @@ I will also overlay the raw data for comparison.
 
 
 # Explore more models
+
+
 # Mixed effects models (all reefs)
 
 
