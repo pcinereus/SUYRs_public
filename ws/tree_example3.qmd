@@ -1,0 +1,177 @@
+---
+title: "Regression trees example 1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../public/resources/ws-style.scss]
+    css: ../public/resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../public/resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache = TRUE, cache.lazy = FALSE, tidy='styler')
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(gbm)         #for gradient boosted models
+## library(gbm3)         #for gradient boosted models
+library(caret)
+library(car)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(patchwork)
+```
+
+
+# Scenario
+@newman-2015 sought to investigate the relative importance of reef habitat
+complexity and structural components of the benthos to the total
+richness of fish species in Caribbean reefs. To do so, they recorded
+they surveyed fish and benthos from one hundred 25m^2 plots within
+three marine reserves. Plots were haphazardly selected within three
+Countries (St Vincent and the Grenadines, Puerto Rico and Bonaire) and
+to represent a range of structural and complexity conditions which
+comprised:
+
+- the number of corals
+- the number of tall corals
+- slope angle
+- maximum sponge height
+- maximum octocoral height
+- reef complexity
+
+
+Format of newman.csv data file
+
+| total_rich | Reef_complexity | No_tall_corals | No_corals | Sponge_max_height | Octocoral_max_height | Slope_angle | Country |
+|------------|-----------------|----------------|-----------|-------------------|----------------------|-------------|---------|
+|            |                 |                |           |                   |                      |             |         |
+| 25         | 1               | 0              | 14        | 5                 | 13                   | 0           | SVG     |
+| 39         | 1               | 0              | 17        | 6                 | 24                   | 0           | SVG     |
+| 52         | 1               | 0              | 28        | 12                | 15                   | 0           | SVG     |
+| 42         | 1               | 0              | 17        | 11                | 121                  | 5           | SVG     |
+| 51         | 1               | 0              | 23        | 13                | 27                   | 5           | SVG     |
+| 51         | 1               | 0              | 21        | 38                | 18                   | 0           | SVG     |
+| 49         | 1               | 0              | 22        | 31                | 91                   | 5           | SVG     |
+| 50         | 1               | 0              | 12        | 14                | 47                   | 5           | SVG     |
+| 51         | 1               | 1              | 20        | 34                | 29                   | 0           | SVG     |
+| 52         | 2               | 2              | 114       | 0                 | 0                    | 25          | SVG     |
+
+ 
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+newman <- read_csv('../public/data/newman.csv', trim_ws=TRUE)
+glimpse(newman)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+#| dependson: readData
+
+newman |> glimpse()
+```
+
+## head
+```{r}
+#| label: headData
+#| dependson: readData
+## Explore the first 6 rows of the data
+newman |> head()
+```
+
+## str
+```{r}
+#| label: strData
+#| dependson: readData
+newman |> str()
+```
+
+## Easystats (datawizard)
+
+```{r}
+#| label: easyData
+#| dependson: readData
+newman |> datawizard::data_codebook()
+```
+:::
+
+<!-- END_PRIVATE-->
+
+# Exploratory data analysis 
+
+# Fit the model
+
+
+# Explore relative influence
+
+
+# Explore partial effects
+# Bootstrapping
+
