@@ -28,3 +28,100 @@ jobs:
       # Restore the timestamps - I am going to try to use these to work out what is new and what is not    
       - name: Restore Timestamps
         uses: chetan/git-restore-mtime-action@v1
+
+      # Install system dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev make
+          
+      # install graphviz
+      - name: Install Graphviz
+        run: sudo apt-get install graphviz
+
+      # Install ImageMagick - appears it must be from source
+      - name: Install imagemagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libjpeg-dev libpng-dev libtiff-dev libgif-dev
+          wget https://download.imagemagick.org/ImageMagick/download/ImageMagick.tar.gz
+          tar xvzf ImageMagick.tar.gz
+          cd ImageMagick-*
+          ./configure
+          make
+          sudo make install
+          sudo ldconfig /usr/local/lib
+          
+      # install R
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.R }}
+
+      - name: Repos
+        run: |
+          cat("\noptions(repos=c(stan='https://mc-stan.org/r-packages/',CRAN ='https://cloud.r-project.org'))\n", file = "~/.Rprofile", append = TRUE)
+        shell: Rscript {0}
+        
+      ## Install R packages
+      - name: install R packages
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          cache-version: 2
+          packages: |
+            any::rmarkdown
+            any::magick
+            any::pdftools
+            any::quarto
+            any::tidyverse
+            any::mvabund
+            any::pander
+            any::GGally
+            any::plotrix
+            any::PBSmapping
+            any::gmodels
+            any::mvtnorm
+            any::coda
+            any::gganimate
+            any::gridExtra
+            any::ggfortify
+            any::DHARMa
+            any::glmmTMB
+            any::performance
+            any::see
+            stan-dev/cmdstanr
+            any::brms
+            any::knitr
+            any::simstudy
+            any::sf
+            any::stars
+            any::gstat
+            any::patchwork
+            any::remotes
+            any::inlabru
+            any::Hmisc
+            any::igraph
+            any::ggraph
+            any::easystats
+            any::gridGraphics
+            any::HDInterval
+            any::bayestestR
+            any::emmeans
+            any::gert
+            any::usethis
+            any::mgcv
+            any::ggeffects
+            any::mgcv
+            any::gratia
+            any::tree
+            any::gbm
+            any::car
+            any::dagitty
+            any::ggdag
+            any::tidybayes
+            github::jmgirard/standist
+
+      - name: Install other R packages
+        run: |
+          Rscript -e "install.packages('INLA',repos=c(getOption('repos'),INLA='https://inla.r-inla-download.org/R/stable'), dep=TRUE)"
+          Rscript -e "install.packages('RandomFields', repos = c('https://spatstat.r-universe.dev', 'https://cloud.r-project.org'))"
+          Rscript -e "install.packages('RandomFieldsUtils', repos = c('https://spatstat.r-universe.dev', 'https://cloud.r-project.org'))"
