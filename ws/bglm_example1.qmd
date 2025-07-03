@@ -102,6 +102,7 @@ library(INLAutils)     #for additional INLA outputs
 library(modelsummary)  #for data and model summaries 
 theme_set(theme_grey()) #put the default ggplot theme back
 source('helperFunctions.R')
+bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 ```
 
 # Scenario
@@ -539,6 +540,7 @@ different starting objects.
 
 
 # Hypothesis testing 
+
 
 # Summary figures 
 
