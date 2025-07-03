@@ -3,8 +3,8 @@ name: Render and publish the tutorials
 on:
   workflow_dispatch:
 #  pull_request:
-#  push:
-#    branches: ['release']
+  push:
+    branches: ['AIMS@JCU2025']
 
 jobs:
   render-tutorials:
