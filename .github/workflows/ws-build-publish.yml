@@ -130,6 +130,7 @@ jobs:
             any::pdp
             any::effects
             any::geoR
+            any::randomForest
             github::jmgirard/standist
 
       - name: Install other R packages
@@ -158,6 +159,9 @@ jobs:
             cmdstanr::install_cmdstan(cores = parallel::detectCores())
             cmdstanr:::get_cmdstan_flags("STANCFLAGS")
             cmdstanr::cmdstanr_example()
+            dat <- data.frame(y=rnorm(10), x=rnorm(10))
+            library(brms)
+            brms(y~x, dat)
           } else {
             message("Cmdstan already installed at:", cmdstanr::cmdstan_path())
           }
