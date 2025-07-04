@@ -163,6 +163,7 @@ jobs:
 
       - name: Install Google Fonts
         run: |
+          ls -la
           ## The following wget can no longer be performed as google returns a html rather than a zip
           #wget -O Architects_Daughter.zip https://fonts.google.com/download?family=Architects%20Daughter
           # unzip -d architects_daughter/ Architects_Daughter.zip
