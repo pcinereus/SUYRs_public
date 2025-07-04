@@ -1,0 +1,18 @@
+---
+title: "test"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+---
+
+```{r}
+#| label: libraries
+library(tidyverse)
+library(brms)
+```
+
+```{r}
+#| label: fitmodel
+dat <- data.frame(y = rnorm(10), x = rnorm(10))
+brm(y ~ x, data = dat)
+```
