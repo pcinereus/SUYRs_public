@@ -160,3 +160,25 @@ jobs:
           tlmgr install titlesec
           tlmgr install forest
           tlmgr list --only-installed
+
+      - name: Install Google Fonts
+        run: |
+          ## The following wget can no longer be performed as google returns a html rather than a zip
+          #wget -O Architects_Daughter.zip https://fonts.google.com/download?family=Architects%20Daughter
+          # unzip -d architects_daughter/ Architects_Daughter.zip
+          # mv architects_daughter /usr/share/fonts/
+          unzip -d architects_daughter/ resources/Architects_Daughter.zip
+          mv architects_daughter /usr/share/fonts/
+
+          unzip -d inconsolata/ resources/Inconsolata.zip
+          mv inconsolata /usr/share/fonts/
+          mv resources/Inconsolata_Nerd_Font_Regular.ttf /usr/share/fonts/
+
+          unzip -d noto_sans/ resources/Noto_Sans.zip
+          mv noto_sans /usr/share/fonts/
+
+          unzip -d ubuntu/ resources/Ubuntu.zip
+          mv ubuntu /usr/share/fonts/
+
+          fc-cache -fv
+          fc-list
