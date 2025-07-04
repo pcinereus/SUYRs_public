@@ -141,7 +141,7 @@ jobs:
             remotes::install_github("stan-dev/cmdstanr")
           }
           if (requireNamespace("cmdstanr", quietly = TRUE)) {
-            cmdstanr::check_cmdstan_toolchan(fix = TRUE)
+            cmdstanr::check_cmdstan_toolchain(fix = TRUE)
             cmdstanr::install_cmdstan(cores = parellel::detectCores())
             cmdstanr::get_cmdstan_flags("STANCFLAGS")
             cmdstanr::cmdstanr_example()
