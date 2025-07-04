@@ -190,3 +190,10 @@ jobs:
       - name: Change ImageMagick policy to allow pdf->png conversion.
         run: |
           sudo sed -i 's/^.*policy.*coder.*none.*PDF.*//' /etc/ImageMagick-6/policy.xml
+
+      # render worksheets
+      - name: Make tutorials
+        run: |
+          mkdir ~/tmp
+          # echo "library(quarto); quarto_render(\"tut/index.qmd\")" | R --no-save --no-restore;
+          make -i ws_code
