@@ -127,6 +127,9 @@ jobs:
             any::dismo
             any::modelsummary
             any::caret
+            any::pdp
+            any::effects
+            any::geoR
             github::jmgirard/standist
 
       - name: Install other R packages
