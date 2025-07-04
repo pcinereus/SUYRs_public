@@ -148,3 +148,15 @@ jobs:
           } else {
             message("Cmdstan already installed at:", cmdstanr::cmdstan_path())
           }
+
+      - name: install tinytex
+        uses: r-lib/actions/setup-tinytex@v2
+      - run: |
+          tlmgr --version
+          tlmgr update --self
+
+      - name: Install additional LaTeX packages
+        run: |
+          tlmgr install titlesec
+          tlmgr install forest
+          tlmgr list --only-installed
