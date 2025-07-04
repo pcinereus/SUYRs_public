@@ -118,6 +118,12 @@ jobs:
             any::dagitty
             any::ggdag
             any::tidybayes
+            any::ggmcmc
+            any::rstanarm
+            any::bayesplot
+            any::rstan
+            any::broom
+            any::broom.mixed
             github::jmgirard/standist
 
       - name: Install other R packages
