@@ -102,7 +102,9 @@ source('helperFunctions.R')
 bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 ```
 
-
+```{r}
+cmdstanr:::get_cmdstan_flags("STANCFLAGS")
+```
 
 
 ```{r}
