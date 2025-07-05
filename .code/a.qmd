@@ -14,7 +14,7 @@ date-format: "DD/MM/YYYY"
 #| message: false
 #| cache: false
 
-## library(tidyverse)     #for data wrangling etc
+library(tidyverse)     #for data wrangling etc
 ## library(rstanarm)      #for fitting models in STAN
 ## library(cmdstanr)      #for cmdstan
 library(brms)          #for fitting models in STAN
@@ -48,7 +48,9 @@ library(brms)          #for fitting models in STAN
 dat <- data.frame(y =  rnorm(10), x = rnorm(10))
 brm(y ~ x, data = dat)
 ```
-
+```{r}
+cmdstanr:::get_cmdstan_flags("STANCFLAGS")
+```
 
 ```{r}
 #| label: readData
