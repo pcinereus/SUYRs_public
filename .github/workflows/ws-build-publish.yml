@@ -215,7 +215,12 @@ jobs:
           mkdir ~/tmp
           # echo "library(quarto); quarto_render(\"tut/index.qmd\")" | R --no-save --no-restore;
           make -i ws_code
-
+      # Copy html over to docs folder
+      - name: Move htmls
+        run: |
+        mkdir -p ~/docs
+        mv ~/.code/*.html ~/docs
+        
       # configure git
       - name: Configure git
         run: |
@@ -228,4 +233,4 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
           branch: gh-pages
-          folder: .code 
+          folder: docs
