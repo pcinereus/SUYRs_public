@@ -219,7 +219,7 @@ jobs:
       - name: Move htmls
         run: |
           mkdir -p ~/docs
-          mv ~/.code/*.html ~/docs
+          cp .code/*.html docs
         
       # configure git
       - name: Configure git
