@@ -162,7 +162,7 @@ jobs:
             cmdstanr::cmdstanr_example()
             dat <- data.frame(y=rnorm(10), x=rnorm(10))
             library(brms)
-            brm(y~x, dat)
+            brm(y~x, dat, backend='cmdstanr')
           } else {
             message("Cmdstan already installed at:", cmdstanr::cmdstan_path())
           }
