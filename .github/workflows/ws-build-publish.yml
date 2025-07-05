@@ -213,6 +213,7 @@ jobs:
       - name: Make tutorials
         run: |
           mkdir ~/tmp
+          Rscript -e "Sys.setenv(STANCFLAGS = '')"
           # echo "library(quarto); quarto_render(\"tut/index.qmd\")" | R --no-save --no-restore;
           make -i ws_code
       # Copy html over to docs folder
