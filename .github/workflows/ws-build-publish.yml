@@ -218,7 +218,7 @@ jobs:
       # Copy html over to docs folder
       - name: Move htmls
         run: |
-          mkdir -p ~/docs
+          mkdir -p docs
           cp .code/*.html docs
         
       # configure git
