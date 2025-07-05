@@ -100,11 +100,16 @@ library(brms)          #for fitting models in STAN
 ## bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 ```
 
+```{r}
+dat <- data.frame(y =  rnorm(10), x = rnorm(10))
+brm(y ~ x, data = dat)
+```
 
 ```{r}
 dat <- data.frame(y =  rnorm(10), x = rnorm(10))
 brm(y ~ x, data = dat, backend = 'cmdstanr')
 ```
+
 
 ```{r}
 #| label: readData
