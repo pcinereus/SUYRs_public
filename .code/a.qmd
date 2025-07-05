@@ -101,7 +101,17 @@ bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 ```
 
 ```{r}
-#| label: fitmodel
-dat <- data.frame(y = rnorm(10), x = rnorm(10))
-brm(y ~ x, data = dat)
+#| label: readData
+fert <- read_csv("../public/data/fertilizer.csv", trim_ws = TRUE)
+```
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.brm <- brm(bf(YIELD ~ FERTILIZER),
+               data = fert,
+               iter = 5000,
+               warmup = 1000,
+               chains = 3,
+               thin = 5,
+               refresh = 0,
+               backend = 'cmdstanr')
 ```
