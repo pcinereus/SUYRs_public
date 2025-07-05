@@ -100,10 +100,30 @@ library(brms)          #for fitting models in STAN
 ## bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 ```
 
+
+```{r}
+dat <- data.frame(y =  rnorm(10), x = rnorm(10))
+brm(y ~ x, data = dat, backend = 'cmdstanr')
+```
+
 ```{r}
 #| label: readData
 fert <- read_csv("../public/data/fertilizer.csv", trim_ws = TRUE)
 ```
+
+```{r}
+dat <- data.frame(y =  rnorm(10), x = rnorm(10))
+brm(y ~ x, data = dat, backend = 'cmdstanr')
+```
+
+
+```{r}
+fert.brm <- brm(YIELD ~ FERTILIZER,
+               data = fert,
+               backend = 'cmdstanr'
+)
+```
+
 
 ```{r}
 fert.brm <- brm(bf(YIELD ~ FERTILIZER),
