@@ -1,0 +1,1535 @@
+---
+title: "Bayesian GLMM Part6"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+library(tidyverse) #for data wrangling
+library(car)       #for regression diagnostics
+library(broom)     #for tidy output
+library(ggfortify) #for model diagnostics
+library(knitr)     #for kable
+library(emmeans)   #for estimating marginal means
+library(MASS)      #for glm.nb
+library(brms)
+library(broom.mixed)
+library(tidybayes)
+library(bayesplot)
+library(standist)   #for visualizing distributions
+library(rstanarm)
+library(cmdstanr)   #for cmdstan
+library(ggeffects)
+library(rstan)
+library(DHARMa)
+library(ggridges)
+library(easystats)     #framework for stats, modelling and visualisation
+library(patchwork)
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+
+# Scenario
+
+![fanworms](../resources/fanworms.jpg){#fig-fanworms width="157" height="160"}
+
+In an attempt to understand the effects on marine animals of short-term
+exposure to toxic substances, such as might occur following a spill, or
+a major increase in storm water flows, a it was decided to examine the
+toxicant in question, Copper, as part of a field experiment in Hong
+Kong. The experiment consisted of small sources of Cu (small,
+hemispherical plaster blocks, impregnated with copper), which released
+the metal into sea water over 4 or 5 days. The organism whose response
+to Cu was being measured was a small, polychaete worm, Hydroides, that
+attaches to hard surfaces in the sea, and is one of the first species to
+colonize any surface that is submerged. The biological questions focused
+on whether the timing of exposure to Cu affects the overall abundance of
+these worms. The time period of interest was the first or second week
+after a surface being available.
+
+The experimental setup consisted of sheets of black perspex (settlement
+plates), which provided good surfaces for these worms. Each plate had a
+plaster block bolted to its centre, and the dissolving block would
+create a gradient of [Cu] across the plate. Over the two weeks of the
+experiment, a given plate would have plain plaster blocks (Control) or a
+block containing copper in the first week, followed by a plain block, or
+a plain block in the first week, followed by a dose of copper in the
+second week. After two weeks in the water, plates were removed and
+counted back in the laboratory. Without a clear idea of how sensitive
+these worms are to copper, an effect of the treatments might show up as
+an overall difference in the density of worms across a plate, or it
+could show up as a gradient in abundance across the plate, with a
+different gradient in different treatments. Therefore, on each plate,
+the density of worms (\#/cm^2^) was recorded at each of four distances
+from the center of the plate.
+
+
+```{tikz}
+%| label: fig-worms_design
+%| engine: tikz
+%| echo: false
+%| fig-cap: Sampling design for the norin data set
+%| fig-width: 13
+%| fig-height: 6
+%| cache: true
+%| class: tikz
+%| engine-opts:
+%|   template: "../resources/tikz-minimal.tex"
+\tikzstyle{Messy} = [decorate,decoration={random steps,segment length=3pt, amplitude=0.5pt}]
+\tikzstyle{HandTitle} = [font={\fontspec[Scale=2.1]{CabinSketch}}]
+\tikzstyle{HandBoxTitle} = [font={\fontspec[Scale=1.5]{Complete in Him}}]
+\tikzstyle{HandLabel} = [font={\fontspec[Scale=1.1]{Hannahs Messy Handwriting}}] 
+\tikzstyle{Plot} = [rectangle,draw,Messy,fill=white,HandLabel, minimum height=2em]
+\tikzstyle{Plate} = [circle,draw,Messy,fill=white,HandLabel, minimum height=5.5cm]
+\tikzstyle{Dist} = [rectangle,draw,Messy]
+
+\pgfdeclarelayer{Plates}
+\pgfdeclarelayer{Dists}
+\pgfsetlayers{Plates,Dists,main}
+
+\newcommand{\mybox}[2][]{
+\node[Plate,fill=blue!2] (Plate1) {#1};
+\path  (Plate1.north) +(0,-0.3) node [HandLabel] (Dist4Title) {\textbf{Dist 4}};
+% \node[Plot1, right of=Plot1, anchor=east,node distance=2.5cm] (Plot2) {#1};
+\node[Plate,fill=blue!5,minimum height=4.5cm] (Dist3) {#1};
+\path  (Dist3.north) +(0,-0.3) node [HandLabel] (Dist3Title) {\textbf{Dist 3}};
+\node[Plate,fill=blue!10,minimum height=3.5cm] (Dist2) {#1};
+\path  (Dist2.north) +(0,-0.3) node [HandLabel] (Dist2Title) {\textbf{Dist 2}};
+\node[Plate,fill=blue!20,minimum height=2.5cm] (Dist1) {#1};
+\path  (Dist1.north) +(0,-0.3) node [HandLabel] (Dist1Title) {\textbf{Dist 1}};
+\node[Plate,fill=blue!30, minimum height=1.5cm] (Core) {#1};
+% \draw (0,0) circle [Messy,radius=2.25];
+\begin{pgfonlayer}{Plates}
+\path (Plate1.west |- Plate1.north) +(-0.2,+0.5) node (S1nw) {};
+\path (Plate1.east |- Plate1.south) +(+0.2,-0.2) node (S1se) {};
+%% title
+\path  ($ (S1nw.west |- S1nw.north) !0.5! (S1se.east |- S1nw.north)$) +(0,-0) node [HandBoxTitle] (Plate1Title) {\textbf{Plates #2}};
+\path  ($ (S1nw.west |- S1nw.north) !0.5! (S1se.east |- S1nw.north)$) +(0,-0.35) node [HandBoxTitle] (Plate1Title) {\textbf{#1}};
+
+\end{pgfonlayer}
+}
+
+
+\begin{tikzpicture} \path node (Plates1) {
+\begin{tikzpicture}
+\mybox[Control]{1,2,3,4,5}
+\end{tikzpicture}
+};
+\path (Plates1.east) +(3,0) node (Plates2) {
+\begin{tikzpicture}
+\mybox[Week 1]{6,7,8,9,10}
+\end{tikzpicture}
+};
+\path (Plates2.east) +(3,0) node (Plates3) {
+\begin{tikzpicture}
+\mybox[Week 2]{11,12,13,14,15}
+\end{tikzpicture}
+};
+
+\end{tikzpicture}
+```
+
+
+
+COPPER   PLATE   DIST   WORMS  
+-------- ------- ------ -------
+control   200     4      11.50 
+control   200     3      13.00 
+..        ..       ..      ..     
+
+: Format of copper.csv data file {#tbl-copper .table-condensed}
+
+------------ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+**COPPER**   Categorical listing of the copper treatment (control = no copper applied, week 2 = copper treatment applied in second week and week 1= copper treatment applied in first week) applied to whole plates. Factor A (between plot factor).
+**PLATE**    Substrate provided for polychaete worm colonization on which copper treatment applied. These are the plots (Factor B). Numbers in this column represent numerical labels given to each plate.
+**DIST**     Categorical listing for the four concentric distances from the center of the plate (source of copper treatment) with 1 being the closest and 4 the furthest. Factor C (within plot factor)
+**WORMS**    Density (\#/cm~2~) of worms measured. Response variable.
+------------ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+: Description of the variables in the copper data file {#tbl-copper1 .table-condensed}
+ 
+
+
+# Read in the data
+
+```{r}
+#| label: readData
+copper <- read_csv("../data/copper.csv", trim_ws = TRUE)
+```
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(copper)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(copper)
+```
+
+## str
+```{r}
+str(copper)
+```
+
+## Easystats (datawizard)
+```{r}
+copper |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+copper |> modelsummary::datasummary_skim()
+copper |> modelsummary::datasummary_skim(by = c("COPPER", "DIST"))
+```
+
+:::
+<!-- END_PRIVATE-->
+
+# Data preparation
+
+Let start by declaring the categorical variables and random effect as factors.
+
+<!-- START_PRIVATE-->
+```{r dataProcessing, results='markdown', eval=TRUE, mhidden=TRUE}
+copper <- copper |> mutate(COPPER=factor(COPPER),
+                           PLATE=factor(PLATE),
+                           DIST=factor(DIST))
+```
+
+<!-- END_PRIVATE-->
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{Pois}(\lambda_i)\\
+ln(\lambda_i) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\end{align}
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
+and $\bf{X}$ is the model matrix representing the overall intercept and effects of copper, distance and their interaction on the number of number of worms.
+Area of the place segment was also incorporated as an offset.
+$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual plates.
+
+These data are density of worms.  This is not ideal.  It would be
+better to have the actual counts along with the area and then model
+against a Poisson or Negative Binomial along with having an offset for
+area.  Such an approach would allow us to effectively model density
+whilst also being able to fit a model with a distribution that closely
+matches the data generation process.
+
+Unfortunately, we only have the densities.  As such, our choice of
+model families is somewhat restricted.  Out choices are:
+
+- Gaussian: assuming normality etc
+- log-normal:
+- Gamma with a log link: so long as we can address the presence of zeros in the data
+- Tweedie
+
+
+<!-- START_PRIVATE-->
+
+```{r eda1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=5}
+ggplot(copper, aes(y=WORMS, x=DIST, fill=COPPER)) +
+  geom_boxplot()
+
+ggplot(copper, aes(y=WORMS, x=DIST, fill=COPPER)) +
+    geom_boxplot() +
+    scale_y_continuous(trans = scales::pseudo_log_trans())
+
+ggplot(copper, aes(y = WORMS, x = DIST, colour = COPPER)) +
+    geom_point(aes(x = as.numeric(DIST))) +
+    geom_line(aes(x = as.numeric(DIST), group = PLATE)) +
+    scale_y_continuous(trans = scales::pseudo_log_trans())
+```
+
+In the event that we attempt to model these data against a Gamma
+family, we are going to need a way to handle the zero values.  A Gamma
+distribution has no mass at zero.  One solution is to replace the zero
+values with small values, where small value is defined as half the
+value of the smallest positive value.
+
+```{r eda2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=5}
+copper |> filter(WORMS > 0) |>
+    summarise(min(WORMS)/2)
+```
+
+<!-- END_PRIVATE-->
+
+
+# Fit the model 
+
+::: {.panel-tabset}
+
+<!-- START_PRIVATE-->
+## brms 
+
+:::: {.panel-tabset}
+
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularisation (to help prevent over fitting) and
+help stabilise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80)}
+copper.form <- bf(WORMS ~ COPPER * DIST + (1|PLATE),
+                family=Gamma(link='log'))
+options(width=150)
+copper.form |> get_prior(data = copper)
+options(width=80)
+```
+
+### Defining priors 
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 3 with a standard deviation of 0.45
+  - mean of 3: since `median(log(copper$WORMS+10.125))` or `median(asinh(copper$WORMS/(2*1))/log(exp(1)))`
+  - sd of 0.45: since `mad(log(copper$WORMS+0.125))` or `mad(asinh(copper$WORMS/(2*1))/log(exp(1)))`
+- $\beta_{1-2}$: normal centred at 0 with a standard deviation of 0.9
+  - sd of 0.9: since `mad(log(copper$WORMS+0.125))/model.matrix(~COPPER*DIST, data = copper) |> apply(2, sd) `
+- $\beta_{3-5}$: normal centred at 0 with a standard deviation of 1
+  - sd of 1: since `mad(log(copper$WORMS+0.125))/model.matrix(~COPPER*DIST, data = copper) |> apply(2, sd) `
+- $\beta_{6-11}$: normal centred at 0 with a standard deviation of 1.5
+  - sd of 1.5: since `mad(log(copper$WORMS+0.125))/model.matrix(~COPPER*DIST, data = copper) |> apply(2, sd) `
+- $\sigma_j$: half-cauchy with parameters 0 and 2.
+- $\omega$: gamma with parameters 0.01 and 0.01.
+- $\Sigma$: decov with:
+  - regularisation: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE}
+copper |> 
+    group_by(COPPER, DIST) |>
+    summarise(log(median(WORMS)),
+              log(mad(WORMS)))
+standist::visualize("normal(3,0.45)", xlim=c(0,20))
+standist::visualize("student_t(3, 0, 2.5)",
+                    "cauchy(0,2)",
+                    xlim=c(-10,25))
+```
+
+::::: {.panel-tabset}
+
+#### log-normal
+
+```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE}
+priors <- prior(normal(3, 0.45), class = 'Intercept') +
+    prior(normal(0, 0.9), class = 'b', coef = 'COPPERWeek1') +
+    prior(normal(0, 0.9), class = 'b', coef = 'COPPERWeek2') +
+    prior(normal(0, 1), class = 'b', coef = 'DIST2') +
+    prior(normal(0, 1), class = 'b', coef = 'DIST3') +
+    prior(normal(0, 1), class = 'b', coef = 'DIST4') +
+    prior(normal(0, 1.5), class = 'b') +
+    prior(cauchy(0,2), class = 'sd') +
+    prior(gamma(2,1), class = "sigma")
+          
+copper.form <- bf(I(WORMS + 0.125)~ COPPER * DIST + (1|PLATE),
+                family=lognormal())
+copper.brm2a <- brm(copper.form, 
+                 data = copper,
+                 prior = priors,
+                 sample_prior = 'only',
+                 iter = 5000,
+                 warmup =2500,
+                 chains = 3,
+                 cores = 3,
+                 thin = 10,
+                 refresh = 0,
+                 seed = 123,
+                 control = list(adapt_delta = 0.99)
+                 )
+
+```
+
+```{r partialPlot2h1a, results='markdown', warning=FALSE, message=FALSE, eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm2a |>
+    ggpredict(~COPPER*DIST) |>
+    plot(add.data = TRUE)
+```
+
+The above seem sufficiently wide whilst at the same time not providing
+any encouragement for the sampler to wander off into very unsupported
+areas.
+
+```{r fitModel2h1ab, results='markdown', warning=FALSE, eval=TRUE, mhidden=TRUE}
+copper.brm3a <- update(copper.brm2a,  
+                       sample_prior = 'yes',
+                       control = list(adapt_delta = 0.99),
+                       refresh = 0)
+save(copper.brm3a, file = '../ws/testing/copper.brm3a')
+```
+
+#### Gamma
+
+```{r fitModel2h1b, results='markdown', eval=TRUE, mhidden=TRUE}
+priors <- prior(normal(3, 0.45), class = 'Intercept') +
+    prior(normal(0, 0.9), class = 'b', coef = 'COPPERWeek1') +
+    prior(normal(0, 0.9), class = 'b', coef = 'COPPERWeek2') +
+    prior(normal(0, 1), class = 'b', coef = 'DIST2') +
+    prior(normal(0, 1), class = 'b', coef = 'DIST3') +
+    prior(normal(0, 1), class = 'b', coef = 'DIST4') +
+    prior(normal(0, 1.5), class = 'b') +
+    prior(cauchy(0,1), class = 'sd') +
+    prior(gamma(0.01, 0.01), class = "shape")
+          
+copper.form <- bf(I(WORMS + 0.125)~ COPPER * DIST + ( DIST |PLATE),
+                family=Gamma(link='log'))
+copper.brm2b <- brm(copper.form, 
+                 data = copper,
+                 prior = priors,
+                 sample_prior = 'only',
+                 iter = 5000,
+                 warmup =2500,
+                 chains = 3,
+                 cores = 3,
+                 thin = 10,
+                 refresh = 0,
+                 seed = 123,
+                 control = list(adapt_delta = 0.99)
+                 )
+
+```
+
+```{r fitModel2h2b, results='markdown', eval=TRUE, mhidden=TRUE}
+copper.brm3b <- update(copper.brm2b,  
+                       sample_prior = 'yes',
+                       control = list(adapt_delta = 0.99),
+                       refresh = 0)
+save(copper.brm3b, file = '../ws/testing/copper.brm3b')
+```
+
+
+The above seem sufficiently wide whilst at the same time not providing
+any encouragement for the sampler to wander off into very unsupported
+areas.
+
+```{r partialPlot2h2b, results='markdown', warning=FALSE, message=FALSE, eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |>
+    ggpredict(~COPPER*DIST) |>
+    plot(show_data = TRUE)
+copper.brm3b |>
+    ggpredict(~DIST*COPPER) |>
+    plot(show_data = TRUE)
+```
+::::
+
+### Plotting prior and posterior
+
+::::: {.panel-tabset}
+
+#### log-normal
+
+```{r posterior2h2, results='markdown', eval=TRUE}
+copper.brm3a |> get_variables()
+copper.brm3a |> hypothesis('COPPERWeek1=0') |> plot()
+copper.brm3a |> hypothesis('DIST2=0') |> plot()
+```
+
+```{r posterior2h2a, results='markdown', eval=TRUE, fig.width=10, fig.height=10}
+copper.brm3a |> SUYR_prior_and_posterior() 
+```
+
+#### Gamma
+
+```{r posterior2i2, results='markdown', eval=TRUE}
+copper.brm3b |> get_variables()
+copper.brm3b |> hypothesis('COPPERWeek1=0') |> plot()
+copper.brm3b |> hypothesis('DIST2=0') |> plot()
+```
+
+```{r posterior2i2a, results='markdown', eval=TRUE, fig.width=10, fig.height=10}
+copper.brm3b |> SUYR_prior_and_posterior() 
+```
+
+:::::
+
+
+::::
+
+<!-- END_PRIVATE-->
+:::
+
+
+# MCMC sampling diagnostics 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+In addition to the regular model diagnostics checking, for Bayesian analyses, it
+is also necessary to explore the MCMC sampling diagnostics to be sure that the
+chains are well mixed and have converged on a stable posterior.
+
+There are a wide variety of tests that range from the big picture, overall chain
+characteristics to the very specific detailed tests that allow the experienced
+modeller to drill down to the very fine details of the chain behaviour.
+Furthermore, there are a multitude of packages and approaches for exploring
+these diagnostics.
+
+## brms 
+:::: {.panel-tabset}
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+```{r modelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+
+::::: {.panel-tabset}
+
+#### log-normal
+
+Of these, we will focus on:
+
+- trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation2b2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+pars <- copper.brm3a |> get_variables()
+pars <- pars |> str_extract('^b.Intercept|^b_COPPER.*|^b_DIST.*|[sS]igma|^sd.*') |>
+    na.omit()
+pars
+copper.brm3a |> mcmc_plot(type='trace', variable = pars)
+##OR
+copper.brm3a |> mcmc_plot(type='trace',
+                        variable = '^b.Intercept|^b_COPPER.*|^b_DIST.*|[sS]igma|^sd.*',
+                        regex = TRUE)
+
+```
+  
+  The chains appear well mixed and very similar
+   
+- acf_bar (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=4}
+copper.brm3a |> mcmc_plot(type='acf_bar', variable = pars)
+##OR
+copper.brm3a |> mcmc_plot(type='acf_bar',
+                        variable = '^b.Intercept|^b_COPPER.*|^b_DIST.*|[sS]igma|^sd.*',
+                        regex = TRUE)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- rhat_hist: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a |> mcmc_plot(type='rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff_hist (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2e2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a |> mcmc_plot(type='neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2f2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a |> mcmc_plot(type='combo', pars = pars)
+copper.brm3a |> mcmc_plot(type='violin', pars = pars)
+```
+</details>
+#### Gamma
+
+Of these, we will focus on:
+
+- trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+pars <- copper.brm3b |> get_variables()
+pars <- pars |> str_extract('^b.Intercept|^b_COPPER.*|^b_DIST.*|[sS]igma|^sd.*') |>
+    na.omit()
+pars
+copper.brm3b |> mcmc_plot(type='trace', variable = pars)
+##OR
+copper.brm3b |> mcmc_plot(type='trace',
+                        variable = '^b.Intercept|^b_COPPER.*|^b_DIST.*|[sS]igma|^sd.*',
+                        regex = TRUE)
+
+```
+  
+  The chains appear well mixed and very similar
+   
+- acf_bar (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=4}
+copper.brm3b |> mcmc_plot(type='acf_bar', variable = pars)
+##OR
+copper.brm3b |> mcmc_plot(type='acf_bar',
+                        variable = '^b.Intercept|^b_COPPER.*|^b_DIST.*|[sS]igma|^sd.*',
+                        regex = TRUE)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- rhat_hist: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b |> mcmc_plot(type='rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff_hist (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b |> mcmc_plot(type='neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b |> mcmc_plot(type='combo', pars = pars)
+copper.brm3b |> mcmc_plot(type='violin', pars = pars)
+```
+</details>
+
+:::::
+
+### stan plots
+
+::::: {.panel-tabset}
+
+#### log-normal
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation2g2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+copper.brm3a |> get_variables()
+pars <- copper.brm3a |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
+
+copper.brm3a$fit |>
+    stan_trace(pars = pars)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2h2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+copper.brm3a$fit |>
+    stan_ac(pars = pars)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2i2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a$fit |> stan_rhat() 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2j2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a$fit |> stan_ess()
+```
+
+  Ratios all very high.
+
+```{r modelValidation2k2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+copper.brm3a$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+#### Gamma
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+copper.brm3b |> get_variables()
+pars <- copper.brm3b |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
+
+copper.brm3b$fit |>
+    stan_trace(pars = pars)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+copper.brm3b$fit |>
+    stan_ac(pars = pars)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b$fit |> stan_rhat() 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b$fit |> stan_ess()
+```
+
+  Ratios all very high.
+
+```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+copper.brm3b$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+::::: 
+### ggmcmc
+
+The `ggmean` package also as a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+## owls.ggs <- copper.brm3 |> ggs(burnin = FALSE, inc_warmup = FALSE)
+## copper.ggs |> ggs_traceplot()
+``` 
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+## ggs_autocorrelation(copper.ggs)
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_Rhat(copper.ggs)
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_effective(copper.ggs)
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_crosscorrelation(owls.ggs)
+```
+
+```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_grb(owls.ggs)
+```
+</details>
+
+
+
+::::
+
+<!-- END_PRIVATE-->
+:::
+
+
+# Model validation 
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+### pp check
+
+::::: {.panel-tabset}
+#### log-normal
+
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+```{r modelValidation5a2, results='markdown', eval=FALSE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation5b2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+
+The model draws appear to differ substantially from the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  Note, this is not really that useful for models that involve a
+  binomial response
+
+```{r modelValidation5c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a |> pp_check(type = 'error_scatter_avg')
+```
+
+This is not really interpretable
+
+- intervals:  plots the observed data overlayed on top of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation5e2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3a |> pp_check(group = 'Nest', type = 'intervals')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation5g2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(copper.brm2)
+```
+
+#### Gamma
+
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+```{r modelValidation5a, results='markdown', eval=FALSE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+
+The model draws appear to differ substantially from the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  Note, this is not really that useful for models that involve a
+  binomial response
+
+```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b |> pp_check(type = 'error_scatter_avg')
+```
+
+This is not really interpretable
+
+- intervals:  plots the observed data overlayed on top of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+copper.brm3b |> pp_check(group = 'Nest', type = 'intervals')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(copper.brm2)
+```
+
+::::: 
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+::::: {.panel-tabset}
+#### log-normal
+
+
+```{r modelValidation6a2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+## preds <- copper.brm3a |> posterior_predict(nsamples = 250,  summary = FALSE)
+## copper.resids <- createDHARMa(simulatedResponse = t(preds),
+##                             observedResponse = copper$NCalls,
+##                             fittedPredictedResponse = apply(preds, 2, median),
+##                             integerResponse = TRUE)
+## plot(copper.resids)
+
+copper.resids <- make_brms_dharma_res(copper.brm3a, integerResponse = TRUE)
+wrap_elements(~testUniformity(copper.resids)) +
+               wrap_elements(~plotResiduals(copper.resids, form = factor(rep(1, nrow(copper))))) +
+               wrap_elements(~plotResiduals(copper.resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(copper.resids))
+```
+ 
+**Conclusions:**
+
+- the model does not appear to be a very good fit
+- the Q-Q plot deviates substantially from a straight line
+- there are outliers
+
+
+Perhaps we should specifically explore zero-inflation.
+
+```{r validation2g2, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=FALSE, message=FALSE, warning=FALSE}
+copper.resids |> testZeroInflation()
+```
+
+**Conclusions:**
+
+- there is strong evidence of zero-inflation
+
+<br>
+The data were collected at various times throughout the night.  It is possible
+that this could lead to patterns of dependency that are not already accounted
+for.  For example, perhaps observations that are collected at similar time of
+the night (within a given nest) have more similar residuals than those at very
+different time of the night.  We can explore whether there are any temporal
+auto-correlation patterns.
+
+```{r validation2h2, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=FALSE, message=FALSE, warning=FALSE}
+residuals(copper.brm3a)[, "Estimate"] |> acf()
+copper.resids |> testTemporalAutocorrelation(time=copper$ArrivalTime)
+## copper.resid1 <- copper.resids |> recalculateResiduals(group=interaction(copper$ArrivalTime,  copper$Nest),  aggregateBy = mean)
+## copper.resid1 <- copper.resids |> recalculateResiduals(group=interaction(copper$ArrivalTime,  copper$Nest),  aggregateBy = sum)
+## resids1 <- copper.resids |> recalculateResiduals(group = interaction(copper$ArrivalTime), aggregateBy = sum)
+resids1 <- copper.resids |> recalculateResiduals(group = interaction(copper$ArrivalTime), aggregateBy = mean)
+resids1 |> testTemporalAutocorrelation(time=unique(copper$ArrivalTime))
+
+library(geoR)
+autocor_check(copper, copper.brm3a,
+              variable =  "ArrivalTime",
+              grouping = "Nest",
+              n.sim =  250)
+```
+
+**Conclusions:**
+
+- there is no evidence of temporal auto-correlation
+
+
+**Conclusions:**
+
+- there is evidence that the model does not fit that well. It is evidently zero
+  inflated and possibly also over-dispersed.
+- it would seem that a zero-inflated Poisson or even a zero-inflated Negative
+  Binomial would be a sensible next step.
+- zero-inflated models cannot be fit in `glmer()`, so we will proceed with
+`glmmTMB()` only.
+
+#### Gamma
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=10, fig.height=10}
+## preds <- copper.brm3b |> posterior_predict(nsamples = 250,  summary = FALSE)
+## copper.resids <- createDHARMa(simulatedResponse = t(preds),
+##                             observedResponse = copper$NCalls,
+##                             fittedPredictedResponse = apply(preds, 2, median),
+##                             integerResponse = TRUE)
+## plot(copper.resids)
+
+copper.resids <- make_brms_dharma_res(copper.brm3b, integerResponse = TRUE)
+wrap_elements(~testUniformity(copper.resids)) +
+               wrap_elements(~plotResiduals(copper.resids, form = factor(rep(1, nrow(copper))))) +
+               wrap_elements(~plotResiduals(copper.resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(copper.resids))
+```
+ 
+**Conclusions:**
+
+- the model does not appear to be a very good fit
+- the Q-Q plot deviates substantially from a straight line
+- there are outliers
+
+
+Perhaps we should specifically explore zero-inflation.
+
+```{r validation2g, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=FALSE, message=FALSE, warning=FALSE}
+copper.resids |> testZeroInflation()
+```
+
+**Conclusions:**
+
+- there is strong evidence of zero-inflation
+
+<br>
+The data were collected at various times throughout the night.  It is possible
+that this could lead to patterns of dependency that are not already accounted
+for.  For example, perhaps observations that are collected at similar time of
+the night (within a given nest) have more similar residuals than those at very
+different time of the night.  We can explore whether there are any temporal
+auto-correlation patterns.
+
+```{r validation2h, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=FALSE, message=FALSE, warning=FALSE}
+residuals(copper.brm3b)[, "Estimate"] |> acf()
+copper.resids |> testTemporalAutocorrelation(time=copper$ArrivalTime)
+## copper.resid1 <- copper.resids |> recalculateResiduals(group=interaction(copper$ArrivalTime,  copper$Nest),  aggregateBy = mean)
+## copper.resid1 <- copper.resids |> recalculateResiduals(group=interaction(copper$ArrivalTime,  copper$Nest),  aggregateBy = sum)
+## resids1 <- copper.resids |> recalculateResiduals(group = interaction(copper$ArrivalTime), aggregateBy = sum)
+resids1 <- copper.resids |> recalculateResiduals(group = interaction(copper$ArrivalTime), aggregateBy = mean)
+resids1 |> testTemporalAutocorrelation(time=unique(copper$ArrivalTime))
+
+library(geoR)
+autocor_check(copper, copper.brm3b,
+              variable =  "ArrivalTime",
+              grouping = "Nest",
+              n.sim =  250)
+```
+
+**Conclusions:**
+
+- there is no evidence of temporal auto-correlation
+
+
+:::::
+
+::::
+
+**Conclusions:**
+
+- there is evidence that the model does not fit that well. It is evidently zero
+  inflated and possibly also over-dispersed.
+- it would seem that a zero-inflated Poisson or even a zero-inflated Negative
+  Binomial would be a sensible next step.
+- zero-inflated models cannot be fit in `glmer()`, so we will proceed with
+`glmmTMB()` only.
+
+
+:::
+
+<!-- END_PRIVATE-->
+
+
+# Partial effects plots 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+### conditional_effects
+
+```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |>
+    conditional_effects("COPPER:DIST") |>
+    plot(points = TRUE, jitter_width = 0.25)
+```
+
+### ggpredict
+
+```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |>
+    ggpredict(~COPPER*DIST) |>
+    plot(show_data = TRUE, jitter = c(0.25, 0))
+```
+
+
+### ggemmeans
+
+
+`ggemmeans()` can accommodate the offset correctly.  There are two sensible
+choices:
+
+  
+```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |>
+    ggemmeans(~COPPER*DIST) |>
+    plot() 
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+`brms` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+
+```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |> summary()
+```
+
+```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+copper.sum <- summary(copper.brm3b)
+```
+
+**Conclusions:**
+
+- the average density of worms in the Dist 1 position on control plates `r   as.numeric(round(copper.sum$fixed[1, 1],2))` (on the
+  link scale). When back-transformed, this is `r as.numeric(round(exp(copper.sum$fixed[1, 1]),2))`.
+- on average, there are 
+  `r as.numeric(round(copper.sum$fixed[2,1]),2)` (link scale) fewer worms in the Dist 1 position of Week 1 plates (than control plates).  This equates to
+  `r as.numeric(round(exp(copper.sum$fixed[2,1]),2))` fold fewer worms and represents a
+  `r as.numeric(100*(1-round(exp(copper.sum$fixed[2,1]),2)))`% decline. 
+- on average, there are 
+  `r as.numeric(round(copper.sum$fixed[3,1]),2)` (link scale) fewer worms in the Dist 1 position of Week 2 plates (than control plates).  This equates to
+  `r as.numeric(round(exp(copper.sum$fixed[3,1]),2))` fold fewer worms and represents a
+  `r as.numeric(100*(1-round(exp(copper.sum$fixed[3,1]),2)))`% decline. 
+- on average, there are `r as.numeric(round(copper.sum$fixed[4,1]),3)` (link scale) more worms on Dist 2 (than Dist 1).  This equates to `r as.numeric(round(exp(copper.sum$fixed[4,1]),2))` fold
+  increase and represents a
+  `r as.numeric(100*(1-round(exp(copper.sum$fixed[4,1]),2)))`% increase (although this
+  is not significant). 
+- there is no evidence that the Week1 patterns differ from those of the control however, there is evidence that Week 2 patterns are different from those of the control plates.
+
+### as_draws_df (posteriors)
+
+```{r summariseModel2bm, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+copper.brm3b |> as_draws_df()
+copper.brm3b |>
+  as_draws_df() |>
+  mutate(across(everything(), exp)) |> 
+  summarise_draws(
+    median,
+    HDInterval::hdi,
+    Pl = ~mean(.x < 1),
+    Pg = ~mean(.x > 1),
+    rhat,
+    length,
+    ess_bulk,
+    ess_tail
+  )
+```
+
+
+### tidyMCMC
+
+```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b$fit |>
+    tidyMCMC(estimate.method = 'median',
+             conf.int = TRUE,  conf.method = 'HPDinterval',
+             rhat = TRUE, ess = TRUE)
+```
+```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+owls.tidy <- tidyMCMC(copper.brm3b$fit, estimate.method='median',
+                         conf.int=TRUE,  conf.method='HPDinterval',
+                         rhat=TRUE, ess=TRUE)
+```
+
+**Conclusions:**
+
+see above
+
+### gather_draws
+
+Due to the presence of a log transform in the predictor, it is better to use the
+regex version.
+```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |> get_variables()
+copper.draw <- copper.brm3b |>
+    gather_draws(`b.Intercept.*|b_COPPER.*|b_DIST.*`,  regex=TRUE)
+copper.draw
+```
+
+We can then summarise this
+
+```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.draw |> median_hdci()
+## On a fractional scale
+copper.draw |> 
+    mutate(.value = exp(.value)) |>
+    median_hdci()
+```
+
+```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+copper.gather <- copper.brm3b |>
+    gather_draws(`b_Intercept.*|b_COPPER.*|b_DIST.*`,  regex=TRUE) |>
+    mutate(.value = exp(.value)) |>
+    median_hdci()
+```
+
+Lets plot the parameter posteriors (on the link scale - since we are
+including the intercept).
+
+```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+copper.brm3b |>
+    gather_draws(`b_Intercept.*|b_COPPER.*|b_DIST.*`, regex=TRUE) |> 
+    ## mutate(.value = exp(.value)) |>
+    ggplot() +
+    geom_vline(xintercept=0, linetype='dashed') +
+    stat_slab(aes(x = .value, y = .variable,
+                  fill = stat(ggdist::cut_cdf_qi(cdf,
+                                                 .width = c(0.5, 0.8, 0.95), 
+                                                 labels = scales::percent_format())
+                              )), color='black') + 
+    scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
+
+copper.brm3b |> 
+    gather_draws(`.Intercept.*|b_COPPER.*|b_DIST.*`, regex=TRUE) |> 
+    ggplot() + 
+    geom_vline(xintercept = 0, linetype='dashed') +
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    theme_classic()
+```
+
+### bayesplot
+
+```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b$fit |> plot(type='intervals') 
+```
+
+### half-eye (ggdist)
+
+```{r summariseModel2ka, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+copper.brm3b |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    facet_wrap(~.variable, scales='free') +
+    theme(axis.text.y = element_blank())
+
+copper.brm3b |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+```
+
+### density ridges (ggridges)
+
+```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+copper.brm3b |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(str_detect(.variable, 'b_.*Intercept', negate = TRUE)) |>
+    ggplot() +  
+    geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+##Or in colour
+copper.brm3b |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(str_detect(.variable, 'b_.*Intercept', negate = TRUE)) |>
+    ggplot() + 
+    geom_density_ridges_gradient(aes(x=(.value),
+                                     y = .variable,
+                                     fill = stat(x)),
+                                 alpha=0.4, colour = 'white',
+                                 quantile_lines = TRUE,
+                                 quantiles = c(0.025, 0.975)) +
+    geom_vline(xintercept = 1, linetype = 'dashed') +
+    scale_x_continuous() +
+    scale_fill_viridis_c(option = "C") 
+
+## Fractional scale
+copper.brm3b |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(str_detect(.variable, 'b_.*Intercept', negate = TRUE)) |>
+    ggplot() + 
+    geom_density_ridges_gradient(aes(x=exp(.value),
+                                     y = .variable,
+                                     fill = stat(x)),
+                                 alpha=0.4, colour = 'white',
+                                 quantile_lines = TRUE,
+                                 quantiles = c(0.025, 0.975)) +
+    geom_vline(xintercept = 1, linetype = 'dashed') +
+    scale_x_continuous(trans = scales::log2_trans()) +
+    scale_fill_viridis_c(option = "C") 
+```
+ 
+### tidy_draws
+
+This is purely a graphical depiction on the posteriors.
+
+```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |> tidy_draws()
+```
+
+### spread_draws
+
+```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |> spread_draws(`.*Intercept.*|b_COPPER.*|b_DIST.*`,  regex=TRUE)
+```
+	
+### posterior_samples
+```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |> posterior_samples() |> as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+copper.brm3b |>
+    bayes_R2(re.form = NA, summary=FALSE) |>
+    median_hdci()
+copper.brm3b |>
+    bayes_R2(re.form = ~(1|PLATE), summary=FALSE) |>
+    median_hdci()
+copper.brm3b |>
+    bayes_R2(re.form = ~(COPPER*DIST|PLATE), summary=FALSE) |>
+    median_hdci()
+```
+
+### Modelsummary
+```{r}
+#| label: modelsummary
+#| results: markup
+#| eval: false
+#| echo: true
+#| cache: false
+copper.brm3b |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic,
+  exponentiate = TRUE
+)
+```
+
+```{r}
+#| label: modelsummary_plot
+#| results: markup
+#| eval: false
+#| echo: true
+#| cache: false
+copper.brm3b |> modelplot(exponentiate = TRUE)
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+
+# Further investigations 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+
+```{r postHoc1a, results='markdown', eval=TRUE,mhidden=TRUE}
+## ## The following should work, but there is a bug and therefore it does not
+## ## (although it has been reported - so may get fixed at some point).
+## ## The offset seems to get handled incorrectly
+## newdata <- copper.brm3b |>
+##     emmeans(~FoodTreatment|SexParent, offset=0, type='response') |>
+##     as.data.frame()
+newdata <- copper.brm3b |>
+    emmeans(~COPPER|DIST, type='response') |>
+    as.data.frame()
+head(newdata)
+ggplot(newdata) +
+    geom_pointrange(aes(y=response,  x=COPPER,  color=DIST,
+                        ymin=lower.HPD,  ymax=upper.HPD),
+                    position=position_dodge(width=0.2)) +
+    theme_classic()
+```
+
+:::
+
+
+
+# References
+

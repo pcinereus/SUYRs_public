@@ -1,0 +1,2031 @@
+---
+title: "Bayesian GLMM Part2"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(rstanarm)   #for fitting models in STAN
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(HDInterval) #for HPD intervals
+library(posterior)  #for posterior draws
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for MCMC diagnostics
+library(rstan)      #for interfacing with STAN
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(DHARMa)     #for residual diagnostics
+library(tidybayes)  #for more tidying outputs
+library(ggeffects)  #for partial plots
+library(broom.mixed)#for tidying MCMC outputs
+library(patchwork)  #for multiple plots
+library(ggridges)   #for ridge plots 
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+To investigate differential metabolic plasticity in barramundi (*Lates
+calcarifer*), @Norin-2016-369 exposed juvenile barramundi to various
+environmental changes (increased temperature, decreased salinity and
+increased hypoxia) as well as control conditions.  Metabolic
+plasticity was calculated as the percentage difference in standard
+metabolic rate between the various treatment conditions and the
+standard metabolic rate under control conditions.  They were
+interested in whether there was a relationship between metabolic
+plasticity and typical (control) metabolism and how the different
+treatment conditions impact on this relationship.
+
+A total of 60 barramundi juveniles were subject to each of the three
+conditions (high temperature, low salinity and hypoxia) in addition to
+control conditions.  Fish mass was also recorded as a covariate as
+this is known to influence metabolic parameters.
+
+![Barramundi](../resources/barramundi.png){#fig-barramundi width="310"}
+
+```{tikz}
+%| label: fig-norin_design
+%| engine: tikz
+%| echo: false
+%| fig-cap: Sampling design for the norin data set
+%| fig-width: 13
+%| fig-height: 6
+%| cache: true
+%| class: tikz
+%| engine-opts:
+%|   template: "../resources/tikz-minimal.tex"
+\tikzstyle{HandLabel} = [font={\fontspec[Scale=1.1]{xkcd}}]
+\tikzstyle{Messy} = [decorate,decoration={random steps,segment length=3pt, amplitude=0.5pt}]
+\tikzset{%
+every node/.style={%
+draw=black,
+inner sep=1mm,
+outer sep=0,
+Messy, HandLabel,
+minimum size=2.5cm,
+minimum height=8mm,
+align=center,
+anchor=north,
+},
+Rnd/.style={%
+draw=black!90,
+fill=black!30,
+},
+Trt/.style={%
+%rounded corners,
+%Messy, 
+draw=black,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Latent/.style={%
+%rounded corners,
+%Messy, 
+draw=black!40,
+text=black!40,
+fill=none,
+%top color=blue!10,
+%bottom color=blue!30
+},
+Th/.style={%
+%rounded corners,
+draw=black!90
+},
+Control/.style={%
+rounded corners,
+draw=green!90,
+top color=green!10,
+bottom color=green!30,
+},
+Comment/.style={%
+draw=none,
+inner sep=0mm,
+outer sep=0mm,
+minimum height=5mm,
+align=right
+},
+}
+
+\forestset{myst/.style={%
+for tree={%
+parent anchor=south, 
+child anchor=north,
+l sep=1cm,
+s sep=0.5cm,
+edge path={\noexpand\path[\forestoption{edge},-{latex}] 
+(!u.parent anchor) |- ($(!u.parent anchor)!.5!(.child anchor)$) -| (.child anchor)
+\forestoption{edge label};}
+}
+}
+}
+
+\begin{forest} myst,
+[,phantom, s=1cm
+[FishID.1, Rnd, name=Random
+[{Low Salinity}, Trt, name=Trial
+[SMR, Trt, name=SMR]
+]
+[{High Salinity}, Trt
+[SMR, Trt]
+]
+[{Hypoxia}, Trt
+[SMR, Trt]
+]
+]
+[FishID.2, Rnd
+[{Low Salinity}, Trt
+[SMR, Trt]
+]
+[{High Salinity}, Trt
+[SMR, Trt]
+]
+[{Hypoxia}, Trt
+[SMR, Trt]
+]
+]
+[..., Comment]
+[FishID.n, Rnd
+[{Low Salinity}, Trt
+[SMR, Trt]
+]
+[{High Salinity}, Trt
+[SMR, Trt]
+]
+[{Hypoxia}, Trt
+[SMR, Trt]
+]
+]
+]
+\node[left=1cm of Trial, Comment] (lTrial) {TRIAL};
+\node[left=1cm of SMR, Comment] (lSMR) {SMR};
+\node[Comment] at (lTrial |- Random.west) {FISHID};
+\end{forest}
+
+```
+
+
+FISHID   MASS    TRIAL             SMR\_contr   CHANGE
+-------- ------- ----------------- ------------ --------
+1        35.69   LowSalinity       5.85         -31.92
+2        33.84   LowSalinity       6.53         2.52
+3        37.78   LowSalinity       5.66         -6.28
+..       ..      ..                ..           ..
+1        36.80   HighTemperature   5.85         18.32
+2        34.98   HighTemperature   6.53         19.06
+3        38.38   HighTemperature   5.66         19.03
+..       ..      ..                ..           ..
+1        45.06   Hypoxia           5.85         -18.61
+2        43.51   Hypoxia           6.53         -5.37
+3        45.11   Hypoxia           5.66         -13.95
+
+: Format of norin.csv data files {#tbl-norin .table-condensed}
+
+---------------- ------------------------------------------------------------------------------------------------------------------------------------------------------
+**FISHID**       Categorical listing of the individual fish that are repeatedly sampled
+**MASS**         Mass (g) of barramundi. Covariate in analysis
+**TRIAL**        Categorical listing of the trial (LowSalinity: 10ppt salinity; HighTemperature: 35 degrees; Hypoxia: 45% air-sat. oxygen.
+**SMR\_contr**   Standard metabolic rate (mg/h/39.4 g of fish) under control trial conditions (35 ppt salinity, 29 degrees, normoxia)
+**CHANGE**       Percentage difference in Standard metabolic rate (mg/h/39.4 g of fish) between Trial conditions and control adjusted for \'regression to the mean\'.
+---------------- ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+: Description of the variables in the norin data file {#tbl-norin1 .table-condensed}
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+norin <- read_csv("../data/norin.csv", trim_ws = TRUE)
+```
+
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(norin)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(norin)
+```
+
+## str
+```{r}
+str(norin)
+```
+
+## Easystats (datawizard)
+```{r}
+norin |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+norin |> modelsummary::datasummary_skim()
+norin |> modelsummary::datasummary_skim(by = "TRIAL")
+```
+
+:::
+<!-- END_PRIVATE-->
+
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 \sim{} \mathcal{N}(16, 35)\\
+\beta_{1-6} \sim{} \mathcal{N}(0, 70)\\
+$$
+
+where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of
+the fixed and random effects parameters respectively and $\bf{X}$ is
+the model matrix representing the overall intercept and effects of
+temperature and (centered) mean fish size on SDA peak.  $\bf{Z}$
+represents a cell means model matrix for the random intercepts
+associated with individual fish.
+
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+Lets begin by declaring the categorical predictors and random effects
+as factors.
+
+```{r eda1, results='markdown', eval=TRUE, mhidden=TRUE}
+norin <- norin |> mutate(FISHID = factor(FISHID),
+                         TRIAL = factor(TRIAL))
+```
+
+## Boxplots
+Each of the fish were exposed to each of the three trials
+(treatments). So lets explore the distributions of responses within
+each of these trials.
+
+```{r eda2, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(norin, aes(y=CHANGE, x=TRIAL)) + geom_boxplot()
+```
+
+**Conclusions:**
+
+- these seem reasonable enough
+
+## Scatterplots 
+
+The researchers considered that physiological plasticity might be
+effected by the fishes basal metabolic rate.  For example, a fish with
+relatively high metabolism might have less scope to increase this
+metabolism than a fish with a lower metabolism.  Therefore, the SMR
+under control conditions (just prior to the specific trial) could be
+added as a continuous covariate.
+
+Doing so would introduce two additional assumptions:
+
+1. linearity: that the relationship between the response and control SMR is
+   linear (if we intend to model it as a linear trend)
+2. homogeneity of slopes: that the rate of change in response associated with a
+   one unit change in control SMR is similar for each trial (unless we include
+   an interaction)
+
+```{r eda3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
+ggplot(norin, aes(y=CHANGE, x=SMR_contr, shape=TRIAL, color=TRIAL)) +
+    geom_smooth(method='lm') + geom_point()
+ggplot(norin, aes(y=CHANGE, x=SMR_contr, shape=TRIAL, color=TRIAL)) +
+  geom_smooth() + geom_point()
+```
+
+## Pairs plots
+
+It might also be worth exploring how consistent the trial effect is across the
+different fish.  This can give us an idea of whether the addition of a random
+intercept/slope model would be useful.
+
+```{r eda4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
+ggplot(norin, aes(y=CHANGE, x=as.numeric(FISHID), color=TRIAL)) +
+    geom_point() + geom_line()
+```
+
+**Conclusions:**
+
+- generally, the difference between control and trial SMR is greatest for the
+  High temperature trial.
+- there is less consistency about the relative effects of Hypoxia and Low
+  Salinity.
+- hence a random intercept/slope model might be useful.
+
+## Another scatterplot
+
+Finally, as an acknowledgement that the metabolic response might be influenced
+
+by the mass of the fish, the researchers contemplated including fish Mass as a
+continuous covariate.  There are numerous alternative ways to incorporate
+covariates that are known to impact on a response.
+
+- add them as an offset.  This will include the covariate in the model, yet will
+  not estimate a partial slope for this predictor.  Rather the slope is assumed
+  to be 1.  Since the parameter does not need to be estimated, adding a
+  predictor as an offset does not consume any degrees of freedom.  However, it
+  does assume that there is a slope of one.   This approach can be useful as an
+  alternative to using the response divided by the covariate as the response.
+  That is, it is equivalent to using a response that has been standardised by
+  the covariate, yet still allowing the modelling distribution that would be
+  appropriate for the original response.
+- add them as a regular covariate.  This will include the covariate in the model
+  and estimate a partial slope parameter just like any other term.  Although it
+  will incur a degrees of freedom penalty, it does not assume a slope of 1 and
+  could be modelled as non-linear if appropriate.
+
+Lets explore the relationship between the response and Mass separately for each
+Trial.
+
+```{r eda5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
+ggplot(norin, aes(y=CHANGE, x=MASS, color=TRIAL)) +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+**Conclusions:**
+
+- there does not seem to be much of a relationship between the response and
+Mass. Nevertheless, in the presence of control SMN, it might still be a useful
+covariate at explaining some of the unexplained variability (and thus increasing
+the power of the model).
+- there is no evidence that the response and Mass are related in a non-linear
+  manner.
+  
+
+:::
+<!-- END_PRIVATE-->
+
+# Fit the model 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## rstanarm
+:::: {.panel-tabset}
+### Using default priors
+In `rstanarm`, the default priors are designed to be weakly informative. They
+are chosen to provide moderate regularlization (to help prevent overfitting) and
+help stabalise the computations.
+
+```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+norin.rstanarm <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale = FALSE)+scale(MASS, scale = FALSE),
+                             data = norin,
+                             family = gaussian(), 
+                             iter = 5000,
+                             warmup = 2000,
+                             chains = 3,
+                             thin = 5,
+                             refresh = 0) 
+```
+
+
+
+```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+norin.rstanarm |> prior_summary()
+```
+This tells us:
+
+- for the intercept (when the family is Gaussian), a normal prior with
+  a mean of 20 and a standard deviation of 85 is used.  A value of 2.5 is
+  used for scaling all parameter standard deviations.  The value of 20
+  is based on the mean of the response (`mean(norin$CHANGE)`) and
+  the scaled standard deviation of 85 is based on multiplying the
+  scaling factor by the standard deviation of the response.
+
+```{r fitModel1c, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+2.5*sd(norin$CHANGE)
+```
+
+- for the coefficients (in this case, just the difference between strong and
+  weak innoculation), the default prior is a normal prior centered around 0 with
+  a standard deviations of 178.99, 178.99, 135.15, 10.60, 34.2 and 34.2
+  repectively. This is then adjusted for the scale of the data by multiplying
+  the 2.5 by the ratio of the standard deviation of the response by the stanard
+  devation of the numerical dummy variables for the predictor (then rounded).
+
+```{r fitModel1d, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+2.5*sd(norin$CHANGE)/apply(model.matrix(~TRIAL*SMR_contr+MASS, norin), 2, sd)
+```
+
+-  the auxillary prior represents whatever additional prior is required for the
+   nominated model.  In the case of a Gaussian model, this will be $\sigma$, for
+   negative binomial, it will be the reciprocal of dispersion, for gamma, it
+   will be shape, etc .  By default in `rstanarm`, this
+   is a exponential with a rate of 1 which is then adjusted by devision with the
+   standard deviation of the response.
+   
+```{r fitModel1e, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+1/sd(norin$CHANGE)
+```
+
+### Assessing priors
+Lets now run with priors only so that we can explore the range of values they
+allow in the posteriors.
+
+```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+norin.rstanarm1 <- update(norin.rstanarm,  prior_PD=TRUE)
+```
+
+```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+norin.rstanarm1 |>
+  ggpredict(~SMR_contr*TRIAL) |>
+  plot(show_data=TRUE)
+#OR
+norin.rstanarm1 |>
+  ggemmeans(~SMR_contr*TRIAL) |>
+  plot(show_data=TRUE)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is faily wide and the predicted means could range
+  from a small negative number to a relatively large positive number.
+
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucket out of
+thin air):
+
+- $\beta_0$: normal centered at 17 with a standard deviation of 35
+  - mean of 17: since `median(norin$CHANGE)`
+  - sd of 35: since `mad(norin$CHANGE)`
+- $\beta_1$: normal centred at 0 with a standard deviation of 70
+  - sd of 70: since `sd(norin$CHANGE) / apply(model.matrix(~scale(SMR_contr)*TRIAL + scale(MASS), norin), 2, sd)`
+- $\sigma$: exponential with rate of 0.03
+  - since `1 / sd(norin$CHANGE)`
+- $\Sigma$: decov with:
+  - regularization: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+norin.rstanarm2 <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale = FALSE)+offset(MASS),
+                                data = norin,
+                                family = gaussian(), 
+                                prior_intercept = normal(17, 35, autoscale = FALSE),
+                                prior = normal(0, 70, autoscale = FALSE),
+                                prior_aux=rstanarm::exponential(0.03, autoscale = FALSE),
+                                prior_covariance = decov(1, 1, 1, 1), 
+                                prior_PD = TRUE, 
+                                iter = 5000,
+                                warmup = 1000,
+                                chains = 3,
+                                thin = 5,
+                                refresh = 0
+                                )  
+```
+
+```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+norin.rstanarm2 |>
+    ggpredict(~SMR_contr * TRIAL) |>
+    plot(show_data = TRUE)
+```
+
+Now lets refit, conditioning on the data.
+
+```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
+norin.rstanarm3 <- update(norin.rstanarm2,  prior_PD=FALSE)
+```
+ 
+```{r fitModel1j2, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
+norin.rstanarm4 <- stan_glmer(CHANGE ~  (TRIAL|FISHID)+TRIAL*SMR_contr + offset(MASS),
+                                data = norin,
+                                family = gaussian(), 
+                                prior_intercept = normal(17, 35, autoscale = FALSE),
+                                prior = normal(0, 70, autoscale = FALSE),
+                                prior_aux=rstanarm::exponential(0.03, autoscale = FALSE),
+                                prior_covariance = decov(1, 1, 1, 1), 
+                                iter = 5000,
+                                warmup = 1000,
+                                chains = 3,
+                                thin = 5,
+                                refresh = 0
+                                )  
+preds <- norin.rstanarm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
+norin.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = norin$CHANGE,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = FALSE)
+plot(norin.resids, quantreg = FALSE)
+
+## Clearly an issue here!
+```
+
+### Plotting prior and posterior
+
+```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+get_variables(norin.rstanarm3)
+posterior_vs_prior(norin.rstanarm3, color_by='vs', group_by=TRUE,
+                   facet_args=list(scales='free_y'),
+                   regex_pars = "^.Intercept|TRIAL|SMR_contr|MASS|sigma|Sigma")
+```
+
+**Conclusions:**
+
+- in each case, the prior is substantially wider than the posterior, suggesting
+  that the posterior is not biased towards the prior.
+  
+```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.rstanarm3 |>
+    ggpredict(~SMR_contr * TRIAL) |>
+    plot(show_data = TRUE)
+##OR
+norin.rstanarm3 |>
+    ggemmeans(~SMR_contr * TRIAL) |>
+    plot(show_data = TRUE)
+```
+
+::::
+## brms 
+:::: {.panel-tabset}
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularlization (to help prevent overfitting) and
+help stabalise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80), echo=c(-4,-6)}
+norin.form <- bf(CHANGE ~  (1|FISHID)+TRIAL*SMR_contr+offset(MASS),
+                   family = gaussian() 
+                   )
+options(width=100)
+norin.form |> get_prior(data=norin)
+options(width=80)
+norin.brm <- brm(norin.form,
+                 data=norin,
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores = 3,
+                 thin = 5,
+                 refresh = 0,
+                 backend = 'cmdstanr')
+```
+
+This tells us:
+
+- for the intercept (when the family is Gaussian), a t-distribution prior with
+  a mean of 16.4 and a standard deviation of 34.5 is used:
+  - mean of 16.4, since `median(norin$CHANGE)`
+  - sd of 34.5 since `mad(norin$CHANGE)`
+- `brms` uses flat (inproper) priors for all population effects
+- the prior on sigma is a half t-distribution with a mean of 0 and standard
+  deviation of 34.5:
+  - sd of 34.5 since `mad(norin$CHANGE)`
+- the hyperprior on the standard deviation is a half t-distribution with a mean
+  of 0 and a standard deviation of 34.5.
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucket out of
+thin air):
+
+- $\beta_0$: normal centred at 16 with a standard deviation of 35
+  - mean of 16: since `median(norin$CHANGE)`
+  - sd of 35: since `mad(norin$CHANGE)`
+- $\beta_{1-2}$ (TRIAL): normal centred at 0 with a standard deviation of 70
+  - sd of 70: since `sd(norin$CHANGE) / apply(model.matrix(~TRIAL*SMR_contr+MASS, norin)[, -1], 2, sd)`
+- $\beta_{3}$ (SMR_contr): normal centred at 0 with a standard deviation of 54
+  - sd of 54: since `sd(norin$CHANGE) / apply(model.matrix(~TRIAL*SMR_contr+MASS, norin)[, -1], 2, sd)`
+- $\beta_{4}$ (MASS): normal centred at 0 with a standard deviation of 4
+  - sd of 4: since `sd(norin$CHANGE) / apply(model.matrix(~TRIAL*SMR_contr+MASS, norin)[, -1], 2, sd)`
+- $\beta_{5-6}$ (interaction): normal centred at 0 with a standard deviation of 14
+  - sd of 14: since `sd(norin$CHANGE) / apply(model.matrix(~TRIAL*SMR_contr+MASS, norin)[, -1], 2, sd)`
+- $\sigma$: half-cauchy with parameters 0 and 6 or else a student_t with parameters 0 and 34
+  - since `sd(norin$CHANGE)`
+- $\sigma_j$: half-cauchy with parameters 0 and 5.8
+  - since `sqrt(sd(norin$CHANGE))`
+  - we want this prior to have most mass close to zero for the purpose
+    of **regularisation**
+- $\Sigma$: decov with:
+  - regularization: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+Note, for hierarchical models, the model will tend to want to have a
+large $sigma$ in order to fit the data better.  It is a good idea to
+__regularise__ this tendency by applying a prior that has most mass
+around zero.  Suitable candidates include:
+
+- half-t: as the degrees of freedom approach infinity, this will approach a half-normal 
+- half-cauchy: this is essentially a half-t with 1 degree of freedom
+- exponential
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, fig.width = 10, fig.height = 7}
+norin |> 
+    group_by(TRIAL) |>
+    summarise(median(CHANGE),
+              mad(CHANGE))
+norin |> 
+    group_by(TRIAL, FISHID) |>
+    summarise(median = median(CHANGE),
+              MAD = mad(CHANGE)) |>
+    ungroup(FISHID) |>
+    summarise(sd(median))
+
+sd(norin$CHANGE)/apply(model.matrix(~TRIAL*SMR_contr+MASS, norin)[, -1], 2, sd)
+
+standist::visualize("normal(16,35)", xlim=c(-10,100))
+standist::visualize("normal(0, 70)", "normal(0, 54)", xlim=c(-200,200))
+standist::visualize("gamma(2, 1)", "gamma(35, 1)",
+                    "student_t(3,0, 34)",
+                    "cauchy(0, 5.8)",
+                    xlim=c(-10,100))
+```
+
+```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+priors <- prior(normal(16, 35), class = 'Intercept') +
+    prior(normal(0, 70), class = 'b', coef = 'TRIALHypoxia') +
+    prior(normal(0, 70), class = 'b', coef = 'TRIALLowSalinity') +
+    prior(normal(0, 54), class = 'b', coef = 'SMR_contr') +
+    prior(normal(0, 4), class = 'b', coef = 'MASS') +
+    prior(normal(0, 13), class = 'b') +
+    prior(student_t(3,0,34), class = 'sigma') +
+    ## prior(gamma(35, 1), class = 'sigma') +
+    prior(cauchy(0, 5.8), class = 'sd') 
+norin.form <- bf(CHANGE ~ (1|FISHID) + TRIAL*SMR_contr + MASS,
+                     family = gaussian()
+                   )
+norin.brm2 <- brm(norin.form, 
+                  data = norin,
+                  prior = priors,
+                  sample_prior = 'only',
+                  iter = 5000,
+                  warmup = 1000,
+                  chains = 3, cores = 3,
+                  thin = 5,
+                  refresh = 0,
+                  backend = "cmdstanr"
+                  )
+```
+
+Note in the above model, the output may have included a warning
+message alerting us the presence of **divergent transitions**.
+Divergent transitions are an indication that the sampler has
+encountered poor sampling conditions - the more divergent transitions,
+the more severe the issue.
+
+Typically, divergent transitions are the result of either:
+
+- a miss-specified model
+- priors that permit the sampler to drift into unsupported areas
+- complex posterior "features" (with high degrees of curvature) for
+  which the sampler was inadequately tuned during the warmup phase
+
+Accordingly, these divergent transitions can be addressed by either:
+
+- reviewing the model structure
+- adopting tighter priors
+- increase the **adaptive delta** from the default of 0.8 to closer
+  to 1.  The adaptive delta defines the average acceptance probability
+  that the sampler should aspire to during the warmup phase.
+  Increasing the adaptive delta results in a smaller step size (and
+  thus fewer divergences and more robust samples) however it will also
+  result in slower sampling speeds.
+
+```{r partialPlot2h1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm2 |>
+    ggpredict(~SMR_contr*TRIAL) |>
+    plot(show_data = TRUE)
+```
+
+
+
+```{r fitModel2h1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+norin.brm3 <- update(norin.brm2,  
+                     sample_prior = 'yes',
+                     control = list(adapt_delta = 0.99),
+                     refresh = 0,
+                     cores = 3)  
+save(norin.brm3, file = '../ws/testing/norin.brm3')
+```
+
+```{r partialPlot2h1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm3 |>
+    ggpredict(~SMR_contr*TRIAL) |>
+    plot(show_data = TRUE)
+```
+
+### Plotting prior and posterior
+
+```{r posterior2h2, results='markdown', eval=TRUE}
+norin.brm3 |> get_variables()
+norin.brm3 |> hypothesis('TRIALHypoxia=0') |> plot()
+norin.brm3 |> hypothesis('SMR_contr=0') |> plot()
+```
+
+```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+## norin.brm3 |> SUYR_prior_and_posterior()
+```
+
+### Random intercept/slope model
+
+While we are here, we might like to explore a random intercept/slope model
+
+
+```{r fitModel2h3, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+priors <- prior(normal(16, 35), class = 'Intercept') +
+    prior(normal(0, 70), class = 'b', coef = 'TRIALHypoxia') +
+    prior(normal(0, 70), class = 'b', coef = 'TRIALLowSalinity') +
+    prior(normal(0, 54), class = 'b', coef = 'SMR_contr') +
+    prior(normal(0, 4), class = 'b', coef = 'MASS') +
+    ## prior(normal(0, 70), class = 'b') +
+    prior(student_t(3,0,34), class = 'sigma') +
+    prior(cauchy(0, 5.8), class = 'sd') +
+    prior(lkj_corr_cholesky(1), class = 'cor')
+norin.form <- bf(CHANGE ~ (TRIAL|FISHID) + TRIAL*SMR_contr + MASS,
+                 ## sigma ~ TRIAL*SMR_contr + offset(MASS) + (1|FISHID),
+                 family = gaussian()
+                 )
+norin.brm4 <-  brm(norin.form, 
+                  data = norin,
+                  prior = priors,
+                  sample_prior = 'yes',
+                  iter = 5000,
+                  warmup = 1000,
+                  chains = 3, cores = 3,
+                  thin = 5,
+                  refresh = 0,
+                  control = list(adapt_delta=0.99),
+                  backend = "cmdstanr"
+                  )
+save(norin.brm4, file = '../ws/testing/norin.brm4')
+```
+
+```{r posterior2k, results='markdown', eval=TRUE}
+norin.brm4 |> get_variables()
+norin.brm4 |> hypothesis('TRIALHypoxia=0') |> plot()
+norin.brm4 |> hypothesis('SMR_contr=0') |> plot()
+```
+
+```{r posterior2k1, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+## norin.brm4 |> SUYR_prior_and_posterior()
+```
+
+```{r posterior2k2, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
+norin.brm4 |>
+  posterior_samples() |>
+  dplyr::select(-`lp__`) |>
+  pivot_longer(everything(), names_to = 'key') |> 
+  filter(!str_detect(key, '^r')) |>
+  mutate(Type = ifelse(str_detect(key, 'prior'), 'Prior', 'Posterior'),
+         Class = case_when(
+             str_detect(key, '(^b|^prior).*Intercept$') ~ 'Intercept',
+             str_detect(key, 'b_TRIAL.*|prior_b_TRIAL.*') & !str_detect(key, '.*\\:.*') ~ 'TRIAL',
+             str_detect(key, 'b_SMR_contr|prior_b_SMR_contr') ~ 'SMR',
+             str_detect(key, 'b_MASS|prior_b_MASS') ~ 'MASS',
+             str_detect(key, '.*\\:.*|prior_b_.*\\:.*') ~ 'Interaction',
+             str_detect(key, 'sd') ~ 'sd',
+             str_detect(key, '^cor|prior_cor') ~ 'cor',
+             str_detect(key, 'sigma') ~ 'sigma'),
+         Par = str_replace(key, 'b_', '')) |>
+  ggplot(aes(x = Type,  y = value, color = Par)) +
+  stat_pointinterval(position = position_dodge())+
+  facet_wrap(~Class,  scales = 'free')
+
+```
+
+### Compare models
+
+We can compare the two models using LOO
+
+```{r fitModel2h3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+(l.1 <- norin.brm3 |> loo()) 
+(l.2 <- norin.brm4 |> loo())
+loo_compare(l.1, l.2)
+```
+
+There is substantially more support for the more complex random
+intercept/slope model over the simpler random intercept only
+model. Consequently, we will continue with the random intercept/slope
+model.
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+
+# MCMC sampling diagnostics
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+In addition to the regular model diagnostics checking, for Bayesian analyses, it
+is also necessary to explore the MCMC sampling diagnostics to be sure that the
+chains are well mixed and have converged on a stable posterior.
+
+There are a wide variety of tests that range from the big picture, overal chain
+characteristics to the very specific detailed tests that allow the experienced
+modeller to drill down to the very fine details of the chain behaviour.
+Furthermore, there are a multitude of packages and approaches for exploring
+these diagnostics.
+
+## brms 
+:::: {.panel-tabset}
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+</details>
+
+Of these, we will focus on:
+
+- trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> mcmc_plot(type='trace')
+```
+  
+   The chains appear well mixed and very similar
+   
+- acf_bar (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> mcmc_plot(type='acf_bar')
+```
+
+   There IS evidence of autocorrelation in the MCMC samples.  We should consider thinning further!
+
+- rhat_hist: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> mcmc_plot(type='rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff_hist (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> mcmc_plot(type='neff_hist')
+```
+
+  There are a small number of parameters that have very low effective
+  sample sizes.  It might be worth exploring the cause(s) of this to
+  determine whether it is concerning.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> mcmc_plot(type='combo')
+norin.brm4 |> mcmc_plot(type='violin')
+```
+</details>
+
+### stan plots
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> get_variables()
+pars <- norin.brm4 |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
+
+norin.brm4$fit |>
+    stan_trace(pars = pars)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4$fit |>
+    stan_ac(pars = pars)
+```
+
+   There IS evidence of autocorrelation in the MCMC samples.  We
+   should consider thinning further!
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4$fit |> stan_rhat() 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4$fit |> stan_ess()
+```
+
+  There are a small number of parameters that have very low effective
+  sample sizes.  It might be worth exploring the cause(s) of this to
+  determine whether it is concerning.
+
+```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+### ggmcmc
+
+The `ggmean` package also as a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+norin.ggs <- norin.brm4 |> ggs(burnin = FALSE, inc_warmup = FALSE)
+norin.ggs |> ggs_traceplot()
+``` 
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+ggs_autocorrelation(norin.ggs)
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_Rhat(norin.ggs, scaling = 1.01)
+```
+
+  All Rhat values are below 1.01, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_effective(norin.ggs)
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_crosscorrelation(norin.ggs)
+```
+
+```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_grb(norin.ggs)
+```
+</details>
+
+### pp check
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation5a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+</details>
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed ontop of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  Note, this is not really that useful for models that involve a
+  binomial response
+
+```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> pp_check(type = 'error_scatter_avg')
+```
+
+This is not really interpretable
+
+- intervals:  plots the observed data overlayed ontop of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+norin.brm4 |> pp_check(group = 'TRIAL', type = 'intervals')
+norin.brm3 |> pp_check(group = 'TRIAL', type = 'intervals_grouped')
+norin.brm3 |> pp_check(group = 'TRIAL', type = 'violin_grouped')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(norin.brm2)
+```
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+ourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- norin.brm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
+norin.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = norin$CHANGE,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = FALSE)
+plot(norin.resids, quantreg = FALSE)
+norin.resids |> testDispersion()
+```
+
+```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+norin.resids <- make_brms_dharma_res(norin.brm4, integerResponse = FALSE)
+wrap_elements(~testUniformity(norin.resids)) +
+               wrap_elements(~plotResiduals(norin.resids, form = factor(rep(1, nrow(norin))))) +
+               wrap_elements(~plotResiduals(norin.resids)) +
+               wrap_elements(~testDispersion(norin.resids)) 
+```
+
+
+**Conclusions:**
+
+- the simulated residuals do suggest some issues with the residuals
+- the model appears to be under-dispersed
+- there is evidence of a lack of fit.
+
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Partial effects plots
+
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+### conditional_effects
+
+```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |>
+    conditional_effects() |>
+    plot(ask = FALSE, points = TRUE, plot = FALSE) |>
+    wrap_plots()
+```
+
+### ggpredict
+
+```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |>
+    ggpredict(terms = c("SMR_contr", "TRIAL")) |>
+    plot(show_data = TRUE)
+```
+
+### ggemmeans
+
+```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |>
+    ggemmeans(~SMR_contr*TRIAL) |>
+    plot(show_data = TRUE)
+```
+
+### fitted_draws
+It is not really possible to do this via the fitted draws as it would
+not be marginalising over `MASS` or `FISHID`.
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+`brms` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+	
+```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |> summary()
+```
+
+```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+norin.sum <- summary(norin.brm4)
+```
+
+**Conclusions:**
+
+- the intercept indicates that the average metabolic change associated with the
+  High Temperature trial (at the mean SMR_contr and MASS) across all
+  fish was `r round(norin.sum$fixed[1,1], 2)`.
+- for the same SMR_contr and MASS, the average metabolic change was 
+  `r round(-1*norin.sum$fixed[2,1], 2)` less in the Hypoxia trial and 
+  `r round(-1*norin.sum$fixed[3,1], 2)` less in the Salinity trial than 
+  the High Temperature trial. 
+- in the High Temperature trial, every 1 unit increase in SMR_contr was 
+  associated with a decline in metabolic change of `round(-1*norin.sum$fixed[4,1], 2)` 
+  units. 
+- in the High Temperature trial (and mean SMR_contr), every 1 unit 
+  increase in MASS was associated with an increase in metabolic change of 
+  `round(-1*norin.sum$fixed[5,1], 2)` units. 
+- the rate of change in metabolic change associated with the Hypoxia trial was 
+  `round(-1*norin.sum$fixed[6,1], 2)` units higher than that of the High Temperature
+  trial and  `round(-1*norin.sum$fixed[7,1], 2)` units higher in the Low Salinity
+  trial.
+- the variance in intercepts across all fish is 
+  `r round(norin.sum$random[[1]][1,1],2)`
+- the variance in responses between High Temperature and Hypoxia trials across all fish is 
+  `r round(norin.sum$random[[1]][2,1],2)`.
+- the variance in responses between High Temperature and Low Salinity trials across all fish is 
+  `r round(norin.sum$random[[1]][3,1],2)`.
+
+- the scale of variance between fish within a treatment  
+  (sigma, `r round(norin.sum$spec_pars[1,1], 2)`) is substantially
+  higher than that both within the High Temperature trial and between
+  the High Temperature and Hypoxia trials, yet lower than that between
+  High Temperature and Low Salinity trials.
+
+### summarise_draws
+
+```{r summariseModel2i2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |>
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    rhat,
+    ess_bulk,
+    ess_tail
+  )
+
+## or if you want to exclude some parameters
+norin.brm4 |>
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    rhat,
+    ess_bulk,
+    ess_tail
+  ) |>
+  filter(str_detect(variable, 'prior|^r_|^lp__', negate = TRUE)) 
+```
+
+
+### as_draws_df (posteriors)
+
+```{r summariseModel2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |> as_draws_df()
+norin.brm4 |>
+  as_draws_df() |>
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    rhat,
+    ess_bulk,
+    ess_tail
+  )
+## or if you want to exclude some parameters
+norin.brm4 |>
+  as_draws_df() |>
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    rhat,
+    ess_bulk,
+    ess_tail
+  ) |>
+  filter(str_detect(variable, 'prior|^r_|^lp__', negate = TRUE)) 
+```
+
+### tidyMCMC
+
+```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4$fit |>
+    tidyMCMC(estimate.method = 'median',
+             conf.int = TRUE,  conf.method = 'HPDinterval',
+             rhat = TRUE, ess = TRUE)
+```
+```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+norin.tidy <- tidyMCMC(norin.brm4$fit, estimate.method='median',
+                         conf.int=TRUE,  conf.method='HPDinterval',
+                         rhat=TRUE, ess=TRUE)
+```
+
+**Conclusions:**
+
+see above
+
+### gather_draws
+
+```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |> get_variables()
+norin.draw <- norin.brm4 |>
+    gather_draws(`^b.Intercept$|b_.*|sd_.*|sigma`,  regex=TRUE)
+norin.draw
+```
+
+We can then summarise this
+
+```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.draw |> median_hdci()
+```
+
+```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+norin.gather <- norin.brm4 |>
+    gather_draws(`b_Intercept|b_TREAT.*|sd_.*|sigma`,  regex=TRUE) %>%
+  median_hdci()
+```
+
+### slab
+
+```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+norin.brm4 |>
+    gather_draws(`b_Intercept|b_.*`, regex=TRUE) |> 
+    ggplot() +
+    geom_vline(xintercept=0, linetype='dashed') +
+    stat_slab(aes(x = .value, y = .variable,
+                  fill = stat(ggdist::cut_cdf_qi(cdf,
+                           .width = c(0.5, 0.8, 0.95), 
+                           labels = scales::percent_format())
+                           )), color='black') + 
+    scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
+
+norin.brm4 |> 
+    gather_draws(`b_Intercept|b_.*`, regex=TRUE) |> 
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    facet_wrap(~.variable, scales='free')
+
+norin.brm4 |> 
+    gather_draws(`b_Intercept|b_.*`, regex=TRUE) |> 
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    theme_classic()
+```
+ 
+### bayesplot
+
+```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4$fit |> plot(type='intervals') 
+```
+
+### half-eye (ggdist)
+
+```{r summariseModel2ka, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+norin.brm4 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    facet_wrap(~.variable, scales='free')
+
+norin.brm4 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+```
+
+### density ridges (ggridges)
+
+```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+norin.brm4 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() +  
+    geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+##Or in colour
+norin.brm4 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    geom_density_ridges_gradient(aes(x=exp(.value),
+                                     y = .variable,
+                                     fill = stat(x)),
+                                 alpha=0.4, colour = 'white',
+                                 quantile_lines = TRUE,
+                                 quantiles = c(0.025, 0.975)) +
+    geom_vline(xintercept = 1, linetype = 'dashed') +
+    scale_x_continuous(trans = scales::log2_trans()) +
+    scale_fill_viridis_c(option = "C") 
+```
+ 
+### tidy_draws
+
+```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |> tidy_draws()
+```
+
+### spread_draws
+
+```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |> spread_draws(`.*Intercept.*|^b_.*`,  regex=TRUE)
+```
+
+### posterior_samples
+```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |> posterior_samples() |> as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+norin.brm4 |>
+    bayes_R2(re.form = NA, summary=FALSE) |>
+    median_hdci()
+norin.brm4 |>
+    bayes_R2(re.form = ~(1|FISHID), summary=FALSE) |>
+    median_hdci()
+norin.brm4 |>
+    bayes_R2(re.form = ~(TRIAL|FISHID), summary=FALSE) |>
+    median_hdci()
+```
+
+### ROPE
+
+Region of Practical Equivalence
+
+```{r summariseModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+0.1 * sd(norin$CHANGE)
+norin.brm4 |> rope(range = c(-3.38, 3.38))
+rope(norin.brm4, range = c(-3.38, 3.38)) |> plot()
+
+```
+
+### Modelsummary
+```{r}
+#| label: modelsummary
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+norin.brm4 |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic,
+  exponentiate = FALSE
+)
+```
+
+```{r}
+#| label: modelsummary_plot
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+norin.brm4 |> modelplot(exponentiate = FALSE)
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Predictions / further analyses 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+The presence of an interaction suggests that the nature of the
+relationship between SMR change and the control SMR differs between the three
+trials (High Temperature, Hypoxia and Low Salinity).  Equivalently, the
+differences between the three trials is not constant over all levels of control
+SMR.
+
+To further tease these interactions apart, we could either:
+
+- compare the slopes separately for each of the three trials
+- compare the effects of the three trials at multiple values of control SMR
+
+We will now explore each of the above, although typically we would only do one
+or the other (depending on which variable was of more interest).
+
+## brms
+:::: {.panel-tabset}
+### Compare slopes
+
+```{r posteriors1a, results='markdown', eval=TRUE, echo=1,mhidden=TRUE}
+norin.brm4 |> emtrends(~TRIAL, var='SMR_contr') |> pairs()
+norin.emt <- norin.brm4 |> emtrends(~TRIAL, var='SMR_contr') |> pairs() |> as.data.frame()
+```
+
+**Conclusions:**
+
+- the partial slope associated with control SMR during High
+  Temperature was found to be `r -1*round(norin.emt[1, 2], 2)` units
+  more negative than during Hypoxia (although not significant).  Note,
+  we already had this partial slope in the original summary table.
+- the partial slope associated with control SMR during High
+  Temperature was found to be `r -1*round(norin.emt[2, 2], 2)` units
+  more negative than during Low Salinity (although not significant).
+  Note, we already had this partial slope in the original summary
+  table.
+- the partial slope associated with control SMR during Hypoxia was
+  found to be `r round(norin.emt[3, 2], 2)` units less negative than
+  during Low Salinity (although not significant).  Note, we already
+  had this partial slope in the original summary table.
+
+
+### Compare Trials (at different values of control SMR)
+
+We will estimated the pairwise differences between each of the three trials at
+the minimum, mean and maximum control SMR.
+
+```{r posteriors1b, results='markdown', eval=TRUE, mhidden=TRUE}
+norin.grid <- with(norin,  list(SMR_contr=Hmisc::smean.sdl(SMR_contr)))
+norin.grid
+norin.brm4 |> emmeans(~TRIAL|SMR_contr,  at=norin.grid) |> pairs()
+
+norin.brm4 |>
+    emmeans(~TRIAL|SMR_contr,  at=norin.grid) |>
+    pairs() |>
+    gather_emmeans_draws() |>
+    median_hdci()
+norin.brm4 |>
+    emmeans(~TRIAL|SMR_contr,  at=norin.grid) |>
+    pairs() |>
+    tidy_draws() |>
+    summarise_draws(median)
+```
+
+**Conclusions:**
+
+- as control SMR increases, the magnitude of differences between the trials
+  becomes reduced.
+- the High Temperature trial resulted in the greatest positive change in SMR.
+- the change in SMR was not found to be different between the Hypoxia and Low
+  Salinity trials.
+
+Of course, as with other analyses, it is possible to extract the
+entire posterior and use it to calculate exceedence probabilities etc.
+
+
+```{r posteriors1b2, results='markdown', eval=TRUE, mhidden=TRUE}
+norin.em <- norin.brm4 |>
+    emmeans(~TRIAL|SMR_contr, at=norin.grid) |>
+    pairs() |> 
+    gather_emmeans_draws() |>
+    mutate(Fit=.value)
+norin.em
+norin.em |> group_by(contrast) |> median_hdci(Fit)
+norin.em |> group_by(contrast, SMR_contr) |> median_hdci(Fit)
+## norin.em |>
+##     group_by(contrast) |>
+##     summarize(P=sum(Fit>0)/n())
+norin.em |>
+    group_by(contrast, SMR_contr) |>
+    summarise(P=mean(Fit>0),
+              P2 = 1 - P)
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Summary figures 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+
+```{r summaryFigure1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=5}
+norin.grid <- with(norin, list(SMR_contr = modelr::seq_range(SMR_contr, n = 100)))
+newdata <- norin.brm4 |> emmeans(~SMR_contr|TRIAL, at = norin.grid) |>
+    as.data.frame()
+head(newdata)
+
+ggplot(data = newdata, aes(y = emmean, x = SMR_contr)) +
+  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD, fill = TRIAL), alpha = 0.3) +
+  geom_line(aes(, color = TRIAL)) +
+  theme_classic() +
+  theme(legend.position = c(0.99, 0.99),
+        legend.justification = c(1, 1))
+
+## The .fixed values are the predicted values without random effects
+obs <- norin.brm4 |>
+  augment() |>
+  mutate(PartialObs=.fitted + .resid)
+
+ggplot(data=newdata, aes(y=emmean, x=SMR_contr)) +
+  geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD, fill=TRIAL), alpha=0.3) +
+  geom_line(aes(, color=TRIAL)) +
+  geom_point(data=obs,  aes(y=PartialObs,  color=TRIAL)) +
+  ## geom_point(data=norin,  aes(y=CHANGE), color='gray') +
+  theme_classic()
+```
+
+```{r summaryFigure1a2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=9, fig.height=4}
+g1 <- ggplot(data=newdata, aes(y=emmean, x=SMR_contr)) +
+  geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD, fill=TRIAL), alpha=0.3) +
+  geom_line(aes(, color=TRIAL)) +
+  geom_point(data=obs,  aes(y=PartialObs,  color=TRIAL)) +
+  theme_classic()
+g2 <- ggplot(data=newdata, aes(y=emmean, x=SMR_contr)) +
+  geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD, fill=TRIAL), alpha=0.3) +
+  geom_line(aes(, color=TRIAL)) +
+  geom_point(data=norin,  aes(y=CHANGE,  color=TRIAL)) +
+  theme_classic()
+g1 + g2
+```
+
+:::
+<!-- END_PRIVATE-->
+
+# References
+
+
+<!-- START_PRIVATE-->
+```{r fitModels, results='markdown', eval=FALSE, mhidden=TRUE}
+norin = norin |> mutate(FISHID=factor(FISHID),
+                         TRIAL=factor(TRIAL))
+
+ggplot(norin, aes(y=CHANGE, x=TRIAL)) + geom_boxplot()
+ggplot(norin, aes(y=CHANGE, x=SMR_contr, shape=TRIAL, color=TRIAL)) +
+    geom_smooth(method='lm') + geom_point()
+#ggplot(norin, aes(y=CHANGE, x=MASS, shape=TRIAL, color=TRIAL)) +
+#geom_smooth(method='lm') + geom_point()
+ggplot(norin, aes(y=CHANGE, x=as.numeric(FISHID), color=TRIAL)) +
+    geom_point() + geom_line()
+
+#ggplot(norin, aes(y=MASS, x=TRIAL)) + geom_boxplot()
+ggplot(norin, aes(y=CHANGE, x=MASS, color=TRIAL)) + geom_point() + geom_smooth(method='lm')
+
+norin.rstanarm = stan_glmer(CHANGE ~ (1|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
+                            prior_PD=TRUE, 
+                         iter=5000, warmup=2000, chains=3, thin=5, refresh=0)
+prior_summary(norin.rstanarm)
+
+posterior_vs_prior(norin.rstanarm, color_by='vs', group_by=TRUE,
+                   facet_args=list(scales='free_y'), pars=c('(Intercept)'))
+ggpredict(norin.rstanarm, ~TRIAL*SMR_contr) |> plot(show_data=TRUE)
+
+norin.rstanarm |> get_variables()
+plot(norin.rstanarm,  'mcmc_trace', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+plot(norin.rstanarm,  'mcmc_acf_bar', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+plot(norin.rstanarm,  'mcmc_rhat_hist', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+plot(norin.rstanarm,  'mcmc_neff_hist', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+
+#norin.rstan1 = stan_glmer(CHANGE ~ (TRIAL|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
+#                          iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
+norin.rstanarm1 = stan_glmer(CHANGE ~ (SMR_contr|FISHID) + TRIAL*SMR_contr+MASS, data=norin,
+                             prior_PD=FALSE, 
+                          iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
+norin.rstanarm1 = update(norin.rstanarm1,  prior_PD=FALSE)
+
+
+
+norin.rstanarm2 = stan_glmer(CHANGE ~ (TRIAL*SMR_contr|FISHID) + TRIAL*SMR_contr+MASS, data=norin,
+                             prior_PD=FALSE, 
+                          iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
+
+posterior_vs_prior(norin.rstanarm1, color_by='vs', group_by=TRUE,
+                   facet_args=list(scales='free_y'), pars=c('(Intercept)'))
+
+ggpredict(norin.rstanarm1, ~TRIAL*SMR_contr) |> plot(show_data=TRUE)
+
+norin.rstanarm1 |> get_variables()
+plot(norin.rstanarm1,  'mcmc_trace', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+plot(norin.rstanarm1,  'mcmc_acf_bar', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+plot(norin.rstanarm1,  'mcmc_rhat_hist', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+plot(norin.rstanarm1,  'mcmc_neff_hist', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+
+
+(l.1 <- loo(norin.rstanarm))
+(l.2 <- loo(norin.rstanarm1))
+loo_compare(l.1,  l.2)
+
+
+preds <- posterior_predict(norin.rstanarm,  nsamples=250,  summary=FALSE)
+norin.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = norin$CHANGE,
+                            fittedPredictedResponse = apply(preds, 2, median))
+plot(norin.resids)
+
+
+g=ggpredict(norin.rstanarm) |> plot()
+do.call('grid.arrange', g)
+
+#ggemmeans(norin.rstan, ~TRIAL)
+
+summary(norin.rstanarm)
+nms <- norin.rstanarm1 |> get_variables()
+wch <- grep('^.Intercept|TRIAL|^SMR|[sS]igma', nms)
+tidyMCMC(norin.rstanarm$stanfit,conf.int=TRUE, conf.method='HPDinterval',
+         rhat=TRUE, ess=TRUE, pars=nms[wch], estimate.method='median')
+
+tidyMCMC(norin.rstanarm1$stanfit,conf.int=TRUE, conf.method='HPDinterval',
+         rhat=TRUE, ess=TRUE, pars=nms[wch], estimate.method='median')
+
+
+norin.grid = with(norin, list(SMR_contr=seq(min(SMR_contr),max(SMR_contr), len=100)))
+newdata = emmeans(norin.rstanarm, ~TRIAL|SMR_contr, at=norin.grid) |> as.data.frame()
+head(newdata)
+ggplot(newdata, aes(y=emmean, x=SMR_contr, color=TRIAL)) +
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD, fill=TRIAL), alpha=0.3,color=NA) +
+    geom_line()
+
+norin.grid = with(norin, list(SMR_contr=c(min(SMR_contr),mean(SMR_contr),max(SMR_contr))))
+
+emmeans(norin.rstan, pairwise~TRIAL|SMR_contr, at=norin.grid)
+
+norin.em = emmeans(norin.rstan, pairwise~TRIAL|SMR_contr, at=norin.grid)$contrast |>
+              gather_emmeans_draws() |>
+              mutate(Fit=.value)
+norin.em
+norin.em |> group_by(contrast) |> median_hdci(Fit)
+norin.em |> group_by(contrast, SMR_contr) |> median_hdci(Fit)
+## norin.em |>
+##     group_by(contrast) |>
+##     summarize(P=sum(Fit>0)/n())
+norin.em |>
+    group_by(contrast, SMR_contr) |>
+    summarize(P=mean(Fit>0))
+
+
+bayes_R2(norin.rstanarm, re.form=NA) |> median_hdi()
+bayes_R2(norin.rstanarm, re.form=~(1|FISHID)) |> median_hdi()
+#bayes_R2(norin.rstan1, re.form=~(SMR_contr|FISHID)) |> median_hdi
+
+```
+
+## brms
+```{r fitModels.brms, results='markdown', eval=FALSE, mhidden=TRUE}
+norin = norin |> mutate(FISHID=factor(FISHID),
+                         TRIAL=factor(TRIAL))
+
+ggplot(norin, aes(y=CHANGE, x=TRIAL)) + geom_boxplot()
+ggplot(norin, aes(y=CHANGE, x=SMR_contr, shape=TRIAL, color=TRIAL)) +
+    geom_smooth(method='lm') + geom_point()
+ggplot(norin, aes(y=CHANGE, x=MASS, shape=TRIAL, color=TRIAL)) +
+    geom_smooth(method='lm') + geom_point()
+ggplot(norin, aes(y=CHANGE, x=as.numeric(FISHID), color=TRIAL)) +
+    geom_point() + geom_line()
+
+##ggplot(norin, aes(y=MASS, x=TRIAL)) + geom_boxplot()
+##ggplot(norin, aes(y=CHANGE, x=MASS, color=TRIAL)) + geom_point() + geom_smooth(method='lm')
+
+norin |> group_by(TRIAL) |>
+    summarise(median(CHANGE),
+              mad(CHANGE))
+priors <- prior(normal(50, 20), class='Intercept') +
+    prior(normal(0, 10), class='b') +
+    prior(gamma(2,1), class='sigma') +
+    prior(gamma(2,1), class='sd')
+
+norin.form <- bf(CHANGE ~ (1|FISHID)+TRIAL*SMR_contr+MASS,
+                 family=gaussian)
+
+norin.brm1 = brm(norin.form,
+                 data=norin,
+                 prior = priors,
+                 sample_prior = 'yes',
+                 iter=5000, warmup=2000,
+                 chains=3, thin=5, refresh=0)
+
+norin.brm1 |> get_variables()
+pars <- norin.brm1 |> get_variables()
+wch <- grepl('^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd', pars, perl=TRUE)
+
+stan_trace(norin.brm1$fit, pars=pars[wch])
+stan_ac(norin.brm1$fit, pars=pars[wch])
+stan_rhat(norin.brm1$fit, pars=pars[wch])
+stan_ess(norin.brm1$fit, pars=pars[wch])
+
+##mcmc_plot(norin.brms,  type='trace',
+##          regex_pars='^b.*|sigma|^sd')
+##mcmc_plot(norin.brms,  type='trace',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+##mcmc_plot(norin.brms,  type='acf_bar',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+##mcmc_plot(norin.brms,  type='rhat_hist',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+##mcmc_plot(norin.brms,  type='neff_hist',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+
+preds <- posterior_predict(norin.brm1,  nsamples=250,  summary=FALSE)
+norin.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = norin$CHANGE,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse =FALSE)
+plot(norin.resids)
+#norin.rstan1 = stan_glmer(CHANGE ~ (TRIAL|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
+#                          iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
+norin.form <- bf(CHANGE ~ (TRIAL|FISHID) + TRIAL*SMR_contr+MASS,
+                 family=gaussian)
+norin.brm2 = brm(norin.form, data=norin,
+                 prior = priors,
+                 sample_prior = 'yes',
+                 iter=5000, warmup=2000,
+                 chains=3, thin=5, refresh=0, cores=3,
+                 control=list(adapt_delta=0.99))
+
+norin.brm2 |> get_variables()
+
+pars <- norin.brm2 |> get_variables()
+## wch <- grepl('^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd', pars, perl=TRUE)
+wch <- grepl('^b_.*|[sS]igma|^sd_.*', pars, perl=TRUE)
+
+stan_trace(norin.brm2$fit, pars=pars[wch])
+stan_ac(norin.brm2$fit, pars=pars[wch])
+stan_rhat(norin.brm2$fit)#, pars=pars[wch])
+stan_ess(norin.brm2$fit)#, pars=pars[wch])
+##mcmc_plot(norin.brm2,  type='trace',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+##mcmc_plot(norin.brm2,  type='trace',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+##mcmc_plot(norin.brm2,  type='acf_bar',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+##mcmc_plot(norin.brm2,  type='rhat_hist',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+##mcmc_plot(norin.brm2,  type='neff_hist',
+##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
+
+(l.1 <- loo(norin.brm1))
+(l.2 <- loo(norin.brm2))
+loo_compare(l.1,  l.2)
+
+
+preds <- posterior_predict(norin.brm2,  nsamples=250,  summary=FALSE)
+norin.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = norin$CHANGE,
+                            fittedPredictedResponse = apply(preds, 2, median))
+plot(norin.resids)
+
+g <- norin.brm2 |>
+    conditional_effects() |>
+    plot(points=TRUE, ask=FALSE)
+library(patchwork)
+g[[1]] + g[[2]] + g[[3]] + g[[4]]
+
+
+##g=ggpredict(norin.brms1) |> plot
+##library(patchwork)
+##g[[1]] + g[[2]] + g[[3]]
+
+##do.call('grid.arrange', g)
+
+ggemmeans(norin.brm2, ~TRIAL) |> plot()
+
+summary(norin.brm2)
+
+tidyMCMC(norin.brm2$fit,conf.int=TRUE, conf.method='HPDinterval',
+         rhat=TRUE, ess=TRUE, estimate.method='median') |>
+  slice(1:11)
+
+pars <- norin.brm2 |> get_variables()
+wch <- grep('^b.Intercept|TRIAL|^b.*SMR|[sS]igma|^sd', pars)
+tidyMCMC(norin.brms1$fit,conf.int=TRUE, conf.method='HPDinterval',
+         rhat=TRUE, ess=TRUE, pars=pars[wch], estimate.method='median')
+
+bayes_R2(norin.brm2, re.form=NA,  summary=FALSE) |>
+    median_hdci()
+bayes_R2(norin.brm2, re.form=~(1|FISHID), summary=FALSE) |>
+    median_hdci()
+bayes_R2(norin.brm2, re.form=~(TRIAL|FISHID), summary=FALSE) |>
+    median_hdci()
+
+emmeans(norin.brm2, pairwise~TRIAL)
+
+
+norin.em <- norin.brm2 |>
+    emmeans(~TRIAL) |>
+    pairs() |>
+    gather_emmeans_draws() |>
+    mutate(Fit=.value)
+
+norin.em |>
+  group_by(contrast) |>
+  median_hdi()
+
+norin.em |>
+    ggplot() +
+    geom_vline(xintercept=0, linetype='dashed') +
+    stat_slab(aes(x=.value, y=contrast,
+                  fill = stat(ggdist::cut_cdf_qi(cdf,
+                            .width = c(0.5, 0.8, 0.95), 
+                            labels = scales::percent_format())
+                            )), color='black') +
+    scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) +
+    theme_bw()
+
+norin.em |>
+    group_by(contrast) |>
+  summarize(P=mean(Fit>0))
+
+
+norin.grid <- with(norin, list(SMR_contr=c(min(SMR_contr),
+                                           mean(SMR_contr),
+                                           max(SMR_contr))))
+
+norin.em <- norin.brm2 |>
+    emmeans(~TRIAL|SMR_contr, at=norin.grid) |>
+    pairs() |>
+    gather_emmeans_draws()
+
+norin.em |> head()
+norin.em |>
+    group_by(contrast, SMR_contr) |>
+    median_hdi()
+
+norin.em |>
+    group_by(contrast, SMR_contr) |>
+    summarize(P=mean(.value>0))
+
+norin.grid <- with(norin, list(SMR_contr=modelr::seq_range(SMR_contr, n=100)))
+newdata <- norin.brm2 |>
+    emmeans(~SMR_contr|TRIAL, at=norin.grid) |>
+    as.data.frame()
+head(newdata)
+partial.obs <- norin |>
+    mutate(Pred = predict(norin.brm2, re.form = NA, summary=TRUE)[,'Estimate'],
+           Resid = resid(norin.brm2)[,'Estimate'],
+           Obs = Pred + Resid)
+ggplot(newdata, aes(y=emmean, x=SMR_contr, color=TRIAL)) +
+    geom_point(data=partial.obs, aes(y=Obs)) +
+    ##geom_point(data=partial.obs, aes(y=CHANGE), shape=2) +
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD, fill=TRIAL), alpha=0.3,color=NA) +
+    geom_line()
+```
+
+<!-- END_PRIVATE-->
+ 
+ 

@@ -1,0 +1,976 @@
+---
+title: "Bayesian GAM Part3"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r setup, include=FALSE, warnings=FALSE, message=FALSE}
+knitr::opts_chunk$set(cache.lazy = FALSE, tidy='styler')
+```
+ 
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for MCMC diagnostics
+library(DHARMa)     #for residual diagnostics
+library(rstan)      #for interfacing with STAN
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(tidybayes)  #for more tidying outputs
+library(HDInterval) #for HPD intervals
+library(ggeffects)  #for partial plots
+library(broom.mixed)#for summarising models
+library(posterior)  #for posterior draws
+library(ggeffects)  #for partial effects plots
+library(patchwork)  #for multi-panel figures
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(mgcv)
+library(gratia)
+theme_set(theme_grey()) #put the default ggplot theme back
+source('helperFunctions.R')
+```
+
+
+
+# Scenario
+
+The Australian Institute of Marine Science (AIMS) have a long-term
+inshore marine water quality monitoring program in which water samples
+are collected and analysed from sites (reef.alias) across the GBR numerous times 
+per year.  The focus of this program is to report long-term condition and change
+in water quality parameters.
+
+Although we do have latitude and longitudes, the nature of the spatial design
+predominantly reflects a series of transects that start near the mouth of a
+major river and extend northwards, yet mainly within the open coastal zone.  As
+a result, this design is not well suited to any specific spatial analyses (since
+they are mainly one dimensional).
+
+![AIMS water quality monitoring](../resources/AIMS_wq.jpg){#fig-aims width="600" height="325"}
+
+
+LATITUDE LONGITUDE reef.alias Water_Samples Region Subregion Season waterYear DOC
+-------- --------- ---------- ------------- ------ --------- ------ --------- ---
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2008      0.830
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Wet    2008      0.100
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2009      0.282
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Wet    2009      1.27
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2009      0.793
+-16.1    145.      Cape Trib… AIMS          Wet T… Barron D… Dry    2010      0.380
+\...     \...      \...       \...          \...   \...      \...   \...      \...
+
+: Format of aims.wq.csv data file {#tbl-aims .table-condensed}
+
+--------------     ---------------------------------------------------------------------
+**LATITUDE**       - Latitudinal coordinate
+**LONGITUDE**      - Longitudinal coordinate
+**reef.alias**     - Internal AIMS reef name
+**Water_Samples**  - Categorical label of who collected the data
+**Region**         - The MMP region
+**Subregion**      - The MMP subregion
+**Season**         - A categorical listing of Wet or Dry
+**waterYear**      - The water year (1st Oct - 30 Sept) to which the data are attached
+**Date**           - The date the sample was collected
+**Mnth**           - The month the sample was collected
+**DOC**            - Nitrite and Nitrate
+--------------     ---------------------------------------------------------------------
+
+: Description of the variables in the aims data file {#tbl-aims1 .table-condensed}
+
+# Read in the data
+
+```{r}
+#| label: readData
+wq <- read_csv("../data/aims.wq1.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+We will start by defining each of the categorical variables as factors.  We will
+also define the random effect (reef.alias) as a factor.
+
+```{r prepareData, results='markdown', eval=TRUE}
+wq <- wq |> mutate(reef.alias = factor(reef.alias),
+                   Region = factor(Region),
+                   Subregion = factor(Subregion),
+                   Season = factor(Season))
+```
+
+<!-- END_PRIVATE-->
+
+# Exploratory data analysis
+
+Model formula:
+$$
+y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i =\beta_0 + f(Date_i) + f(Month_i)
+$$
+
+where $\beta_0$ is the y-intercept. $f(Date)$ and $f(Month)$ indicate the additive smoothing functions of the long-term temporal trends and the annual seasonal trends respectively. 
+
+<!-- START_PRIVATE-->
+If we begin with a quck scatterplot of DOC agains Date..
+
+```{r EDA1a, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(wq, aes(y=DOC, x=Date)) + geom_point()
+```
+
+We know that these DOC values have been measured over time from a number of
+locations (reef.alias).  Therefore, it would be good to facet the scatterplot
+conditional on the reef.alias.
+
+
+```{r EDA1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=15, fig.height=12}
+ggplot(wq, aes(y=DOC, x=Date)) +
+    geom_point() +
+    facet_wrap(~reef.alias)
+```
+
+**Conclusions:**
+
+- evidently, some locations (reef.alias) have longer time series than others
+- the amount and variability of DOC also varies greatly between locations.
+- the temporal trends are clearly not linear and possibly more complex than
+  simple polynomials - it is likely that splines will be useful
+- assumptions of normality are difficult to assess, however it would seem
+  logical that the data will not follow a Gaussian distribution (since values
+  less than 0 are not possible and it does appear that there is a relationship
+  between mean and variance).
+
+```{r EDA1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=15, fig.height=12}
+ggplot(wq, aes(y=DOC, x=Date)) +
+  geom_point() +
+  geom_smooth() +
+    scale_y_log10() +
+  scale_y_continuous(trans=scales::pseudo_log_trans()) +
+  facet_wrap(~reef.alias,  scales='free_y')
+
+```
+
+**Conclusions:**
+
+- although the loess smoothers are not particularly appropriate for non-Gaussian
+  data, they nevertheless help us see that there are both similarities and
+  differnces in the trends between locations.   Most of the locations that have
+  a long time series show some sort of peak in DOC around about 2014
+
+
+<!-- END_PRIVATE-->
+
+# Data preparations
+
+<!-- START_PRIVATE-->
+
+Date data cannot be directly modelled, it must be converted into a numeric.
+This can be performed with the `decimal_date()` function within the `lubridate` package.
+
+Although we generally want to scale any continuous predictors, it appears that
+doing so with Date objects has downstream issues - the models fit ok, but
+partial plots are displaced along the x-axis.
+So as an alternative either dont scale, or do so with a routine that does not
+automatically back-trasform (such as sjmisc::std or sjmisc::center).
+
+```{r prepareData2, results='markdown', eval=TRUE, mhidden=TRUE}
+wq <- wq |> mutate(Dt.num = decimal_date(Date))
+#wq=wq |> mutate(sDt=scale(Date))
+```
+
+<!-- END_PRIVATE-->
+
+# Simple model (High West only)
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+When contemplating fitting a complex model, it is often good practice to build a
+model up, starting with something relatively simple.  That way, if the model
+fails or yeilds strange outcomes, it is easier to diagnose the issues.
+In the spirit of this, we will begin by building up a temporal model for a
+single reef (Pandora), before moving on to generalise across multiple reefs in a
+mixed effects model.
+
+<!-- END_PRIVATE-->
+
+## Exploratory data analysis
+
+<!-- START_PRIVATE-->
+```{r model1a, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.sub <- wq |> filter(reef.alias=='High West') |> droplevels()
+
+
+ggplot(wq.sub, aes(y=DOC, x=Date)) +
+    geom_point() +
+    geom_smooth() +
+  scale_y_log10()
+
+ggplot(wq.sub, aes(y=DOC, x=Date)) +
+    geom_point() +
+    geom_smooth(method = 'gam', formula = y ~ s(x), method.args = list(family='tw')) +
+  scale_y_log10()
+```
+
+**Conclusions:**
+
+- of concern in the above figure is the set of DOC values of 0.01 at the start
+  of the time series.  These values represent the limit of detection of the
+  instrumentation used for measuring DOC at the time.  Any value measured at
+  0.01 or less was just recorded as 0.01.
+- ideally, such cases should be modelled as censored so as to acknowledge that
+  they are at or below 0.01 and not exactly 0.01 (with no variation).
+  Unfortunately, this is not available with the `mgcv` package (or any
+  frequentist package for fitting GAM's that I am aware of).
+- options for dealing with such circumstances very much depend on the
+  reliability of these values.  If we believe that they are approximately
+  representative, we might elect to keep them in an model as normal.  On the
+  other hand, if the reliability of the measurements is questionable, we might
+  elect to exclude these values.
+- in the absence of any additional information about these observations, we will
+  keep them in.  
+
+```{r model1b, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.sub=wq |> filter(reef.alias=='Pandora', !is.na(DOC))
+wq.sub=wq |> filter(reef.alias=='High West', !is.na(DOC))
+```
+
+<!-- END_PRIVATE-->
+
+## Fit the model
+:::: {.panel-tabset}
+### Assessing default priors 
+```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.form <- bf(DOC ~ s(Dt.num), family = Gamma(link = "log"))
+get_prior(wq.form, data =  wq.sub)
+
+wq.brm <- brm(wq.form,
+                 data = wq.sub,
+                 prior = prior(normal(0, 2.5), class = 'b'), 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3,
+                 thin = 5,
+                 backend = 'cmdstan',
+                 refresh = 0)
+```
+#### conditional_effects
+
+```{r fitModel1d2, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm |> conditional_effects() |>  plot(points=TRUE) |>
+  scale_y_log10()
+```
+
+### Defining priors 
+
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+
+::::: {.panel-tabset}
+
+#### Thin-plate spline
+
+##### Sample prior only
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ s(scale(Dt.num)), family = Gamma(link = "log"))
+wq.sub |> summarise(
+    median(log(DOC)), mad(log(DOC)),
+    mad(log(DOC)) / mad(scale(Dt.num))
+)
+get_prior(wq.form, data = wq.sub)
+priors <- prior(normal(7, 0.2),  class='Intercept') +
+  prior(normal(0, 2), class='b') +
+  prior(gamma(0.01, 0.01),  class='shape') + 
+  prior(student_t(3, 0, 1), class =  "sds") 
+
+wq.brm2 <- brm(wq.form,
+                 data = wq.sub,
+                 prior = priors, 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 thin = 5,
+                 chains = 3, cores =  3,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta = 0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm2 |> conditional_effects() |>  plot(points=TRUE)
+wq.brm2 |> conditional_effects() |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+##### Sample prior and posterior
+
+```{r fitModel2c, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.brm3 <- update(wq.brm2, sample_prior = "yes", cores =  3, refresh =  0)
+```
+
+```{r fitModel2d, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm3 |> conditional_effects() |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+wq.brm3 |> conditional_effects(spaghetti = TRUE, ndraws =  250) |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+#### Gaussian process
+
+##### Sample prior only
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel2ab, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ gp(Dt.num), family = Gamma(link = "log"))
+wq.sub |> summarise(
+    median(log(DOC)), mad(log(DOC)),
+    mad(log(DOC)) / mad(scale(Dt.num))
+)
+get_prior(wq.form, data = wq.sub)
+priors <- prior(normal(7, 0.2), class = "Intercept") +
+  prior(gamma(0.01, 0.01), class = "shape") +
+  prior(inv_gamma(1.5, 0.05), class = "lscale") +
+  prior(student_t(3, 0, 1), class =  "sdgp") 
+
+wq.brm2b <- brm(wq.form,
+                 data = wq.sub,
+                 prior = priors, 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 thin = 5,
+                 chains = 3, cores =  3,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta = 0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r fitModel2bb, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm2b |> conditional_effects() |>  plot(points=TRUE)
+wq.brm2b |> conditional_effects() |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+##### Sample prior and posterior
+
+```{r fitModel2cb, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.brm3b <- update(wq.brm2b, sample_prior = "yes", cores =  3, refresh =  0)
+```
+
+```{r fitModel2db, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm3b |> conditional_effects() |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+wq.brm3b |> conditional_effects(spaghetti = TRUE, ndraws =  250) |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+:::::
+
+### Plotting prior and posterior
+
+```{r fitModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, error = TRUE}
+wq.brm3b |> get_variables()
+wq.brm3b |> hypothesis('sdgp_gpDt.num = 0', class = '') |> plot()
+#wq.brm3b |> SUYR_prior_and_posterior()
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# MCMC sampling diagnostics 
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+:::: {.panel-tabset}
+### stan plots
+
+```{r modelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+wq.brm3$fit |> stan_trace()
+```
+
+```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+wq.brm3$fit |> stan_ac() 
+```
+
+```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+wq.brm3$fit |> stan_rhat() 
+```
+```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+wq.brm3$fit |> stan_ess()
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model validation 
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## brms 
+:::: {.panel-tabset}
+
+### Thin-plate spline
+
+::::: {.panel-tabset}
+#### pp check
+
+```{r modelValidation3a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+wq.brm3 |> pp_check( type='dens_overlay', ndraws=100)
+```
+
+#### DHARMa residuals
+
+```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+
+wq.resids <- make_brms_dharma_res(wq.brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(wq.resids)) +
+  wrap_elements(~plotResiduals(wq.resids, form = factor(rep(1, nrow(wq.sub))))) +
+  wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
+  wrap_elements(~testDispersion(wq.resids))
+```
+
+:::::
+### Gaussian process
+::::: {.panel-tabset}
+#### pp check
+
+```{r modelValidation3ab, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+wq.brm3b |> pp_check( type='dens_overlay', ndraws=100)
+```
+
+#### DHARMa residuals
+
+```{r modelValidation3bb, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+
+wq.resids <- make_brms_dharma_res(wq.brm3b, integerResponse = FALSE)
+wrap_elements(~testUniformity(wq.resids)) +
+  wrap_elements(~plotResiduals(wq.resids, form = factor(rep(1, nrow(wq.sub))))) +
+  wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
+  wrap_elements(~testDispersion(wq.resids))
+```
+
+:::::
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Partial effects plots 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## brms 
+:::: {.panel-tabset}
+
+### conditional_effects
+
+```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+wq.brm3 |> conditional_effects() |> plot(points = TRUE)
+wq.brm3 |>
+    conditional_effects(spaghetti = TRUE, ndraws = 250) |>
+    plot(points = TRUE) 
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## brms 
+:::: {.panel-tabset}
+### Summary
+
+```{r summariseModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+wq.brm3 |> summary()
+```
+
+sds(sx_1) is the sd of the smooth weights (spline coefficients). This determines the amount of ‘wiggliness’, in an analogous way to how the sd of group-level effects in a varying slopes and intercepts model determine the amount of variability among groups in slopes and intercepts. However, the actual numeric value of the sds() is not very practically interpretable, because thinking about the variance of smooth weights for any given data and model seems abstract to me. However, if the
+value is around zero, then this is like ‘complete-pooling’ of the basis functions, which means that there isn’t much added value of more than a single basis function.
+
+sx_1 is the unpenalized weight (ie coefficient) for one of the “natural” parameterized basis functions. The rest of the basis functions are like varying effects. Again, because the actual numeric value of sxs_1 is the value for the unpenalized coefficient for one of the basis functions, this wouldn’t seem to have a lot of practically interpretable meaning just from viewing this number.
+
+### summarise_draws
+
+```{r summariseModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+wq.brm3 |> as.data.frame() |>
+  dplyr::select(matches("^b_.*|^bs.*|^sds.*|^sigma$|^s_s.*")) |>
+  summarise_draws(median,
+    HDInterval::hdi)
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Explore more models
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## By Season
+:::: {.panel-tabset}
+### Fit model
+```{r additionalfitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ s(Dt.num, by = Season), family = Gamma(link = "log"))
+priors <- prior(normal(7, 0.2),  class='Intercept') +
+  prior(normal(0, 2), class='b') +
+  prior(gamma(0.01, 0.01),  class='shape') +
+  prior(student_t(3, 0, 10), class =  "sds")
+
+wq.brm4 <- brm(wq.form,
+                 data = wq.sub,
+                 prior = priors, 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores =  3,
+                 thin = 5,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta =  0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r additionalfitModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm4 |> conditional_effects(effects = "Dt.num:Season") |>  plot(points=TRUE)
+wq.brm4 |> conditional_effects(effects = "Dt.num:Season") |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+#### Sample prior and posterior
+
+```{r additionalfitModel1c, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.brm5 <- update(wq.brm4, sample_prior = "yes", cores =  3, refresh =  0)
+```
+
+```{r additionalfitModel1d, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm5 |> conditional_effects(effects = "Dt.num:Season") |>  plot(points=TRUE)
+wq.brm5 |> conditional_effects(effects = "Dt.num:Season", spaghetti = TRUE, ndraws =  300) |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+### Plotting prior and posterior
+
+```{r additionalfitModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, error = TRUE}
+wq.brm5 |> get_variables()
+wq.brm5 |> hypothesis('bs_sDt.num:SeasonDry_1 = 0', class = '') |> plot()
+wq.brm5 |> hypothesis('sds_sDt.numSeasonDry_1 = 0', class = '') |> plot()
+wq.brm5 |> SUYR_prior_and_posterior()
+```
+### DHARMa residuals
+
+```{r additionalmodelValidation1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+wq.resids <- make_brms_dharma_res(wq.brm5, integerResponse = FALSE)
+wrap_elements(~testUniformity(wq.resids)) +
+  wrap_elements(~plotResiduals(wq.resids, form = factor(rep(1, nrow(wq.sub))))) +
+  wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
+  wrap_elements(~testDispersion(wq.resids))
+
+testTemporalAutocorrelation(wq.resids, time =  wq.sub$Dt.num)
+resids1 <- recalculateResiduals(wq.resids, group =  wq.sub$Dt.num, aggregateBy =  mean) 
+testTemporalAutocorrelation(resids1, time =  wq.sub$Dt.num)
+```
+
+::::
+## Inter/Intra annual trends
+:::: {.panel-tabset}
+### Fit model
+```{r additionalfitModel3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ s(Dt.num) + s(Mnth, bs = 'cc', k = 6),
+  family = Gamma(link = "log"))
+priors <- prior(normal(7, 0.15),  class='Intercept') +
+  prior(normal(0, 2), class='b') +
+  prior(gamma(0.01, 0.01),  class='shape') +
+  prior(student_t(3, 0, 10), class =  "sds")
+
+wq.brm6 <- brm(wq.form,
+                 data = wq.sub,
+                 prior = priors, 
+                 knots = list(Mnth = seq(1, 12, len = 6)),
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores =  3,
+                 thin = 5,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta =  0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r additionalfitModel3b, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm6 |> conditional_effects(effects = "Dt.num:Mnth") |>  plot(points=TRUE)
+wq.brm6 |> conditional_effects(effects = "Dt.num:Mnth") |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+wq.brm6 |> conditional_effects(effects = "Mnth") |>  plot(points=TRUE)
+```
+
+#### Sample prior and posterior
+
+```{r additionalfitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.brm7 <- update(wq.brm6, sample_prior = "yes", cores =  3, refresh =  0)
+```
+
+```{r additionalfitModel2c, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm7 |> conditional_effects(effects = "Dt.num") |>  plot(points=TRUE)
+wq.brm7 |> conditional_effects(effects = "Mnth") |>  plot(points=TRUE)
+```
+
+### Plotting prior and posterior
+
+```{r additionalfitModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, error = TRUE}
+wq.brm7 |> get_variables()
+wq.brm7 |> hypothesis('bs_sDt.num_1 = 0', class = '') |> plot()
+wq.brm7 |> hypothesis('sds_sDt.num_1 = 0', class = '') |> plot()
+wq.brm7 |> hypothesis('sds_sMnth_1 = 0', class = '') |> plot()
+wq.brm7 |> SUYR_prior_and_posterior()
+```
+### DHARMa residuals
+
+```{r additionalmodelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+wq.resids <- make_brms_dharma_res(wq.brm7, integerResponse = FALSE)
+wrap_elements(~testUniformity(wq.resids)) +
+  wrap_elements(~plotResiduals(wq.resids, form = factor(rep(1, nrow(wq.sub))))) +
+  wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
+  wrap_elements(~testDispersion(wq.resids))
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+# Mixed effects models (all reefs)
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## Data preparation
+
+```{r process3, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.sub <- wq |>
+  mutate(Dt.num =  lubridate::decimal_date(Date)) |> 
+  group_by(reef.alias) |>
+  mutate(Min=min(Dt.num)) |>
+  ungroup() |>
+  filter(Min<2012, Region != 'Fitzroy', reef.alias != 'Daydream') |>
+  droplevels()
+ 
+## reef=wq |>
+##   group_by(reef.alias) |>
+##   dplyr:::summarise(Min=min(Dt.num)) |>
+##   filter(Min<2012) |>
+##   pull(reef.alias)
+## reef
+## wq2=wq |> filter(reef.alias %in% reef) |> droplevels
+ggplot(wq.sub, aes(y=DOC,x=Dt.num)) +
+    geom_point() +
+    facet_wrap(~reef.alias, scales = 'free_y') +
+    geom_smooth() +
+    scale_y_log10()
+
+
+```
+
+## EDA
+
+```{r EDA2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=15, fig.height=12}
+ggplot(wq.sub, aes(y=DOC,x=Dt.num)) + 
+    geom_point() +
+    facet_wrap(~reef.alias, scales='free_y')
+## Some reefs dont have the full time series
+```
+
+
+## Model 1  
+
+:::: {.panel-tabset}
+
+### Fit the model
+
+```{r additionalfitModel8a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ s(Dt.num) + (1|reef.alias),
+  family = Gamma(link = "log"))
+get_prior(wq.form, data = wq.sub)
+priors <- prior(normal(7, 0.2),  class='Intercept') +
+  prior(normal(0, 2), class='b') +
+  prior(gamma(0.01, 0.01),  class='shape') +
+  prior(student_t(3, 0, 2), class =  "sds") +
+  prior(student_t(3, 0, 0.2), class =  "sd")
+
+wq.brm8 <- brm(wq.form,
+                 data = wq.sub,
+                 prior = priors, 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores =  3,
+                 thin = 5,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta =  0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r additionalfitModel8b, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm8 |> conditional_effects(effects = "Dt.num") |>  plot(points=TRUE)
+wq.brm8 |> conditional_effects(effects = "Dt.num") |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+#### Sample prior and posterior
+
+The following takes about x seconds per chain
+```{r additionalfitModel8c, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.brm9 <- update(wq.brm8, sample_prior = "yes", cores =  3, refresh =  100)
+```
+
+```{r additionalfitModel8d, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm9 |> conditional_effects(effects = "Dt.num") |>  plot(points=TRUE)
+wq.brm9 |> conditional_effects(effects = "Dt.num") 
+```
+
+### Plotting prior and posterior
+
+```{r additionalfitModel8e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, error = TRUE}
+wq.brm9 |> get_variables()
+wq.brm9 |> hypothesis('bs_sDt.num_1 = 0', class = '') |> plot()
+wq.brm9 |> hypothesis('sds_sDt.num_1 = 0', class = '') |> plot()
+wq.brm9 |> SUYR_prior_and_posterior()
+```
+### DHARMa residuals
+
+```{r additionalmodelValidation8a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+wq.resids <- make_brms_dharma_res(wq.brm9, integerResponse = FALSE)
+wrap_elements(~testUniformity(wq.resids)) +
+  wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
+  wrap_elements(~testDispersion(wq.resids)) +
+  plot_layout(nrow =  2)
+```
+
+## Model 2  
+
+:::: {.panel-tabset}
+
+### Fit the model
+
+```{r additionalfitModel10a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ s(Dt.num) + s(Mnth, bs = "cc", k = 6) + (1|reef.alias),
+  family = Gamma(link = "log"))
+get_prior(wq.form, data = wq.sub)
+priors <- prior(normal(7, 0.15),  class='Intercept') +
+  prior(normal(0, 2), class='b') +
+  prior(gamma(0.01, 0.01),  class='shape') +
+  prior(student_t(3, 0, 10), class =  "sds") +
+  prior(student_t(3, 0, 0.15), class =  "sd")
+
+wq.brm10 <- brm(wq.form,
+                 data = wq.sub,
+                 knots = list(Mnth = seq(1, 12,len = 6)),
+                 prior = priors, 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores =  3,
+                 thin = 5,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta =  0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r additionalfitModel10b, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm10 |> conditional_effects(effects = "Dt.num") |>  plot(points=TRUE)
+wq.brm10 |> conditional_effects(effects = "Dt.num") |>  plot(points=TRUE) |>
+  _[[1]] +
+  scale_y_log10()
+```
+
+#### Sample prior and posterior
+
+The following takes about x seconds per chain
+```{r additionalfitModel10c, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.brm11 <- update(wq.brm10, sample_prior = "yes", cores =  3, refresh =  100)
+```
+
+```{r additionalfitModel10d, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm11 |> conditional_effects(effects = "Dt.num") |>  plot(points=TRUE)
+wq.brm11 |> conditional_effects(effects = "Dt.num", spaghetti = TRUE, ndraws =  250) |>  plot()
+wq.brm11 |> conditional_effects(effects = "Mnth") |>  plot(points=TRUE)
+wq.brm11 |> conditional_effects(effects = "Mnth") |>  plot()
+```
+
+### Plotting prior and posterior
+
+```{r additionalfitModel10e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, error = TRUE}
+wq.brm11 |> get_variables()
+wq.brm11 |> hypothesis('bs_sDt.num_1 = 0', class = '') |> plot()
+wq.brm11 |> hypothesis('sds_sDt.num_1 = 0', class = '') |> plot()
+wq.brm11 |> SUYR_prior_and_posterior()
+```
+### DHARMa residuals
+
+```{r additionalmodelValidation10a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+wq.resids <- make_brms_dharma_res(wq.brm11, integerResponse = FALSE)
+wrap_elements(~testUniformity(wq.resids)) +
+  wrap_elements(~plotResiduals(wq.resids, quantreg = TRUE)) +
+  wrap_elements(~testDispersion(wq.resids)) +
+  plot_layout(nrow =  2)
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Find peak
+
+<!-- START_PRIVATE-->
+
+```{r Derivatives1a, results='markdown', eval=TRUE, mhidden=TRUE}
+newdata <- with(wq.sub, data.frame(Dt.num = seq(min(2015), max(2020), length = 1000),
+  reef.alias = NA, Mnth = 5))
+wq.peak <-
+  add_epred_draws(object = wq.brm11, newdata = newdata,
+    re_formula = NA ,
+    ndraws = 1000) |>
+  ungroup() |> 
+  group_by(.draw) |> 
+   #summarise(x = x[which.max(.epred)]) |> 
+  mutate(diff = .epred - lag(.epred)) |>
+  summarise(Dt.num = Dt.num[which.min(abs(diff))]) |>
+  median_hdci(Dt.num, .width = 0.95)
+wq.peak
+
+## ## lets plot this
+## data_gam.preds <-
+##   data_gam.brm11 |>
+##   add_epred_draws(newdata = newdata, object = _) |>
+##   ungroup() |>
+##   dplyr::select(-.row, -.chain, -.iteration) |> 
+##   group_by(x) |> 
+##   summarise_draws(median, HDInterval::hdi) |>
+##   ungroup() |> 
+##   mutate(Flag = between(x, data_gam.peak$.lower, data_gam.peak$.upper),
+##     Grp = data.table::rleid(Flag)
+##     )
+## data_gam.preds |> head()
+
+## ggplot(data_gam.preds, aes(y = median, x = x)) +
+##   geom_line(aes(colour = Flag, group = Grp))+
+##   geom_ribbon(aes(ymin = lower, ymax = upper, fill = Flag, group = Grp), alpha = 0.2)
+```
+
+
+```{r additionalfitModel12a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+wq.form <- bf(DOC ~ s(Dt.num, by =  Region) + s(Mnth, bs = "cc", k = 6, by = Region) + (1|reef.alias),
+  family = Gamma(link = "log"))
+get_prior(wq.form, data = wq.sub)
+priors <- prior(normal(7, 0.15),  class='Intercept') +
+  prior(normal(0, 2), class='b') +
+  prior(gamma(0.01, 0.01),  class='shape') +
+  prior(student_t(3, 0, 10), class =  "sds") +
+  prior(student_t(3, 0, 0.15), class =  "sd")
+
+wq.brm14 <- brm(wq.form,
+                 data = wq.sub,
+                 knots = list(Mnth = seq(1, 12,len = 6)),
+                 prior = priors, 
+                 sample_prior = 'yes', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores =  3,
+                 thin = 5,
+                 backend = 'cmdstan',
+                 seed =  123,
+                 control =  list(adapt_delta =  0.99, max_treedepth = 20),
+                 refresh = 0)
+```
+
+```{r additionalfitModel12d, results='markdown', eval=TRUE, mhidden=TRUE}
+wq.brm14 |> conditional_effects(effects = "Dt.num:Region") |>  plot(points=TRUE)
+wq.brm14 |> conditional_effects(effects = "Dt.num:Region", spaghetti = TRUE, ndraws =  250) |>  plot()
+wq.brm14 |> conditional_effects(effects = "Mnth") |>  plot(points=TRUE)
+wq.brm14 |> conditional_effects(effects = "Mnth:Region", spaghetti =  TRUE, draws =  250) |>  plot()
+```
+
+<!-- END_PRIVATE-->
+
+# References
