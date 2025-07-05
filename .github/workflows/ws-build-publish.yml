@@ -215,3 +215,10 @@ jobs:
           mkdir ~/tmp
           # echo "library(quarto); quarto_render(\"tut/index.qmd\")" | R --no-save --no-restore;
           make -i ws_code
+
+      # Deploy site to gh-pages branch
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@4.1.4
+        with:
+          branch: gh-pages
+          folder: .code 
