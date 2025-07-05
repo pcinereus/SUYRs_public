@@ -157,7 +157,7 @@ jobs:
           }
           if (requireNamespace("cmdstanr", quietly = TRUE)) {
             cmdstanr::check_cmdstan_toolchain(fix = TRUE)
-            cmdstanr::install_cmdstan(cores = parallel::detectCores())
+            cmdstanr::install_cmdstan(quiet = TRUE, cores = parallel::detectCores())
             cmdstanr:::get_cmdstan_flags("STANCFLAGS")
             cmdstanr::cmdstanr_example()
             dat <- data.frame(y=rnorm(10), x=rnorm(10))
