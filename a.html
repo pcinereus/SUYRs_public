@@ -2243,8 +2243,21 @@ vertical-align: -.125em;
 <span id="cb1-28"><a href="#cb1-28"></a><span class="fu">bayesplot_theme_set</span>(<span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">8</span>, <span class="at">base_family =</span> <span class="st">&quot;sans&quot;</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">y =</span> <span class="fu">rnorm</span>(<span class="dv">10</span>), <span class="at">x =</span> <span class="fu">rnorm</span>(<span class="dv">10</span>))</span>
-<span id="cb2-2"><a href="#cb2-2"></a><span class="fu">brm</span>(y <span class="sc">~</span> x, <span class="at">data =</span> dat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>cmdstanr<span class="sc">:::</span><span class="fu">get_cmdstan_flags</span>(<span class="st">&quot;STANCFLAGS&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] &quot;make[2]:&quot;                                        
+[2] &quot;Entering&quot;                                        
+[3] &quot;directory&quot;                                       
+[4] &quot;&#39;/home/runner/.cmdstan/cmdstan-2.36.0&#39;STANCFLAGS&quot;
+[5] &quot;=make[2]:&quot;                                       
+[6] &quot;Leaving&quot;                                         
+[7] &quot;directory&quot;                                       
+[8] &quot;&#39;/home/runner/.cmdstan/cmdstan-2.36.0&#39;&quot;          </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">y =</span> <span class="fu">rnorm</span>(<span class="dv">10</span>), <span class="at">x =</span> <span class="fu">rnorm</span>(<span class="dv">10</span>))</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="fu">brm</span>(y <span class="sc">~</span> x, <span class="at">data =</span> dat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Compiling Stan program...</code></pre>
 </div>
@@ -2255,8 +2268,8 @@ vertical-align: -.125em;
 <pre><code>
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 1).
 Chain 1: 
-Chain 1: Gradient evaluation took 7e-06 seconds
-Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.07 seconds.
+Chain 1: Gradient evaluation took 9e-06 seconds
+Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.09 seconds.
 Chain 1: Adjust your expectations accordingly!
 Chain 1: 
 Chain 1: 
@@ -2274,8 +2287,8 @@ Chain 1: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Chain 1: Iteration: 2000 / 2000 [100%]  (Sampling)
 Chain 1: 
 Chain 1:  Elapsed Time: 0.012 seconds (Warm-up)
-Chain 1:                0.012 seconds (Sampling)
-Chain 1:                0.024 seconds (Total)
+Chain 1:                0.011 seconds (Sampling)
+Chain 1:                0.023 seconds (Total)
 Chain 1: 
 
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 2).
@@ -2298,9 +2311,9 @@ Chain 2: Iteration: 1600 / 2000 [ 80%]  (Sampling)
 Chain 2: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Chain 2: Iteration: 2000 / 2000 [100%]  (Sampling)
 Chain 2: 
-Chain 2:  Elapsed Time: 0.013 seconds (Warm-up)
-Chain 2:                0.013 seconds (Sampling)
-Chain 2:                0.026 seconds (Total)
+Chain 2:  Elapsed Time: 0.012 seconds (Warm-up)
+Chain 2:                0.012 seconds (Sampling)
+Chain 2:                0.024 seconds (Total)
 Chain 2: 
 
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 3).
@@ -2324,8 +2337,8 @@ Chain 3: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Chain 3: Iteration: 2000 / 2000 [100%]  (Sampling)
 Chain 3: 
 Chain 3:  Elapsed Time: 0.012 seconds (Warm-up)
-Chain 3:                0.01 seconds (Sampling)
-Chain 3:                0.022 seconds (Total)
+Chain 3:                0.013 seconds (Sampling)
+Chain 3:                0.025 seconds (Total)
 Chain 3: 
 
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 4).
@@ -2363,12 +2376,12 @@ Formula: y ~ x
 
 Regression Coefficients:
           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-Intercept    -0.02      0.55    -1.11     1.07 1.00     2507     2014
-x            -0.25      0.76    -1.77     1.23 1.00     2480     2004
+Intercept    -0.19      0.50    -1.22     0.77 1.00     3128     2243
+x            -0.00      0.46    -0.93     0.93 1.00     2193     1892
 
 Further Distributional Parameters:
       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-sigma     1.21      0.36     0.74     2.13 1.00     2091     1971
+sigma     1.46      0.42     0.89     2.49 1.00     2420     2433
 
 Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -2376,7 +2389,7 @@ scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>fert <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;../data/fertilizer.csv&quot;</span>, <span class="at">trim_ws =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>fert <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;../data/fertilizer.csv&quot;</span>, <span class="at">trim_ws =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Rows: 10 Columns: 2
 ── Column specification ────────────────────────────────────────────────────────
@@ -2388,14 +2401,14 @@ dbl (2): FERTILIZER, YIELD
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>fert.brm <span class="ot">&lt;-</span> <span class="fu">brm</span>(<span class="fu">bf</span>(YIELD <span class="sc">~</span> FERTILIZER),</span>
-<span id="cb9-2"><a href="#cb9-2"></a>  <span class="at">data =</span> fert,</span>
-<span id="cb9-3"><a href="#cb9-3"></a>  <span class="at">iter =</span> <span class="dv">5000</span>,</span>
-<span id="cb9-4"><a href="#cb9-4"></a>  <span class="at">warmup =</span> <span class="dv">1000</span>,</span>
-<span id="cb9-5"><a href="#cb9-5"></a>  <span class="at">chains =</span> <span class="dv">3</span>,</span>
-<span id="cb9-6"><a href="#cb9-6"></a>  <span class="at">thin =</span> <span class="dv">5</span>,</span>
-<span id="cb9-7"><a href="#cb9-7"></a>  <span class="at">refresh =</span> <span class="dv">0</span></span>
-<span id="cb9-8"><a href="#cb9-8"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a>fert.brm <span class="ot">&lt;-</span> <span class="fu">brm</span>(<span class="fu">bf</span>(YIELD <span class="sc">~</span> FERTILIZER),</span>
+<span id="cb11-2"><a href="#cb11-2"></a>  <span class="at">data =</span> fert,</span>
+<span id="cb11-3"><a href="#cb11-3"></a>  <span class="at">iter =</span> <span class="dv">5000</span>,</span>
+<span id="cb11-4"><a href="#cb11-4"></a>  <span class="at">warmup =</span> <span class="dv">1000</span>,</span>
+<span id="cb11-5"><a href="#cb11-5"></a>  <span class="at">chains =</span> <span class="dv">3</span>,</span>
+<span id="cb11-6"><a href="#cb11-6"></a>  <span class="at">thin =</span> <span class="dv">5</span>,</span>
+<span id="cb11-7"><a href="#cb11-7"></a>  <span class="at">refresh =</span> <span class="dv">0</span></span>
+<span id="cb11-8"><a href="#cb11-8"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Compiling Stan program...</code></pre>
 </div>
@@ -2858,135 +2871,137 @@ dbl (2): FERTILIZER, YIELD
     }
   });
   </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class>
-<div class="sourceCode" id="cb12" data-shortcodes="false"><pre class="sourceCode numberSource markdown number-lines code-with-copy"><code class="sourceCode markdown"><span id="cb12-1"><a href="#cb12-1"></a><span class="co">---</span></span>
-<span id="cb12-2"><a href="#cb12-2"></a><span class="an">title:</span><span class="co"> &quot;test&quot;</span></span>
-<span id="cb12-3"><a href="#cb12-3"></a><span class="an">author:</span><span class="co"> &quot;Murray Logan&quot;</span></span>
-<span id="cb12-4"><a href="#cb12-4"></a><span class="an">date:</span><span class="co"> today</span></span>
-<span id="cb12-5"><a href="#cb12-5"></a><span class="an">date-format:</span><span class="co"> &quot;DD/MM/YYYY&quot;</span></span>
-<span id="cb12-6"><a href="#cb12-6"></a><span class="an">format:</span><span class="co"> </span></span>
-<span id="cb12-7"><a href="#cb12-7"></a><span class="co">  html:</span></span>
-<span id="cb12-8"><a href="#cb12-8"></a><span class="co">    ## Format</span></span>
-<span id="cb12-9"><a href="#cb12-9"></a><span class="co">    theme: [default, ../resources/ws-style.scss]</span></span>
-<span id="cb12-10"><a href="#cb12-10"></a><span class="co">    css: ../resources/ws_style.css</span></span>
-<span id="cb12-11"><a href="#cb12-11"></a><span class="co">    html-math-method: mathjax</span></span>
-<span id="cb12-12"><a href="#cb12-12"></a><span class="co">    ## Table of contents</span></span>
-<span id="cb12-13"><a href="#cb12-13"></a><span class="co">    toc: true</span></span>
-<span id="cb12-14"><a href="#cb12-14"></a><span class="co">    toc-float: true</span></span>
-<span id="cb12-15"><a href="#cb12-15"></a><span class="co">    ## Numbering</span></span>
-<span id="cb12-16"><a href="#cb12-16"></a><span class="co">    number-sections: true</span></span>
-<span id="cb12-17"><a href="#cb12-17"></a><span class="co">    number-depth: 3</span></span>
-<span id="cb12-18"><a href="#cb12-18"></a><span class="co">    ## Layout</span></span>
-<span id="cb12-19"><a href="#cb12-19"></a><span class="co">    page-layout: full</span></span>
-<span id="cb12-20"><a href="#cb12-20"></a><span class="co">    fig-caption-location: &quot;bottom&quot;</span></span>
-<span id="cb12-21"><a href="#cb12-21"></a><span class="co">    fig-align: &quot;center&quot;</span></span>
-<span id="cb12-22"><a href="#cb12-22"></a><span class="co">    fig-width: 4</span></span>
-<span id="cb12-23"><a href="#cb12-23"></a><span class="co">    fig-height: 4</span></span>
-<span id="cb12-24"><a href="#cb12-24"></a><span class="co">    fig-dpi: 72</span></span>
-<span id="cb12-25"><a href="#cb12-25"></a><span class="co">    tbl-cap-location: top</span></span>
-<span id="cb12-26"><a href="#cb12-26"></a><span class="co">    ## Code</span></span>
-<span id="cb12-27"><a href="#cb12-27"></a><span class="co">    code-fold: false</span></span>
-<span id="cb12-28"><a href="#cb12-28"></a><span class="co">    code-tools: true</span></span>
-<span id="cb12-29"><a href="#cb12-29"></a><span class="co">    code-summary: &quot;Show the code&quot;</span></span>
-<span id="cb12-30"><a href="#cb12-30"></a><span class="co">    code-line-numbers: true</span></span>
-<span id="cb12-31"><a href="#cb12-31"></a><span class="co">    code-block-border-left: &quot;#ccc&quot;</span></span>
-<span id="cb12-32"><a href="#cb12-32"></a><span class="co">    code-copy: true</span></span>
-<span id="cb12-33"><a href="#cb12-33"></a><span class="co">    highlight-style: atom-one</span></span>
-<span id="cb12-34"><a href="#cb12-34"></a><span class="co">    ## Execution</span></span>
-<span id="cb12-35"><a href="#cb12-35"></a><span class="co">    execute:</span></span>
-<span id="cb12-36"><a href="#cb12-36"></a><span class="co">      echo: true</span></span>
-<span id="cb12-37"><a href="#cb12-37"></a><span class="co">      cache: true</span></span>
-<span id="cb12-38"><a href="#cb12-38"></a><span class="co">    ## Rendering</span></span>
-<span id="cb12-39"><a href="#cb12-39"></a><span class="co">    embed-resources: true</span></span>
-<span id="cb12-40"><a href="#cb12-40"></a><span class="an">crossref:</span></span>
-<span id="cb12-41"><a href="#cb12-41"></a><span class="co">  fig-title: &#39;**Figure**&#39;</span></span>
-<span id="cb12-42"><a href="#cb12-42"></a><span class="co">  fig-labels: arabic</span></span>
-<span id="cb12-43"><a href="#cb12-43"></a><span class="co">  tbl-title: &#39;**Table**&#39;</span></span>
-<span id="cb12-44"><a href="#cb12-44"></a><span class="co">  tbl-labels: arabic</span></span>
-<span id="cb12-45"><a href="#cb12-45"></a><span class="an">engine:</span><span class="co"> knitr</span></span>
-<span id="cb12-46"><a href="#cb12-46"></a><span class="an">output_dir:</span><span class="co"> &quot;docs&quot;</span></span>
-<span id="cb12-47"><a href="#cb12-47"></a><span class="an">documentclass:</span><span class="co"> article</span></span>
-<span id="cb12-48"><a href="#cb12-48"></a><span class="an">fontsize:</span><span class="co"> 12pt</span></span>
-<span id="cb12-49"><a href="#cb12-49"></a><span class="an">mainfont:</span><span class="co"> Arial</span></span>
-<span id="cb12-50"><a href="#cb12-50"></a><span class="an">mathfont:</span><span class="co"> LiberationMono</span></span>
-<span id="cb12-51"><a href="#cb12-51"></a><span class="an">monofont:</span><span class="co"> DejaVu Sans Mono</span></span>
-<span id="cb12-52"><a href="#cb12-52"></a><span class="an">classoption:</span><span class="co"> a4paper</span></span>
-<span id="cb12-53"><a href="#cb12-53"></a><span class="an">bibliography:</span><span class="co"> ../resources/references.bib</span></span>
-<span id="cb12-54"><a href="#cb12-54"></a><span class="co">---</span></span>
-<span id="cb12-55"><a href="#cb12-55"></a></span>
-<span id="cb12-58"><a href="#cb12-58"></a><span class="in">```{r}</span></span>
-<span id="cb12-59"><a href="#cb12-59"></a><span class="co">#| label: setup</span></span>
-<span id="cb12-60"><a href="#cb12-60"></a><span class="co">#| include: false</span></span>
-<span id="cb12-61"><a href="#cb12-61"></a></span>
-<span id="cb12-62"><a href="#cb12-62"></a>knitr<span class="sc">::</span>opts_chunk<span class="sc">$</span><span class="fu">set</span>(<span class="at">cache.lazy =</span> <span class="cn">FALSE</span>,</span>
-<span id="cb12-63"><a href="#cb12-63"></a>                      <span class="at">tidy =</span> <span class="st">&quot;styler&quot;</span>)</span>
-<span id="cb12-64"><a href="#cb12-64"></a><span class="fu">options</span>(<span class="at">tinytex.engine =</span> <span class="st">&quot;xelatex&quot;</span>)</span>
-<span id="cb12-65"><a href="#cb12-65"></a></span>
-<span id="cb12-66"><a href="#cb12-66"></a><span class="fu">Sys.setenv</span>(<span class="at">STANCFLAGS =</span> <span class="st">&#39;&#39;</span>)</span>
-<span id="cb12-67"><a href="#cb12-67"></a><span class="in">```</span></span>
-<span id="cb12-68"><a href="#cb12-68"></a></span>
-<span id="cb12-71"><a href="#cb12-71"></a><span class="in">```{r}</span></span>
-<span id="cb12-72"><a href="#cb12-72"></a><span class="co">#| label: libraries</span></span>
-<span id="cb12-73"><a href="#cb12-73"></a><span class="co">#| output: false</span></span>
-<span id="cb12-74"><a href="#cb12-74"></a><span class="co">#| eval: true</span></span>
-<span id="cb12-75"><a href="#cb12-75"></a><span class="co">#| warning: false</span></span>
-<span id="cb12-76"><a href="#cb12-76"></a><span class="co">#| message: false</span></span>
-<span id="cb12-77"><a href="#cb12-77"></a><span class="co">#| cache: false</span></span>
-<span id="cb12-78"><a href="#cb12-78"></a></span>
-<span id="cb12-79"><a href="#cb12-79"></a><span class="fu">library</span>(tidyverse)     <span class="co">#for data wrangling etc</span></span>
-<span id="cb12-80"><a href="#cb12-80"></a><span class="fu">library</span>(rstanarm)      <span class="co">#for fitting models in STAN</span></span>
-<span id="cb12-81"><a href="#cb12-81"></a><span class="fu">library</span>(cmdstanr)      <span class="co">#for cmdstan</span></span>
-<span id="cb12-82"><a href="#cb12-82"></a><span class="fu">library</span>(brms)          <span class="co">#for fitting models in STAN</span></span>
-<span id="cb12-83"><a href="#cb12-83"></a><span class="fu">library</span>(standist)      <span class="co">#for exploring distributions</span></span>
-<span id="cb12-84"><a href="#cb12-84"></a><span class="fu">library</span>(coda)          <span class="co">#for diagnostics</span></span>
-<span id="cb12-85"><a href="#cb12-85"></a><span class="fu">library</span>(bayesplot)     <span class="co">#for diagnostics</span></span>
-<span id="cb12-86"><a href="#cb12-86"></a><span class="fu">library</span>(ggmcmc)        <span class="co">#for MCMC diagnostics</span></span>
-<span id="cb12-87"><a href="#cb12-87"></a><span class="fu">library</span>(DHARMa)        <span class="co">#for residual diagnostics</span></span>
-<span id="cb12-88"><a href="#cb12-88"></a><span class="fu">library</span>(rstan)         <span class="co">#for interfacing with STAN</span></span>
-<span id="cb12-89"><a href="#cb12-89"></a><span class="fu">library</span>(emmeans)       <span class="co">#for marginal means etc</span></span>
-<span id="cb12-90"><a href="#cb12-90"></a><span class="fu">library</span>(broom)         <span class="co">#for tidying outputs</span></span>
-<span id="cb12-91"><a href="#cb12-91"></a><span class="fu">library</span>(tidybayes)     <span class="co">#for more tidying outputs</span></span>
-<span id="cb12-92"><a href="#cb12-92"></a><span class="fu">library</span>(HDInterval)    <span class="co">#for HPD intervals</span></span>
-<span id="cb12-93"><a href="#cb12-93"></a><span class="fu">library</span>(ggeffects)     <span class="co">#for partial plots</span></span>
-<span id="cb12-94"><a href="#cb12-94"></a><span class="fu">library</span>(broom.mixed)   <span class="co">#for summarising models</span></span>
-<span id="cb12-95"><a href="#cb12-95"></a><span class="fu">library</span>(posterior)     <span class="co">#for posterior draws</span></span>
-<span id="cb12-96"><a href="#cb12-96"></a><span class="fu">library</span>(ggeffects)     <span class="co">#for partial effects plots</span></span>
-<span id="cb12-97"><a href="#cb12-97"></a><span class="fu">library</span>(patchwork)     <span class="co">#for multi-panel figures</span></span>
-<span id="cb12-98"><a href="#cb12-98"></a><span class="fu">library</span>(bayestestR)    <span class="co">#for ROPE</span></span>
-<span id="cb12-99"><a href="#cb12-99"></a><span class="fu">library</span>(see)           <span class="co">#for some plots</span></span>
-<span id="cb12-100"><a href="#cb12-100"></a><span class="fu">library</span>(easystats)     <span class="co">#framework for stats, modelling and visualisation</span></span>
-<span id="cb12-101"><a href="#cb12-101"></a><span class="fu">library</span>(INLA)          <span class="co">#for approximate Bayes</span></span>
-<span id="cb12-102"><a href="#cb12-102"></a><span class="fu">library</span>(INLAutils)     <span class="co">#for additional INLA outputs</span></span>
-<span id="cb12-103"><a href="#cb12-103"></a><span class="fu">library</span>(modelsummary)  <span class="co">#for data and model summaries </span></span>
-<span id="cb12-104"><a href="#cb12-104"></a><span class="fu">theme_set</span>(<span class="fu">theme_grey</span>()) <span class="co">#put the default ggplot theme back</span></span>
-<span id="cb12-105"><a href="#cb12-105"></a><span class="fu">source</span>(<span class="st">&#39;helperFunctions.R&#39;</span>)</span>
-<span id="cb12-106"><a href="#cb12-106"></a><span class="fu">bayesplot_theme_set</span>(<span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">8</span>, <span class="at">base_family =</span> <span class="st">&quot;sans&quot;</span>))</span>
-<span id="cb12-107"><a href="#cb12-107"></a><span class="in">```</span></span>
-<span id="cb12-108"><a href="#cb12-108"></a></span>
-<span id="cb12-109"><a href="#cb12-109"></a></span>
-<span id="cb12-110"><a href="#cb12-110"></a></span>
-<span id="cb12-111"><a href="#cb12-111"></a></span>
-<span id="cb12-114"><a href="#cb12-114"></a><span class="in">```{r}</span></span>
-<span id="cb12-115"><a href="#cb12-115"></a>dat <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">y =</span>  <span class="fu">rnorm</span>(<span class="dv">10</span>), <span class="at">x =</span> <span class="fu">rnorm</span>(<span class="dv">10</span>))</span>
-<span id="cb12-116"><a href="#cb12-116"></a><span class="fu">brm</span>(y <span class="sc">~</span> x, <span class="at">data =</span> dat)</span>
-<span id="cb12-117"><a href="#cb12-117"></a><span class="in">```</span></span>
-<span id="cb12-118"><a href="#cb12-118"></a></span>
-<span id="cb12-119"><a href="#cb12-119"></a></span>
-<span id="cb12-122"><a href="#cb12-122"></a><span class="in">```{r}</span></span>
-<span id="cb12-123"><a href="#cb12-123"></a><span class="co">#| label: readData</span></span>
-<span id="cb12-124"><a href="#cb12-124"></a>fert <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;../data/fertilizer.csv&quot;</span>, <span class="at">trim_ws =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb12-125"><a href="#cb12-125"></a><span class="in">```</span></span>
-<span id="cb12-126"><a href="#cb12-126"></a></span>
-<span id="cb12-127"><a href="#cb12-127"></a></span>
-<span id="cb12-130"><a href="#cb12-130"></a><span class="in">```{r}</span></span>
-<span id="cb12-131"><a href="#cb12-131"></a>fert.brm <span class="ot">&lt;-</span> <span class="fu">brm</span>(<span class="fu">bf</span>(YIELD <span class="sc">~</span> FERTILIZER),</span>
-<span id="cb12-132"><a href="#cb12-132"></a>               <span class="at">data =</span> fert,</span>
-<span id="cb12-133"><a href="#cb12-133"></a>               <span class="at">iter =</span> <span class="dv">5000</span>,</span>
-<span id="cb12-134"><a href="#cb12-134"></a>               <span class="at">warmup =</span> <span class="dv">1000</span>,</span>
-<span id="cb12-135"><a href="#cb12-135"></a>               <span class="at">chains =</span> <span class="dv">3</span>,</span>
-<span id="cb12-136"><a href="#cb12-136"></a>               <span class="at">thin =</span> <span class="dv">5</span>,</span>
-<span id="cb12-137"><a href="#cb12-137"></a>               <span class="at">refresh =</span> <span class="dv">0</span></span>
-<span id="cb12-138"><a href="#cb12-138"></a>)</span>
-<span id="cb12-139"><a href="#cb12-139"></a><span class="in">```</span></span>
+<div class="sourceCode" id="cb14" data-shortcodes="false"><pre class="sourceCode numberSource markdown number-lines code-with-copy"><code class="sourceCode markdown"><span id="cb14-1"><a href="#cb14-1"></a><span class="co">---</span></span>
+<span id="cb14-2"><a href="#cb14-2"></a><span class="an">title:</span><span class="co"> &quot;test&quot;</span></span>
+<span id="cb14-3"><a href="#cb14-3"></a><span class="an">author:</span><span class="co"> &quot;Murray Logan&quot;</span></span>
+<span id="cb14-4"><a href="#cb14-4"></a><span class="an">date:</span><span class="co"> today</span></span>
+<span id="cb14-5"><a href="#cb14-5"></a><span class="an">date-format:</span><span class="co"> &quot;DD/MM/YYYY&quot;</span></span>
+<span id="cb14-6"><a href="#cb14-6"></a><span class="an">format:</span><span class="co"> </span></span>
+<span id="cb14-7"><a href="#cb14-7"></a><span class="co">  html:</span></span>
+<span id="cb14-8"><a href="#cb14-8"></a><span class="co">    ## Format</span></span>
+<span id="cb14-9"><a href="#cb14-9"></a><span class="co">    theme: [default, ../resources/ws-style.scss]</span></span>
+<span id="cb14-10"><a href="#cb14-10"></a><span class="co">    css: ../resources/ws_style.css</span></span>
+<span id="cb14-11"><a href="#cb14-11"></a><span class="co">    html-math-method: mathjax</span></span>
+<span id="cb14-12"><a href="#cb14-12"></a><span class="co">    ## Table of contents</span></span>
+<span id="cb14-13"><a href="#cb14-13"></a><span class="co">    toc: true</span></span>
+<span id="cb14-14"><a href="#cb14-14"></a><span class="co">    toc-float: true</span></span>
+<span id="cb14-15"><a href="#cb14-15"></a><span class="co">    ## Numbering</span></span>
+<span id="cb14-16"><a href="#cb14-16"></a><span class="co">    number-sections: true</span></span>
+<span id="cb14-17"><a href="#cb14-17"></a><span class="co">    number-depth: 3</span></span>
+<span id="cb14-18"><a href="#cb14-18"></a><span class="co">    ## Layout</span></span>
+<span id="cb14-19"><a href="#cb14-19"></a><span class="co">    page-layout: full</span></span>
+<span id="cb14-20"><a href="#cb14-20"></a><span class="co">    fig-caption-location: &quot;bottom&quot;</span></span>
+<span id="cb14-21"><a href="#cb14-21"></a><span class="co">    fig-align: &quot;center&quot;</span></span>
+<span id="cb14-22"><a href="#cb14-22"></a><span class="co">    fig-width: 4</span></span>
+<span id="cb14-23"><a href="#cb14-23"></a><span class="co">    fig-height: 4</span></span>
+<span id="cb14-24"><a href="#cb14-24"></a><span class="co">    fig-dpi: 72</span></span>
+<span id="cb14-25"><a href="#cb14-25"></a><span class="co">    tbl-cap-location: top</span></span>
+<span id="cb14-26"><a href="#cb14-26"></a><span class="co">    ## Code</span></span>
+<span id="cb14-27"><a href="#cb14-27"></a><span class="co">    code-fold: false</span></span>
+<span id="cb14-28"><a href="#cb14-28"></a><span class="co">    code-tools: true</span></span>
+<span id="cb14-29"><a href="#cb14-29"></a><span class="co">    code-summary: &quot;Show the code&quot;</span></span>
+<span id="cb14-30"><a href="#cb14-30"></a><span class="co">    code-line-numbers: true</span></span>
+<span id="cb14-31"><a href="#cb14-31"></a><span class="co">    code-block-border-left: &quot;#ccc&quot;</span></span>
+<span id="cb14-32"><a href="#cb14-32"></a><span class="co">    code-copy: true</span></span>
+<span id="cb14-33"><a href="#cb14-33"></a><span class="co">    highlight-style: atom-one</span></span>
+<span id="cb14-34"><a href="#cb14-34"></a><span class="co">    ## Execution</span></span>
+<span id="cb14-35"><a href="#cb14-35"></a><span class="co">    execute:</span></span>
+<span id="cb14-36"><a href="#cb14-36"></a><span class="co">      echo: true</span></span>
+<span id="cb14-37"><a href="#cb14-37"></a><span class="co">      cache: true</span></span>
+<span id="cb14-38"><a href="#cb14-38"></a><span class="co">    ## Rendering</span></span>
+<span id="cb14-39"><a href="#cb14-39"></a><span class="co">    embed-resources: true</span></span>
+<span id="cb14-40"><a href="#cb14-40"></a><span class="an">crossref:</span></span>
+<span id="cb14-41"><a href="#cb14-41"></a><span class="co">  fig-title: &#39;**Figure**&#39;</span></span>
+<span id="cb14-42"><a href="#cb14-42"></a><span class="co">  fig-labels: arabic</span></span>
+<span id="cb14-43"><a href="#cb14-43"></a><span class="co">  tbl-title: &#39;**Table**&#39;</span></span>
+<span id="cb14-44"><a href="#cb14-44"></a><span class="co">  tbl-labels: arabic</span></span>
+<span id="cb14-45"><a href="#cb14-45"></a><span class="an">engine:</span><span class="co"> knitr</span></span>
+<span id="cb14-46"><a href="#cb14-46"></a><span class="an">output_dir:</span><span class="co"> &quot;docs&quot;</span></span>
+<span id="cb14-47"><a href="#cb14-47"></a><span class="an">documentclass:</span><span class="co"> article</span></span>
+<span id="cb14-48"><a href="#cb14-48"></a><span class="an">fontsize:</span><span class="co"> 12pt</span></span>
+<span id="cb14-49"><a href="#cb14-49"></a><span class="an">mainfont:</span><span class="co"> Arial</span></span>
+<span id="cb14-50"><a href="#cb14-50"></a><span class="an">mathfont:</span><span class="co"> LiberationMono</span></span>
+<span id="cb14-51"><a href="#cb14-51"></a><span class="an">monofont:</span><span class="co"> DejaVu Sans Mono</span></span>
+<span id="cb14-52"><a href="#cb14-52"></a><span class="an">classoption:</span><span class="co"> a4paper</span></span>
+<span id="cb14-53"><a href="#cb14-53"></a><span class="an">bibliography:</span><span class="co"> ../resources/references.bib</span></span>
+<span id="cb14-54"><a href="#cb14-54"></a><span class="co">---</span></span>
+<span id="cb14-55"><a href="#cb14-55"></a></span>
+<span id="cb14-58"><a href="#cb14-58"></a><span class="in">```{r}</span></span>
+<span id="cb14-59"><a href="#cb14-59"></a><span class="co">#| label: setup</span></span>
+<span id="cb14-60"><a href="#cb14-60"></a><span class="co">#| include: false</span></span>
+<span id="cb14-61"><a href="#cb14-61"></a></span>
+<span id="cb14-62"><a href="#cb14-62"></a>knitr<span class="sc">::</span>opts_chunk<span class="sc">$</span><span class="fu">set</span>(<span class="at">cache.lazy =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb14-63"><a href="#cb14-63"></a>                      <span class="at">tidy =</span> <span class="st">&quot;styler&quot;</span>)</span>
+<span id="cb14-64"><a href="#cb14-64"></a><span class="fu">options</span>(<span class="at">tinytex.engine =</span> <span class="st">&quot;xelatex&quot;</span>)</span>
+<span id="cb14-65"><a href="#cb14-65"></a></span>
+<span id="cb14-66"><a href="#cb14-66"></a><span class="fu">Sys.setenv</span>(<span class="at">STANCFLAGS =</span> <span class="st">&#39;&#39;</span>)</span>
+<span id="cb14-67"><a href="#cb14-67"></a><span class="in">```</span></span>
+<span id="cb14-68"><a href="#cb14-68"></a></span>
+<span id="cb14-71"><a href="#cb14-71"></a><span class="in">```{r}</span></span>
+<span id="cb14-72"><a href="#cb14-72"></a><span class="co">#| label: libraries</span></span>
+<span id="cb14-73"><a href="#cb14-73"></a><span class="co">#| output: false</span></span>
+<span id="cb14-74"><a href="#cb14-74"></a><span class="co">#| eval: true</span></span>
+<span id="cb14-75"><a href="#cb14-75"></a><span class="co">#| warning: false</span></span>
+<span id="cb14-76"><a href="#cb14-76"></a><span class="co">#| message: false</span></span>
+<span id="cb14-77"><a href="#cb14-77"></a><span class="co">#| cache: false</span></span>
+<span id="cb14-78"><a href="#cb14-78"></a></span>
+<span id="cb14-79"><a href="#cb14-79"></a><span class="fu">library</span>(tidyverse)     <span class="co">#for data wrangling etc</span></span>
+<span id="cb14-80"><a href="#cb14-80"></a><span class="fu">library</span>(rstanarm)      <span class="co">#for fitting models in STAN</span></span>
+<span id="cb14-81"><a href="#cb14-81"></a><span class="fu">library</span>(cmdstanr)      <span class="co">#for cmdstan</span></span>
+<span id="cb14-82"><a href="#cb14-82"></a><span class="fu">library</span>(brms)          <span class="co">#for fitting models in STAN</span></span>
+<span id="cb14-83"><a href="#cb14-83"></a><span class="fu">library</span>(standist)      <span class="co">#for exploring distributions</span></span>
+<span id="cb14-84"><a href="#cb14-84"></a><span class="fu">library</span>(coda)          <span class="co">#for diagnostics</span></span>
+<span id="cb14-85"><a href="#cb14-85"></a><span class="fu">library</span>(bayesplot)     <span class="co">#for diagnostics</span></span>
+<span id="cb14-86"><a href="#cb14-86"></a><span class="fu">library</span>(ggmcmc)        <span class="co">#for MCMC diagnostics</span></span>
+<span id="cb14-87"><a href="#cb14-87"></a><span class="fu">library</span>(DHARMa)        <span class="co">#for residual diagnostics</span></span>
+<span id="cb14-88"><a href="#cb14-88"></a><span class="fu">library</span>(rstan)         <span class="co">#for interfacing with STAN</span></span>
+<span id="cb14-89"><a href="#cb14-89"></a><span class="fu">library</span>(emmeans)       <span class="co">#for marginal means etc</span></span>
+<span id="cb14-90"><a href="#cb14-90"></a><span class="fu">library</span>(broom)         <span class="co">#for tidying outputs</span></span>
+<span id="cb14-91"><a href="#cb14-91"></a><span class="fu">library</span>(tidybayes)     <span class="co">#for more tidying outputs</span></span>
+<span id="cb14-92"><a href="#cb14-92"></a><span class="fu">library</span>(HDInterval)    <span class="co">#for HPD intervals</span></span>
+<span id="cb14-93"><a href="#cb14-93"></a><span class="fu">library</span>(ggeffects)     <span class="co">#for partial plots</span></span>
+<span id="cb14-94"><a href="#cb14-94"></a><span class="fu">library</span>(broom.mixed)   <span class="co">#for summarising models</span></span>
+<span id="cb14-95"><a href="#cb14-95"></a><span class="fu">library</span>(posterior)     <span class="co">#for posterior draws</span></span>
+<span id="cb14-96"><a href="#cb14-96"></a><span class="fu">library</span>(ggeffects)     <span class="co">#for partial effects plots</span></span>
+<span id="cb14-97"><a href="#cb14-97"></a><span class="fu">library</span>(patchwork)     <span class="co">#for multi-panel figures</span></span>
+<span id="cb14-98"><a href="#cb14-98"></a><span class="fu">library</span>(bayestestR)    <span class="co">#for ROPE</span></span>
+<span id="cb14-99"><a href="#cb14-99"></a><span class="fu">library</span>(see)           <span class="co">#for some plots</span></span>
+<span id="cb14-100"><a href="#cb14-100"></a><span class="fu">library</span>(easystats)     <span class="co">#framework for stats, modelling and visualisation</span></span>
+<span id="cb14-101"><a href="#cb14-101"></a><span class="fu">library</span>(INLA)          <span class="co">#for approximate Bayes</span></span>
+<span id="cb14-102"><a href="#cb14-102"></a><span class="fu">library</span>(INLAutils)     <span class="co">#for additional INLA outputs</span></span>
+<span id="cb14-103"><a href="#cb14-103"></a><span class="fu">library</span>(modelsummary)  <span class="co">#for data and model summaries </span></span>
+<span id="cb14-104"><a href="#cb14-104"></a><span class="fu">theme_set</span>(<span class="fu">theme_grey</span>()) <span class="co">#put the default ggplot theme back</span></span>
+<span id="cb14-105"><a href="#cb14-105"></a><span class="fu">source</span>(<span class="st">&#39;helperFunctions.R&#39;</span>)</span>
+<span id="cb14-106"><a href="#cb14-106"></a><span class="fu">bayesplot_theme_set</span>(<span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">8</span>, <span class="at">base_family =</span> <span class="st">&quot;sans&quot;</span>))</span>
+<span id="cb14-107"><a href="#cb14-107"></a><span class="in">```</span></span>
+<span id="cb14-108"><a href="#cb14-108"></a></span>
+<span id="cb14-111"><a href="#cb14-111"></a><span class="in">```{r}</span></span>
+<span id="cb14-112"><a href="#cb14-112"></a>cmdstanr<span class="sc">:::</span><span class="fu">get_cmdstan_flags</span>(<span class="st">&quot;STANCFLAGS&quot;</span>)</span>
+<span id="cb14-113"><a href="#cb14-113"></a><span class="in">```</span></span>
+<span id="cb14-114"><a href="#cb14-114"></a></span>
+<span id="cb14-115"><a href="#cb14-115"></a></span>
+<span id="cb14-118"><a href="#cb14-118"></a><span class="in">```{r}</span></span>
+<span id="cb14-119"><a href="#cb14-119"></a>dat <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">y =</span>  <span class="fu">rnorm</span>(<span class="dv">10</span>), <span class="at">x =</span> <span class="fu">rnorm</span>(<span class="dv">10</span>))</span>
+<span id="cb14-120"><a href="#cb14-120"></a><span class="fu">brm</span>(y <span class="sc">~</span> x, <span class="at">data =</span> dat)</span>
+<span id="cb14-121"><a href="#cb14-121"></a><span class="in">```</span></span>
+<span id="cb14-122"><a href="#cb14-122"></a></span>
+<span id="cb14-123"><a href="#cb14-123"></a></span>
+<span id="cb14-126"><a href="#cb14-126"></a><span class="in">```{r}</span></span>
+<span id="cb14-127"><a href="#cb14-127"></a><span class="co">#| label: readData</span></span>
+<span id="cb14-128"><a href="#cb14-128"></a>fert <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;../data/fertilizer.csv&quot;</span>, <span class="at">trim_ws =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb14-129"><a href="#cb14-129"></a><span class="in">```</span></span>
+<span id="cb14-130"><a href="#cb14-130"></a></span>
+<span id="cb14-131"><a href="#cb14-131"></a></span>
+<span id="cb14-134"><a href="#cb14-134"></a><span class="in">```{r}</span></span>
+<span id="cb14-135"><a href="#cb14-135"></a>fert.brm <span class="ot">&lt;-</span> <span class="fu">brm</span>(<span class="fu">bf</span>(YIELD <span class="sc">~</span> FERTILIZER),</span>
+<span id="cb14-136"><a href="#cb14-136"></a>               <span class="at">data =</span> fert,</span>
+<span id="cb14-137"><a href="#cb14-137"></a>               <span class="at">iter =</span> <span class="dv">5000</span>,</span>
+<span id="cb14-138"><a href="#cb14-138"></a>               <span class="at">warmup =</span> <span class="dv">1000</span>,</span>
+<span id="cb14-139"><a href="#cb14-139"></a>               <span class="at">chains =</span> <span class="dv">3</span>,</span>
+<span id="cb14-140"><a href="#cb14-140"></a>               <span class="at">thin =</span> <span class="dv">5</span>,</span>
+<span id="cb14-141"><a href="#cb14-141"></a>               <span class="at">refresh =</span> <span class="dv">0</span></span>
+<span id="cb14-142"><a href="#cb14-142"></a>)</span>
+<span id="cb14-143"><a href="#cb14-143"></a><span class="in">```</span></span>
 </code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
