@@ -216,6 +216,13 @@ jobs:
           # echo "library(quarto); quarto_render(\"tut/index.qmd\")" | R --no-save --no-restore;
           make -i ws_code
 
+      # configure git
+      - name: Configure git
+        run: |
+          git config --global user.name "pcinereus"
+          git config --global user.email "i.obesulus@gmail.com"
+          git config --global init.defaultBranch main
+
       # Deploy site to gh-pages branch
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@4.1.4
