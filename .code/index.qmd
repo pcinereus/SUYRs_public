@@ -1,0 +1,17 @@
+
+---
+title: SUYRs worksheets 
+author: "Murray Logan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+bibliography: ../resources/references.bib
+---
+
+## Bayesian
+
+- [Bayesian GLM example 1](bglm_example1.html)
