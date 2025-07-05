@@ -19,5 +19,6 @@ $(HTML_FILES) : %.html : %.qmd
 	@echo "Compiling documntation for analyses"
 	$(info Source = $<; Destination = $@)
 	sed -i 's/public\///g' $<
+	sed -i 's/,\s*backend\s*=\s*["'\'']cmdstanr?["'\'']\///g' $<
 	echo "library(quarto); quarto_render(\"$<\")" | R --no-save --no-restore;
 
