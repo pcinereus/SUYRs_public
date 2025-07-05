@@ -105,7 +105,7 @@ library(brms)          #for fitting models in STAN
 fert <- read_csv("../public/data/fertilizer.csv", trim_ws = TRUE)
 ```
 
-```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+```{r}
 fert.brm <- brm(bf(YIELD ~ FERTILIZER),
                data = fert,
                iter = 5000,
