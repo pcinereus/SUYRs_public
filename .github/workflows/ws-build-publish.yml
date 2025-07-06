@@ -240,6 +240,12 @@ jobs:
           mkdir -p docs
           cp .code/*.html docs
 
+      - name: list the contents of .code directory
+        run: |
+          echo "Current dir: $(pwd)"
+          ls -la .code
+          ls -la
+
       # Upload rendered HTML artifacts
       - name: Upload rendered HTMLs
         if: always()
