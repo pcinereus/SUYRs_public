@@ -267,7 +267,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: tmp-code
-          key: html-cache-${{ hashFiles('.code/*.html) }}
+          key: html-cache-${{ hashFiles('.code/*.html') }}
 
       ## Upload rendered HTML artifacts
       #- name: Upload rendered HTMLs
