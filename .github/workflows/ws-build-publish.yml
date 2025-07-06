@@ -133,7 +133,6 @@ jobs:
             any::randomForest
             any::styler
             github::jmgirard/standist
-            github::julianfaraway/brinla
 
       - name: Install other R packages
         run: |
@@ -141,6 +140,7 @@ jobs:
           Rscript -e "install.packages('RandomFields', repos = c('https://spatstat.r-universe.dev', 'https://cloud.r-project.org'))"
           Rscript -e "install.packages('RandomFieldsUtils', repos = c('https://spatstat.r-universe.dev', 'https://cloud.r-project.org'))"
           Rscript -e "remotes::install_github('timcdlucas/INLAutils')"
+          Rscript -e "remotes::install_github('julianfaraway/brinla')"
 
       - name: Cache Cmdstan installation
         uses: actions/cache@v4
