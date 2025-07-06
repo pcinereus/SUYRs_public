@@ -1,0 +1,2318 @@
+---
+title: "Bayesian GLM Part2"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(ggeffects)     #for partial effects plots
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #for the easystats ecosystem
+library(INLA)          #for approximate Bayes
+library(INLAutils)     #for additional INLA outputs
+library(patchwork)     #for multiple plots
+library(modelsummary)  #for data and model summaries 
+theme_set(theme_grey()) #put the default ggplot theme back
+source("helperFunctions.R")
+```
+
+# Scenario
+
+@Polis-1998-490 were interested in modelling the presence/absence of lizards (<i>Uta sp.</i>) against the perimeter to area ratio of 19 islands in the Gulf of California.
+
+![Uta lizard](../resources/uta.jpg){#fig-polis width="200" height="137"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+ISLAND       RATIO   PA
+------------ ------- ----
+Bota         15.41   1
+Cabeza       5.63    1
+Cerraja      25.92   1
+Coronadito   15.17   0
+..           ..      ..
+
+: Format of polis.csv data file {#tbl-polis .table-condensed}
+
+:::
+
+::: {.column width="50%"}
+
+------------ -----------------------------------------------------------------------------------------
+**ISLAND**   Categorical listing of the name of the 19 islands used - variable not used in analysis.
+**RATIO**    Ratio of perimeter to area of the island.
+**PA**       Presence (1) or absence (0) of *Uta* lizards on island.
+------------ -----------------------------------------------------------------------------------------
+
+: Description of the variables in the polis data file {#tbl-polis1 .table-condensed}
+
+:::
+::::
+
+
+The aim of the analysis is to investigate the relationship between island perimeter to area ratio and the presence/absence of Uta lizards.
+
+# Read in the data
+
+```{r}
+#| label: readData
+#| output: true
+#| eval: true
+polis <- read_csv("../data/polis.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(polis)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(polis)
+```
+
+## str
+```{r}
+str(polis)
+```
+
+## Easystats (datawizard)
+```{r}
+polis |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+polis |> modelsummary::datasummary_skim()
+```
+
+
+:::
+<!-- END_PRIVATE-->
+
+
+# Exploratory data analysis
+
+
+The individual responses ($y_i$, observed presence/absence of Uta
+lizards) are each expected to have been **independently** drawn from
+Bernoulli (or binomial) distributions ($\mathcal{Bin}$). These
+distributions represent all the possible presence/absences we could
+have obtained at the specific ($i^th$) level of island perimeter to
+area ratio.  Hence the $i^th$ presence/absence observation is expected
+to have been drawn from a binomial distribution with a probability of
+$\mu_i$ and size of ($n=1$).
+
+The expected probabilities are related to the linear predictor
+(intercept plus slope associated with perimeter to area ratio) via a
+**logit** link.
+
+We need to supply priors for each of the parameters to be estimated
+($\beta_0$ and $\beta_1$).  Whilst we want these priors to be
+sufficiently vague as to not influence the outcomes of the analysis
+(and thus be equivalent to the frequentist analysis), we do not want
+the priors to be so vague (wide) that they permit the MCMC sampler to
+drift off into parameter space that is both illogical as well as
+numerically awkward.
+
+As a starting point, lets assign the following priors:
+
+- $\beta_0$: Normal prior centred at 0 with a variance of 2.5
+- $\beta_1$: Normal prior centred at 0 with a variance of 1
+
+Note, when fitting models through either `rstanarm` or `brms`, the
+priors assume that the predictor(s) have been centred and are to be
+applied on the link scale.  In this case the link scale is an
+identity.
+
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{Bin}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_i}\right) &= \beta_0 + \beta_1 x_i\\
+\beta_0 &\sim{} \mathcal{N}(0,2.5)\\
+\beta_1 &\sim{} \mathcal{N}(0,1)\\
+\end{align}
+$$
+
+<!-- START_PRIVATE-->
+```{r EDA, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(polis, aes(y=PA, x=RATIO))+
+  geom_point()
+ggplot(polis, aes(y=PA, x=RATIO))+
+  geom_point()+
+  geom_smooth(method='glm', formula=y~x,
+              method.args=list(family='binomial'))
+```
+<!-- END_PRIVATE-->
+
+# Fit the model 
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## frequentist
+
+```{r lm, results='markdown', eval=TRUE, mhidden=TRUE}
+summary(glm(PA ~ RATIO, data = polis, family = binomial()))
+summary(glm(PA ~ center(RATIO), data = polis, family = binomial()))
+```
+
+## rstanarm
+:::: {.panel-tabset}
+
+### Using default priors
+In `rstanarm`, the default priors are designed to be weakly
+informative. They are chosen to provide moderate regularisation (to
+help prevent over-fitting) and help stabilise the computations.
+
+```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+polis.rstanarm = stan_glm(PA ~ RATIO, data=polis,
+                          family=binomial(), 
+                         iter = 5000, warmup = 1000,
+                         chains = 3, thin = 5, refresh = 0)
+```
+
+In the above:
+
+- the formula and data arguments should be familiar as they are the same as for
+  many models in R
+- iter: indicates the number of MCMC iterations to perform per chain
+- warmup: indicates how many of the initial MCMC samples to exclude.  During the
+  warmup stage, the MCMC sampler is tuning its sampling operations to allow it
+  to determine the best way to create the chain.  While it is in this discovery
+  phase, the estimates it produces might be unrepresentative.
+- chains: indicates the number of independent chains to run.  The more chains,
+  the more random starts.  The point of multiple random starts is to minimise
+  the potential for the starting point to dictate the outcome.  It is possible
+  that a chain might get stuck sampling a single feature of the posterior and not discover
+  additional features.  Additional random starting points should hopefully
+  alleviate this. Either 3 or 4 is typical.
+- thin: indicates the rate at which the MCMC samples should be thinned in order
+  to eliminate auto-correlation between MCMC samples.  When the step lengths
+  between MCMC samples are small, the resulting parameter estimates will be
+  auto-correlated (since samples close by in the chain will be more similar than
+  those far apart).  The rate of thinning necessary will depend on the degree
+  of auto-correlation.  For stan models, a thinning rate of 5 is a good starting
+  point.
+- refresh: indicates how often the terminal display should be updated.  When
+  running a large model, this can be useful as it provides a form of progress.
+  However, when the routine is within an Rmarkdown document, it just results in
+  the output including each line of progress and a lot of space is taken up unnecessarily
+
+Having allowed `rstanarm` to formulate its own weakly informative priors, it is
+a good idea to explore what they are.  Firstly, out of curiosity, it might be
+interesting to see what it has chosen.  However, more importantly, we need to be
+able to document what the priors were and the `rstanarm` development team make
+it very clear that there is no guarantee that the default priors will remain the
+same into the future. 
+
+```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+prior_summary(polis.rstanarm)
+```
+
+This tells us:
+
+- for the intercept: the mean of the response is approximately 0.53.
+  All priors are applied on the link scale (which by default for
+  logistic regression is logit).  `rstanarm` takes the view that if
+  the predictors are centred (which they are by default), the mean of
+  the response will be close to 0.5.  On the logit scale, this equates
+  to a value of 0.  Hence, the prior on intercept is defined as a
+  normal prior with a mean of 0.  For logistic regression, the
+  response values must all be either 0 or 1.  On the logit scale,
+  values can range from -Inf to Inf.  Nevertheless, values on the
+  logit scale that exceed 2.5 in magnitude equate to value on the
+  response scale of either very high or very low (if negative).
+  `rstanarm` therefore uses a standard deviation of 2.5 for the normal
+  prior on the intercept.
+  
+```{r fitModel1c, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+mean(polis$PA)
+```
+
+- for the coefficients (in this case, just the slope), the default
+prior is a normal prior centred around 0 with a standard deviation of
+2.5 times the reciprocal of the standard deviation of the predictor
+(so 0.14 in this case).
+
+```{r fitModel1d, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+2.5 * 1/sd(polis$RATIO)
+```
+
+-  there are no auxiliary parameters and thus there are no auxiliary priors
+
+### Assessing priors
+
+One way to assess the priors is to have the MCMC sampler sample purely from the
+prior predictive distribution without conditioning on the observed data.  Doing
+so provides a glimpse at the range of predictions possible under the priors.  On
+the one hand, wide ranging predictions would ensure that the priors are unlikely
+to influence the actual predictions once they are conditioned on the data.  On
+the other hand, if they are too wide, the sampler is being permitted to traverse
+into regions of parameter space that are not logically possible in the context
+of the actual underlying ecological context.  Not only could this mean that
+illogical parameter estimates are possible, when the sampler is traversing
+regions of parameter space that are not supported by the actual data, the sampler
+can become unstable and have difficulty.
+
+We can draw from the prior predictive distribution instead of conditioning on
+the response, by updating the model and indicating `prior_PD=TRUE`.  After
+refitting the model in this way, we can plot the predictions to gain insights
+into the range of predictions supported by the priors alone.
+
+```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+polis.rstanarm1 <- update(polis.rstanarm,  prior_PD=TRUE)
+```
+```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+ggemmeans(polis.rstanarm1,  ~RATIO) |> plot(show_data=TRUE)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is very wide and the slope could range
+  from strongly negative to strongly positive.
+
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 0 with a standard deviation of 2.5
+  - mean: 0 - because the mean response when predictors are centred
+    should be approx. 0.5 (which is 0 on logit scale)
+  - sd: 2.5 - since this represents wide priors on logit scale
+- $\beta_1$: normal centred at 0 with a standard deviation of 0.1
+  - sd: 0.1 - since (`2.5 * sd(polis$PA)/sd(polis$RATIO)`) 
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+polis.rstanarm2= stan_glm(PA ~ RATIO, data=polis,
+                          family=binomial(), 
+                          prior_intercept = normal(0, 2.5, autoscale=FALSE),
+                          prior = normal(0, 0.1, autoscale=FALSE),
+                          prior_PD=TRUE, 
+                          iter = 5000, warmup = 1000,
+                          chains = 3, thin = 5, refresh = 0
+                          )
+```
+
+```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+ggemmeans(polis.rstanarm2,  ~RATIO) |>
+  plot(show_data=TRUE)
+```
+
+Now lets refit, conditioning on the data.
+
+```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+polis.rstanarm3= update(polis.rstanarm2,  prior_PD=FALSE)  
+```
+
+### Plotting prior and posterior
+
+```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+posterior_vs_prior(polis.rstanarm3, color_by='vs', group_by=TRUE,
+                   facet_args=list(scales='free_y'))
+```
+
+**Conclusions:**
+
+- in each case, the prior is substantially wider than the posterior, suggesting
+  that the posterior is not biased towards the prior.
+  
+```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggemmeans(polis.rstanarm3,  ~RATIO) |> plot(show_data=TRUE)
+ggemmeans(polis.rstanarm3, terms = "RATIO[0:63]") |>
+    plot(show_data=TRUE,
+         show_residuals = TRUE,
+         jitter = FALSE)
+#OR
+polis.rstanarm3 |> ggpredict(~RATIO) |> plot(show_data=TRUE)
+```
+
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularisation (to help prevent over fitting) and
+help stabilise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+form <- bf(PA|trials(1) ~ RATIO, family = binomial())
+polis.brm <- brm(form,
+                data = polis,
+                iter = 5000,
+                warmup = 1000,
+                chains = 3, cores = 3,
+                thin = 5,
+                refresh = 0,
+                backend = 'cmdstanr')
+```
+
+
+In the above:
+
+- the formula and data arguments should be familiar as they are the
+  same as for many models in R. That said, the formula specification
+  of `brms` can define models that are not possible by most other
+  routines. To facilitate this enhanced functionality, we usually
+  define a `brms` formula within its own `bf()` function along with
+  the `family` (in this case, it is Gaussian, which is the default and
+  therefore can be omitted.)
+- iter: indicates the number of MCMC iterations to perform per chain
+- warmup: indicates how many of the initial MCMC samples to exclude.
+  During the warmup stage, the MCMC sampler is tuning its sampling
+  operations to allow it to determine the best way to create the
+  chain.  While it is in this discovery phase, the estimates it
+  produces might be unrepresentative.
+- chains: indicates the number of independent chains to run.  The more
+  chains, the more random starts.  The point of multiple random starts
+  is to minimise the potential for the starting point to dictate the
+  outcome.  It is possible that a chain might get stuck sampling a
+  single feature of the posterior and not discover additional
+  features.  Additional random starting points should hopefully
+  alleviate this. Either 3 or 4 is typical.
+- thin: indicates the rate at which the MCMC samples should be thinned
+  in order to eliminate auto-correlation between MCMC samples.  When
+  the step lengths between MCMC samples are small, the resulting
+  parameter estimates will be auto-correlated (since samples close by
+  in the chain will be more similar than those far apart).  The rate
+  of thinning necessary will depend on the degree of auto-correlation.
+  For stan models, a thinning rate of 5 is a good starting point.
+- refresh: indicates how often the terminal display should be updated.
+  When running a large model, this can be useful as it provides a form
+  of progress.  However, when the routine is within an Rmarkdown
+  document, it just results in the output including each line of
+  progress and a lot of space is taken up unnecessarily
+
+Having allowed `brms` to formulate its own weakly informative priors,
+it is a good idea to explore what they are.  Firstly, out of
+curiosity, it might be interesting to see what it has chosen.
+However, more importantly, we need to be able to document what the
+priors were and the `brms` development team make it very clear that
+there is no guarantee that the default priors will remain the same
+into the future.
+
+```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=2}
+options(width=100)
+polis.brm |> prior_summary()
+options(width=80)
+```
+
+This tells us:
+
+- for the intercept, it is using a student t (flatter normal) prior with a mean of 0 and a
+  standard deviation of 2.5.  These are the defaults used for a binomial model.
+  The mean of the response is approximately 0.53.
+  All priors are applied on the link scale (which by default for
+  logistic regression is logit).  `brms` takes the view that if
+  the predictors are centred (which they are by default), the mean of
+  the response will be close to 0.5.  On the logit scale, this equates
+  to a value of 0.  Hence, the prior on intercept is defined as a
+  normal prior with a mean of 0.  For logistic regression, the
+  response values must all be either 0 or 1.  On the logit scale,
+  values can range from -Inf to Inf.  Nevertheless, values on the
+  logit scale that exceed 2.5 in magnitude equate to value on the
+  response scale of either very high or very low (if negative).
+  `brms` therefore uses a standard deviation of 2.5 for the normal
+  prior on the intercept.
+  
+
+- for the beta coefficients (in this case, just the slope), the default prior is
+  a improper flat prior. A flat prior essentially means that any value between
+  negative infinity and positive infinity are equally likely. Whilst this might
+  seem reckless, in practice, it seems to work reasonably well for non-intercept
+  beta parameters.
+
+- there are no distributional parameters in a binomial model and therefore there are no
+  additional priors.
+  
+  
+### Assessing priors
+
+One way to assess the priors is to have the MCMC sampler sample purely from the
+prior predictive distribution without conditioning on the observed data.  Doing
+so provides a glimpse at the range of predictions possible under the priors.  On
+the one hand, wide ranging predictions would ensure that the priors are unlikely
+to influence the actual predictions once they are conditioned on the data.  On
+the other hand, if they are too wide, the sampler is being permitted to traverse
+into regions of parameter space that are not logically possible in the context
+of the actual underlying ecological context.  Not only could this mean that
+illogical parameter estimates are possible, when the sampler is traversing
+regions of parameter space that are not supported by the actual data, the sampler
+can become unstable and have difficulty.
+
+In `brms`, we can inform the sampler to draw from the prior predictive
+distribution instead of conditioning on the response, by running the model with
+the `sample_prior='only'` argument.  Unfortunately, this cannot be applied when
+there are flat priors (since the posteriors will necessarily extend to negative
+and positive infinity).  Therefore, in order to use this useful routine, we need
+to make sure that we have defined a proper prior for all parameters.
+
+In this case, we will define alternative priors for the slope.
+Default priors for the intercept are already provided (should we wish
+to use them).
+
+```{r fitModel2d, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+form <- bf(PA|trials(1) ~ RATIO, family = binomial())
+priors <- prior(normal(0, 2.5), class = 'Intercept') +
+    prior(normal(0, 1), class = 'b')
+polis.brm1 = brm(form,
+                 data = polis,
+                 prior = priors, 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores = 3,
+                 thin = 5,
+                 refresh = 0,
+                 backend = 'cmdstanr')
+```
+
+The following are unlikely to be that useful as the predictions must
+be bound to the range of [0,1].  Hence, it will be difficult to assess
+whether the priors could result in very large or small predictions.
+
+```{r fitModel2e, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+polis.brm1 |> ggemmeans(~RATIO) |> plot(show_data=TRUE)
+polis.brm1 |> conditional_effects() |>  plot(points=TRUE)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is fairly wide and the slope could range
+  from strongly negative to strongly positive.
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 0 with a standard deviation of 2.5
+  - mean: 0 - because the mean response when predictors are centred
+    should be approx. 0.5 (which is 0 on logit scale) - `r logit(0.5)`
+  - sd: 2.5 - since this represents wide priors on logit scale
+- $\beta_1$: normal centred at 0 with a standard deviation of 0.1
+  - sd: 0.1 - since (`2.5 * sd(polis$PA)/sd(polis$RATIO)`) 
+
+I will also overlay the raw data for comparison.
+
+```{r normal2h, results='markdown', eval=TRUE}
+standist::visualize("normal(0, 2.5)", xlim = c(-10, 10))
+```
+
+Although this does allow us to visualise what the this looks like on
+the link (logit) scale, it is hard to appreciate how this relates to
+the response (real values) scale.  To explore this, we must simulate sampling from a normal distribution, transform the normal and plot that density distribution
+
+```{r normal2h2, results='markdown', eval=TRUE}
+dat <- data.frame(sigma = c(2.5, 1.5, 1))
+dat <- dat |>
+  group_by(sigma) |>
+  reframe(r = rnorm(10000, 0, sigma),
+          p = plogis(r))
+ggplot(dat, aes(x =  p)) +
+  geom_density(aes(fill = factor(sigma)), alpha =  0.3)
+```
+
+Hence, it appears that a prior with a standard deviation of 2.5 would
+indicate that we believe that probabilities close to either 0 or 1 are
+the most likely. Given that priors are applied to the centered
+predictors (which means that the intercept is supposed to represent
+the midpoint - and thus presumably close to the switch point), this
+would seem inappropriate. Surely we should expect a probability of
+close to 0.5 at this intercept?
+
+If this logic holds, then a prior standard deviation of 1.5 or even 1
+would seem more sensible.
+
+```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE}
+form <- bf(PA|trials(1) ~ RATIO, family = binomial())
+priors <- prior(normal(0, 1),  class = 'Intercept') +
+    prior(normal(0, 0.1), class = 'b') 
+
+polis.brm2 = brm(form,
+                 data = polis,
+                 prior = priors,
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3, cores = 3,
+                 thin = 5,
+                 refresh = 0,
+                 backend = 'cmdstanr')
+```
+
+```{r fitModel2i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+ggemmeans(polis.brm2,  ~RATIO) |>
+  plot(show_data = TRUE) 
+```
+
+```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE}
+polis.brm3 <- polis.brm2 |> update(sample_prior = 'yes', refresh = 0)
+```
+
+```{r fitModel2j1, results='markdown', eval=TRUE, echo = FALSE, mhidden=TRUE}
+
+```
+
+
+```{r fitModel2j2, results='markdown', eval=TRUE, mhidden=TRUE}
+ggemmeans(polis.brm3,  ~RATIO) |>
+  plot(show_data = TRUE)
+ggemmeans(polis.brm3,  terms = "RATIO[0:63]") |>
+    plot(show_data = TRUE) 
+
+polis.brm3 |> conditional_effects()
+```
+
+### Plotting prior and posterior
+
+```{r posterior2k, results='markdown', eval=TRUE}
+polis.brm3 |> get_variables()
+## polis.brm3 |> hypothesis('Intercept=0', class='b') |> plot
+polis.brm3 |> hypothesis('RATIO=0') |> plot()
+```
+
+```{r fitModel2k, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+polis.brm3 |> get_variables()
+polis.brm3 |> SUYR_prior_and_posterior() 
+```
+
+### Exploring the stan code
+
+```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+polis.brm3 |> standata()
+polis.brm3 |> stancode()
+```
+::::
+## INLA 
+:::: {.panel-tabset}
+
+```{r INLApackages, results='markdown', eval=TRUE}
+library(INLA)
+```
+
+### Using default priors
+
+In `INLA`, the default priors are designed to be diffuse or weak.  They are
+chosen to provide moderate regularisation (to help prevent over-fitting) and
+help stabilise the computations.
+
+```{r fitModel3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+polis.inla <- inla(PA ~ RATIO,
+                  data = polis,
+                  family = 'gaussian',
+                  control.compute = list(config = TRUE, dic = TRUE, waic = TRUE, cpo = TRUE)
+                  )
+```
+
+In the above:
+
+- the `formula`, `data` and `family` arguments should be familiar as they are the same as for 
+  other models in R.
+- `control.compute`: allows us to indicate what additional actions
+  should be performed during the model fitting.  In this case, we have indicated:
+  
+  - `dic`: Deviance information criterion
+  - `waic`: Wantanabe information creterion
+  - `cpo`: out-of-sample estimates (measures of fit)
+  - `config`: return the full configuration - to allow drawing from the posterior. 
+
+
+```{r fitModel3a2, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+polis.inla |> names()
+```
+
+Having allowed `INLA` to formulate its own "minimally informative"
+priors, it is a good idea to explore what they are.  Firstly, out of
+curiosity, it might be interesting to see what it has chosen.
+However, more importantly, we need to be able to document what the
+priors were and the `INLA` development team make it very clear that
+there is no guarantee that the default priors will remain the same
+into the future.
+
+In calcutating the posterior mode of hyperparameters, it is efficient
+to maximising the sum of the (log)-likelihood and the (log)-prior,
+hence, priors are defined on a log-scale.  The canonical prior for
+variance is the _gamma_ prior, hence in `INLA`, this is a _loggamma_.
+
+They are also defined according to their mean and **precision**
+(_inverse-scale_, rather than variance).  Precision is $1/\sigma$.
+
+To explore the default priors used by `INLA`, we can issue the
+following on the fitted model:
+
+```{r fitModel3b0, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=TRUE}
+inla.priors.used(polis.inla)
+```
+
+The above indicates:
+
+- the prior on the overal family (log) precision ($1/sigma$) is a
+  log-gamma with shape of 1 and scale of 0.00005.  Since this is a
+  log-gamma on log-precision, it is equivalent to a gamma (shape =
+  $1$, scale = $10^-5$) on precision.  Such a distribution is very
+  wide and has a mean of ($shape/scale =$ `r 1/0.00005`) and variance of
+  ($shape/scale^2 =$ `r 1/(0.00005)^2`).
+  
+```{r fitModel3b3, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("gamma(1, 0.00005)", xlim=c(-100,100000))
+```
+
+- the prior on the intercept is a Gaussian (normal) distribution with
+  mean of 0 and precision of 0 - this is effectively a uniform
+  distribution from $-\infty$ to $\infty$.
+- the prior on the slope is a Gaussian (normal) distribution with a
+  mean of 0 and a precision of 0.001 (which equates to a standard
+  deviation of $(1/0.001)^{0.5}$=`r sqrt(1/0.001)`.  This is also a
+  very, very wide distribution (consider what a slope large in magnitude of
+  100 means in the context of the rate of probability of being present increase per
+  unit increase in perimeter to area ratio and on a log odds scale).
+
+```{r fitModel3b1, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("normal(0, 31)", xlim=c(-100,100))
+```
+
+### Defining own priors
+
+**Family variance**
+
+No existent
+
+
+**Intercept**
+
+The default prior on the intercept is a Gaussian with mean of 0 and
+precision of 0 (and thus effectively a flat uniform).  Alternatively,
+we could define priors on the intercept that are more realistic.  For
+example, we know that the middle probability of _Uta_ lizard presence
+is likely to be close to 0.5 `r mean(polis$PA)`.  However, the
+parameters are all on a logit scale.  Hence a sensible prior would be
+`log(0.5/(1-0.5))` = 0 (if we were to centre `RATIO`).
+
+We also know that the probability cannot extend above 1 and below 0.  That is plus or minus 0.5.  On the logit scale, this would be equivalent to approximately plus or minus 1.
+
+```{r fitModel3b9, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+mean(polis$PA)
+```
+
+```{r fitModel3b8, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("normal(0, 1)", xlim=c(-2,2))
+```
+ 
+We could use these values as the basis for weekly informative priors
+on the intercept.  Note, as `INLA` priors are expressed in terms of
+precision rather than variance, an equvilent prior would be
+$\sim{}~\mathcal{N}(0, 1)$ (e.g. $1/(1)^2$).
+
+
+
+**Fixed effects**
+
+The priors for the fixed effects (slope) is a Gaussian (normal)
+distributions with mean of 0 and precision (0.001). This implies that
+the prior for slope has a standard deviation of approximately 31
+(since $\sigma = \frac{1}{\sqrt{\tau}}$). As a general rule, three
+standard deviations envelopes most of a distribution, and thus this
+prior defines a distribution whose density is almost entirely within
+the range [-93,93]. On a logit scale, this is very large.
+
+In order to generate realistic informative Gaussian priors (for the
+purpose of constraining the posterior to a logical range) for fixed
+parameters, the following formulae are useful:
+
+$$
+\begin{align}
+\mu &= \frac{z_2\theta_1 - z_1\theta_2}{z_2-z_1}\\
+\sigma &= \frac{\theta_2 - \theta_1}{z_2-z_1}
+\end{align}
+$$
+
+where $\theta_1$ and $\theta_2$ are the quantiles on the response
+scale and $z_1$ and $z_2$ are the corresponding quantiles on the
+standard normal scale. Hence, if we considered that the slope is
+likely to be in the range of [-2,2], (which would correspond to a range of fractional rate changes per one unit change in `RATIO` of between -100% and 100%), we could specify a Normal prior
+with mean of $\mu=\frac{(qnorm(0.5,0,1)*0) - (qnorm(0.975,0,1)*10)}{10-0} = 0$ 
+and a standard deviation of $\sigma^2=\frac{10 - 0}{qnorm(0.975,0,1)-qnorm(0.5,0,1)} = 5.102$.
+In INLA (which defines priors in terms of precision rather than standard deviation), 
+the associated prior would be $\beta \sim{} \mathcal{N}(0, 0.0384)$.
+
+
+```{r fitModel3b4, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("normal(0, 2)", xlim=c(-3,3))
+```
+
+In order to define each of the above priors, we could modify the `inla` call:
+
+```{r fitModel3b6, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+polis.inla1 <- inla(PA ~ scale(RATIO, scale=FALSE),
+                  data = polis,
+                  Ntrials = 1,
+                  family = 'binomial',
+                  control.fixed = list(
+                      mean.intercept = 0,
+                      prec.intercept = 0.01,
+                      mean = 0,
+                      prec = 0.25),
+                  control.compute = list(config = TRUE, dic = TRUE, waic = TRUE, cpo = TRUE)
+                  )
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+ 
+
+# MCMC sampling diagnostics
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+In addition to the regular model diagnostics checking, for Bayesian analyses, it
+is also necessary to explore the MCMC sampling diagnostics to be sure that the
+chains are well mixed and have converged on a stable posterior.
+
+There are a wide variety of tests that range from the big picture, overall chain
+characteristics to the very specific detailed tests that allow the experienced
+modeller to drill down to the very fine details of the chain behaviour.
+Furthermore, there are a multitude of packages and approaches for exploring
+these diagnostics.
+
+## rstanarm
+:::: {.panel-tabset}
+
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+</details>
+
+Of these, we will focus on:
+
+- mcmc_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(polis.rstanarm3, plotfun='mcmc_trace')
+```
+  
+   The chains appear well mixed and very similar
+   
+- acf (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(polis.rstanarm3, 'acf_bar')
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- Rhat: Rhat is a measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(polis.rstanarm3, 'rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(polis.rstanarm3, 'neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r Validation1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(polis.rstanarm3, 'combo')
+plot(polis.rstanarm3, 'violin')
+```
+</details>
+
+### stan plots
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_trace(polis.rstanarm3)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (auto-correlation function): plots the auto-correlation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_ac(polis.rstanarm3) 
+```
+
+   There is no evidence of auto-correlation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_rhat(polis.rstanarm3) 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_ess(polis.rstanarm3)
+```
+
+  Ratios all very high.
+
+```{r modelValidation1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_dens(polis.rstanarm3, separate_chains = TRUE)
+```
+
+### ggmcmc
+
+The `ggmean` package also has a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.ggs <- ggs(polis.rstanarm3)
+ggs_traceplot(polis.ggs)
+```
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_autocorrelation(polis.ggs)
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation1n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_Rhat(polis.ggs)
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation1o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_effective(polis.ggs)
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation1p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_crosscorrelation(polis.ggs)
+```
+
+```{r modelValidation1q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_grb(polis.ggs)
+```
+</details>
+
+::::
+
+## brms 
+
+:::: {.panel-tabset}
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+</details>
+
+Of these, we will focus on:
+
+- trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> mcmc_plot(type = 'trace')
+```
+  
+   The chains appear well mixed and very similar
+   
+- acf_bar (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> mcmc_plot(type = 'acf_bar')
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- rhat_hist: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> mcmc_plot(type = 'rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff_hist (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> mcmc_plot(type = 'neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> mcmc_plot(type = 'combo')
+polis.brm3 |> mcmc_plot(type = 'violin')
+```
+</details>
+
+### stan plots
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3$fit |> stan_trace()
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3$fit |> stan_ac() 
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3$fit |> stan_rhat() 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3$fit |> stan_ess()
+```
+
+  Ratios all very high.
+
+```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_dens(polis.brm3$fit, separate_chains = TRUE)
+```
+
+### ggmcmc
+
+The `ggmean` package also has a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+polis.ggs <- polis.brm3 |> ggs(inc_warmup = FALSE, burnin = FALSE)
+polis.ggs |> ggs_traceplot()
+```
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+polis.ggs |> ggs_autocorrelation()
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.ggs |> ggs_Rhat()
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.ggs |> ggs_effective()
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.ggs |> ggs_crosscorrelation()
+```
+
+```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.ggs |> ggs_grb()
+```
+</details>
+
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model validation
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## rstanarm 
+:::: {.panel-tabset}
+
+### pp check
+
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation3a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+</details>
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(polis.rstanarm3,  plotfun='dens_overlay')
+```
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  That said, these are not overly interpretable for models involving
+  binary data.
+
+```{r modelValidation3c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(polis.rstanarm3, plotfun='error_scatter_avg')
+```
+
+This is not interpretable.
+
+- error_scatter_avg_vs_x: this is similar to a regular residual plot and as such
+  should be interpreted as such.  Again, this is not interpretable for binary data.
+
+```{r modelValidation3d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(polis.rstanarm3, x=polis$RATIO, plotfun='error_scatter_avg_vs_x')
+```
+
+- intervals:  plots the observed data overlayed on top of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(polis.rstanarm3, x=polis$RATIO, plotfun='intervals')
+```
+
+The modelled predictions are mostly consistent with the observed data.  There is
+really only one exception.
+
+- ribbon: this is just an alternative way of expressing the above plot.
+
+```{r modelValidation3f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(polis.rstanarm3, x=polis$RATIO, plotfun='ribbon')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation3g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(polis.rstanarm3)
+```
+
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+```{r modelValidation4a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- posterior_predict(polis.rstanarm3,  ndraws=250,  summary=FALSE)
+polis.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = polis$PA,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = TRUE)
+plot(polis.resids)
+```
+
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### pp check
+
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation5a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+</details>
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> pp_check(type = 'dens_overlay', ndraws=100)
+```
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  Note, this is not really that useful for models that involve a
+  binomial response
+
+```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> pp_check(type = 'error_scatter_avg')
+```
+
+This is not really interpretable
+
+- error_scatter_avg_vs_x: this is similar to a regular residual plot and as such
+  should be interpreted as such.  This is not easy to interpret for binomial responses.
+
+```{r modelValidation5d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> pp_check(x = 'RATIO', type = 'error_scatter_avg_vs_x')
+```
+
+- intervals:  plots the observed data overlayed on top of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> pp_check(x = 'RATIO', type = 'intervals')
+```
+
+- ribbon: this is just an alternative way of expressing the above plot.
+
+```{r modelValidation5f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+polis.brm3 |> pp_check(x = 'RATIO', type = 'ribbon')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(polis.brm3)
+```
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- polis.brm3 |> posterior_predict(ndraws = 250,  summary = FALSE)
+polis.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = polis$PA,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = TRUE)
+polis.resids |> plot()
+
+```
+```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+polis.resids <- make_brms_dharma_res(polis.brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(polis.resids)) +
+               wrap_elements(~plotResiduals(polis.resids, form = factor(rep(1, nrow(polis))))) +
+               wrap_elements(~plotResiduals(polis.resids, quantreg = FALSE)) +
+               wrap_elements(~testDispersion(polis.resids))
+
+```
+
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Partial effects plots 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## rstanarm 
+:::: {.panel-tabset}
+
+### ggpredict
+
+```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> ggpredict() |> plot(show_data=TRUE, jitter = FALSE)
+```
+
+### ggemmeans
+
+```{r partialPlot1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> ggemmeans(~RATIO) |> plot(show_data=TRUE)
+```
+
+### epred_draws
+
+```{r partialPlot1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> epred_draws(newdata=polis) |>
+ median_hdci() |>
+ ggplot(aes(x=RATIO, y=.epred)) +
+ geom_ribbon(aes(ymin=.lower, ymax=.upper), fill='blue', alpha=0.3) + 
+ geom_line()
+```
+
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### conditional_effects
+
+```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |>
+    conditional_effects() |>
+    plot(points = TRUE)
+polis.brm3 |>
+    conditional_effects(spaghetti = TRUE,nsamples = 500) |>
+    plot(points = TRUE)
+```
+
+### ggpredict
+
+```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |>
+    ggpredict() |>
+    plot(show_data = TRUE, jitter = FALSE)
+```
+
+### ggemmeans
+
+```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |>
+    ggemmeans(~RATIO) |>
+    plot(show_data = TRUE)
+```
+
+### epred_draws
+
+```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> epred_draws(newdata = polis) |>
+ median_hdci() |>
+ ggplot(aes(x = RATIO, y = .epred)) +
+ geom_ribbon(aes(ymin = .lower, ymax = .upper), fill = 'blue', alpha = 0.3) + 
+ geom_line()
+
+partial.obs <- polis |>
+    mutate(fit = fitted(polis.brm3, newdata = polis)[,'Estimate'],
+           resid = resid(polis.brm3)[,'Estimate'],
+           Obs = fit + resid)
+
+polis.brm3 |>
+    epred_draws(newdata = polis) |>
+    median_hdci() |>
+    ggplot(aes(x = RATIO, y = .epred)) +
+    geom_ribbon(aes(ymin = .lower, ymax = .upper), fill = 'blue', alpha = 0.3) + 
+    geom_point(data = partial.obs, aes(y = Obs)) +
+    geom_line()
+```
+ 
+::::
+:::
+<!-- END_PRIVATE-->
+
+
+# Model investigation 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## rstanarm 
+:::: {.panel-tabset}
+
+`rstanarm` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+
+```{r summariseModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+summary(polis.rstanarm3)
+```
+
+```{r summariseModel1a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+polis.sum <- summary(polis.rstanarm3)
+```
+
+**Conclusions:**
+
+- in the Model Info, we are informed that the total MCMC posterior sample size
+  is `r nrow(as.matrix(polis.rstanarm3))` and that there were 19 raw observations.
+- the estimated intercept (expected presence/absence when perimeter to area ratio is 0) is
+  `r round(polis.sum[1,1],2)`.  This is the mean of the posterior distribution
+  for this parameter.  If we back-transform this to the odds-ratio scale, this
+  becomes `r round(exp(polis.sum[1, 1]),2)`.  When the perimeter to area ratio
+  is 0, Uta lizards are `r round(exp(polis.sum[1, 1]),2)` times more likely to
+  be present than absent.  We can also back-transform to the probability scale.
+  When the perimeter to area ratio is 0, the probability of Uta lizards being
+  present is `r round(plogis(polis.sum[1, 1]),2)`
+- the estimated slope (rate at which presence/absence changes per 1 unit change in
+  perimeter to area ratio), is `r round(polis.sum[2,1],2)` (mean) or 
+  `r round(polis.sum[2,4],2)` (median) with a standard deviation of `r round(polis.sum[2,2],2)`.
+  The 90% credibility intervals indicate that we are 90% confident that the slope is between 
+  `r round(polis.sum[2,1],2)` and `r round(polis.sum[2,5],2)` - e.g. there is a
+  significant positive trend.  When back-transformed onto the odds scale, we see
+  that for a one unit increase in perimeter to area ratio, the odds of Uta
+  lizards being present declines by `r round(exp(polis.sum[2,1]),2)`
+- Rhat and number of effective samples for each parameter are also provided as
+  MCMC diagnostics and all look good.
+
+### summarise_draws (posterior)
+
+```{r summariseModel1dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3$stanfit |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+We can also alter the CI level.
+
+```{r summariseModel1d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3$stanfit |>
+    summarise_draws(median,
+                    ~HDInterval::hdi(.x, credMass = 0.9),
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+### tidyMCMC
+
+```{r summariseModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tidyMCMC(polis.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,
+         conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+```
+
+```{r summariseModel1b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+polis.tidy <- tidyMCMC(polis.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+```
+
+**Conclusions:**
+
+- the estimated intercept (expected presence/absence when perimeter to area ratio is 0) is
+  `r round(as.numeric(polis.tidy[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter. If we back-transform this to the odds-ratio scale, this
+  becomes `r round(exp(as.numeric(polis.tidy[1, 2])),2)`.  When the perimeter to area ratio
+  is 0, Uta lizards are `r round(exp(as.numeric(polis.tidy[1, 2])),2)` times more likely to
+  be present than absent.  We can also back-transform to the probability scale.
+  When the perimeter to area ratio is 0, the probability of Uta lizards being
+  present is `r round(plogis(as.numeric(polis.tidy[1, 2])),2)`
+- the estimated slope (rate at which presence/absence changes per 1 unit change in
+  perimeter to area ratio), is `r round(as.numeric(polis.tidy[2,2]),2)` (median) with a standard error of `r round(as.numeric(polis.tidy[2,3]),2)`.
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(polis.tidy[2,4]),2)` and `r round(as.numeric(polis.tidy[2,5]),2)` - e.g. there is a significant positive trend. When back-transformed onto the odds scale, we see
+  that for a one unit increase in perimeter to area ratio, the odds of Uta
+  lizards being present declines by `r round(exp(as.numeric(polis.tidy[2,2])),2)`
+- Rhat and number of effective samples for each parameter are also provided and all look good.
+
+### as_draws_df (posterior)
+
+```{r summariseModel1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3$stanfit |> as_draws_df()
+
+## summarised
+polis.rstanarm3$stanfit |>
+    as_draws_df() |>
+    summarise_draws("median",
+                    ~ HDInterval::hdi(.x),
+                    "rhat",
+                    "ess_bulk")
+## summarised on fractional scale
+polis.rstanarm3$stanfit |>
+    as_draws_df() |>
+    mutate(across(everything(), exp)) |> 
+    summarise_draws("median",
+                    ~ HDInterval::hdi(.x),
+                    "rhat",
+                    "ess_bulk")
+```
+
+### gather_draws
+
+```{r summariseModel1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.draw <- polis.rstanarm3 |> gather_draws(`(Intercept)`, RATIO)
+## OR via regex
+polis.draw <- polis.rstanarm3 |> gather_draws(`.Intercept.*|RATIO.*`,  regex=TRUE)
+polis.draw
+```
+
+We can then summarise this
+
+```{r summariseModel1c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.draw |> median_hdci()
+```
+
+```{r summariseModel1c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+polis.gather <- polis.rstanarm3 |> gather_draws(`(Intercept)`,RATIO) |>
+  median_hdci()
+```
+
+```{r summariseModel1c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+polis.rstanarm3 |> 
+  gather_draws(`(Intercept)`, RATIO) |> 
+  ggplot() + 
+  stat_halfeye(aes(x=.value,  y=.variable)) +
+  facet_wrap(~.variable, scales='free')
+```
+ 
+We could alternatively express the parameters on the odds (odds ratio) scale.
+```{r summariseModel1c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+polis.rstanarm3 |> 
+  gather_draws(`(Intercept)`, RATIO) |>
+  group_by(.variable) |>
+  mutate(.value=exp(.value)) |>
+  median_hdci()
+```
+
+**Conclusions:**
+
+- the estimated intercept (expected presence/absence of Uta lizards when the
+  perimeter to area ratio of an island is 0) is
+  `r round(as.numeric(polis.gather[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter. When the perimeter to area ratio
+  is 0, Uta lizards are `r round(exp(as.numeric(polis.gather[1, 2])),2)` times more likely to
+  be present than absent.  We can also back-transform to the probability scale.
+  When the perimeter to area ratio is 0, the probability of Uta lizards being
+  present is `r round(plogis(as.numeric(polis.gather[1, 2])),2)`
+- the estimated slope (rate at which presence/absence changes per 1 unit change in
+  perimeter to area ratio), is `r round(as.numeric(polis.gather[2,2]),2)` (mean) or (median).
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(polis.gather[2,3]),2)` and `r round(as.numeric(polis.gather[2,4]),2)` - e.g. there is a significant positive trend. When back-transformed onto the odds scale, we see
+  that for a one unit increase in perimeter to area ratio, the odds of Uta
+  lizards being present declines by `r round(exp(as.numeric(polis.gather[2,2])),2)`
+
+### bayesplot
+
+```{r summariseModel1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> plot(plotfun='mcmc_intervals') 
+```
+
+### tidy_draws
+
+This is purely a graphical depiction on the posteriors.
+
+```{r summariseModel1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> tidy_draws()
+```
+
+### spread_draws
+
+```{r summariseModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> spread_draws(`(Intercept)`, RATIO)
+# OR via regex
+polis.rstanarm3 |> spread_draws(`.Intercept.*|RATIO.*`,  regex=TRUE)
+
+## summarised
+polis.rstanarm3 |>
+    spread_draws(`(Intercept)`, RATIO) |>
+    summarise_draws("median",
+                    ~ HDInterval::hdi(.x),
+                    "rhat",
+                    "ess_bulk")
+
+## summarised on fractional scale
+polis.rstanarm3 |>
+    spread_draws(`(Intercept)`, RATIO) |>
+    mutate(across(everything(), exp)) |> 
+    summarise_draws("median",
+                    ~ HDInterval::hdi(.x),
+                    "rhat",
+                    "ess_bulk")
+```
+
+### posterior_samples
+```{r summariseModel1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> posterior_samples() |> as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> bayes_R2() |> median_hdci()
+```
+::::
+## brms 
+:::: {.panel-tabset}
+
+`brms` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+
+```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> summary()
+```
+
+```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+polis.sum <- polis.brm3 |> summary()
+```
+
+**Conclusions:**
+
+
+- in the Model Info, we are informed that the total MCMC posterior sample size
+  is `r nrow(as.matrix(polis.brm3))` and that there were 19 raw observations.
+- the estimated intercept (expected presence/absence when perimeter to area ratio is 0) is
+  `r round(polis.sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
+  for this parameter.  If we back-transform this to the odds-ratio scale, this
+  becomes `r round(exp(polis.sum$fixed[1, 1]),2)`.  When the perimeter to area ratio
+  is 0, Uta lizards are `r round(exp(polis.sum$fixed[1, 1]),2)` times more likely to
+  be present than absent.  We can also back-transform to the probability scale.
+  When the perimeter to area ratio is 0, the probability of Uta lizards being
+  present is `r round(plogis(polis.sum$fixed[1, 1]),2)`
+- the estimated slope (rate at which presence/absence changes per 1 unit change in
+  perimeter to area ratio), is `r round(polis.sum$fixed[2,1],2)` (mean) or 
+  `r round(polis.sum$fixed[2,4],2)` (median) with a standard deviation of `r round(polis.sum$fixed[2,2],2)`.
+  The 90% credibility intervals indicate that we are 90% confident that the slope is between 
+  `r round(polis.sum$fixed[2,1],2)` and `r round(polis.sum$fixed[2,5],2)` - e.g. there is a
+  significant positive trend.  When back-transformed onto the odds scale, we see
+  that for a one unit increase in perimeter to area ratio, the odds of Uta
+  lizards being present declines by `r round(exp(polis.sum$fixed[2,1]),2)`
+- Rhat and number of effective samples for each parameter are also provided as
+  MCMC diagnostics and all look good.
+
+### tidyMCMC
+
+```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3$fit |>
+    tidyMCMC(
+      estimate.method = "median", conf.int = TRUE,
+      conf.method = "HPDinterval", rhat = TRUE, ess = TRUE
+    )
+```
+```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+polis.tidy <- polis.brm3$fit |> tidyMCMC(estimate.method = 'median',  conf.int = TRUE,  conf.method = 'HPDinterval',  rhat = TRUE, ess = TRUE)
+```
+
+**Conclusions:**
+
+- the estimated intercept (expected presence/absence when perimeter to area ratio is 0) is
+  `r round(as.numeric(polis.tidy[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter. If we back-transform this to the odds-ratio scale, this
+  becomes `r round(exp(as.numeric(polis.tidy[1, 2])),2)`.  When the perimeter to area ratio
+  is 0, Uta lizards are `r round(exp(as.numeric(polis.tidy[1, 2])),2)` times more likely to
+  be present than absent.  We can also back-transform to the probability scale.
+  When the perimeter to area ratio is 0, the probability of Uta lizards being
+  present is `r round(plogis(as.numeric(polis.tidy[1, 2])),2)`
+- the estimated slope (rate at which presence/absence changes per 1 unit change in
+  perimeter to area ratio), is `r round(as.numeric(polis.tidy[2,2]),2)` (median) with a standard error of `r round(as.numeric(polis.tidy[2,3]),2)`.
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(polis.tidy[2,4]),2)` and `r round(as.numeric(polis.tidy[2,5]),2)` - e.g. there is a significant positive trend. When back-transformed onto the odds scale, we see
+  that for a one unit increase in perimeter to area ratio, the odds of Uta
+  lizards being present declines by `r round(exp(as.numeric(polis.tidy[2,2])),2)`
+- Rhat and number of effective samples for each parameter are also provided and all look good.
+
+### summarise_draws (posterior)
+
+```{r summariseModel2dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+We can also alter the CI level.
+
+```{r summariseModel2d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |>
+    summarise_draws(median,
+                    ~HDInterval::hdi(.x, credMass = 0.9),
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+To narrow down to just the parameters of interest, see the code under the **tidy_draws** tab.
+	
+### as_draws_df (posterior)
+
+```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> as_draws_df()
+## summarised 
+polis.brm3 |>
+  as_draws_df() |>
+  summarise_draws(
+    "median",
+    ~ HDInterval::hdi(.x),
+    "rhat",
+    "ess_bulk"
+  )
+
+## summarised on fractional scale
+polis.brm3 |>
+    as_draws_df() |>
+    dplyr::select(starts_with("b_")) |> 
+    mutate(across(everything(), exp)) |> 
+    summarise_draws("median",
+                    ~ HDInterval::hdi(.x),
+                    "rhat",
+                    "ess_bulk")
+```
+
+### gather_draws
+
+```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.draw <- polis.brm3 |> gather_draws(b_Intercept, b_RATIO)
+## OR via regex
+polis.draw <- polis.brm3 |> gather_draws(`b_.*`,  regex=TRUE)
+polis.draw
+```
+
+We can then summarise this
+
+```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.draw |> median_hdci()
+```
+
+```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+polis.gather <- polis.brm3 |>
+    gather_draws(b_Intercept, b_RATIO) |>
+    median_hdci()
+```
+
+```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+polis.brm3 |> 
+  gather_draws(b_Intercept, b_RATIO) |> 
+  ggplot() + 
+  stat_halfeye(aes(x = .value,  y = .variable)) +
+  facet_wrap(~.variable, scales = 'free')
+
+polis.draw |>
+    ggplot() +
+    stat_halfeye(aes(x = .value,  y = .variable,
+                     fill = stat(ggdist::cut_cdf_qi(cdf,
+                               .width = c(0.5, 0.8, 0.95), 
+                               labels = scales::percent_format())))) + 
+    scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) + 
+    facet_wrap(~.variable, scales = 'free') +
+    theme_bw()
+## polis.draw |>
+##     ggplot() +
+##     stat_halfeye(aes(x = .value,  y = .variable,
+##                      fill = stat(ggdist::cut_cdf_qi(cdf,
+##                                .width = c(0.5, 0.8, 0.95), 
+##                                labels = scales::percent_format())))) + 
+##     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) + 
+##     theme_bw()
+```
+
+We could alternatively express the parameters on the odds (odds ratio) scale.
+```{r summariseModel2c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+polis.brm3 |> 
+  gather_draws(b_Intercept, b_RATIO) |>
+  group_by(.variable) |>
+  mutate(.value = exp(.value)) |>
+  median_hdci()
+```
+
+
+**Conclusions:**
+
+- the estimated intercept (expected presence/absence of Uta lizards when the
+  perimeter to area ratio of an island is 0) is
+  `r round(as.numeric(polis.gather[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter. When the perimeter to area ratio
+  is 0, Uta lizards are `r round(exp(as.numeric(polis.gather[1, 2])),2)` times more likely to
+  be present than absent.  We can also back-transform to the probability scale.
+  When the perimeter to area ratio is 0, the probability of Uta lizards being
+  present is `r round(plogis(as.numeric(polis.gather[1, 2])),2)`
+- the estimated slope (rate at which presence/absence changes per 1 unit change in
+  perimeter to area ratio), is `r round(as.numeric(polis.gather[2,2]),2)` (mean) or (median).
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(polis.gather[2,3]),2)` and `r round(as.numeric(polis.gather[2,4]),2)` - e.g. there is a significant positive trend. When back-transformed onto the odds scale, we see
+  that for a one unit increase in perimeter to area ratio, the odds of Uta
+  lizards being present declines by `r round(exp(as.numeric(polis.gather[2,2])),2)`
+
+### bayesplot
+
+```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> mcmc_plot(type = 'intervals') 
+```
+
+### tidy_draws
+
+This is purely a graphical depiction on the posteriors.
+
+```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> tidy_draws()
+```
+
+### spread_draws
+	
+```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> spread_draws(b_Intercept, b_RATIO)
+# OR via regex
+polis.brm3 |> spread_draws(`b_.*`,  regex=TRUE)
+
+## summarised
+polis.brm3 |>
+    as_draws_df() |>
+    dplyr::select(starts_with("b_")) |> 
+    summarise_draws("median",
+                    ~ HDInterval::hdi(.x),
+                    "rhat",
+                    "ess_bulk")
+## summarised on fractional scale
+polis.brm3 |>
+    as_draws_df() |>
+    dplyr::select(starts_with("b_")) |> 
+    mutate(across(everything(), exp)) |> 
+    summarise_draws("median",
+                    ~ HDInterval::hdi(.x),
+                    "rhat",
+                    "ess_bulk")
+
+
+polis.brm3 |>
+    tidy_draws() |>
+    exp() |>
+    summarise_draws(median,HDInterval::hdi, rhat, ess_bulk, ess_tail) |>
+    filter(variable %in% c('b_Intercept', 'b_RATIO'))
+
+
+polis.brm3 |>
+    tidy_draws() |>
+    exp() |>
+    dplyr::select(starts_with("b_")) |> 
+    summarise_draws(median,HDInterval::hdi, rhat, ess_bulk, ess_tail) 
+```
+
+The above is on a odd ratio scale.
+
+### posterior_samples
+```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> posterior_samples() |> as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |>
+    bayes_R2() 
+## OR as median and hdci
+polis.brm3 |>
+    bayes_R2(summary = FALSE) |>
+    median_hdci()
+```
+
+### Modelsummary
+```{r}
+#| label: modelsummary
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+polis.brm3 |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic
+)
+
+polis.brm3 |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic,
+  exponentiate = TRUE
+)
+
+modelsummary(list("Raw" = polis.brm3, "Exponentiated" = polis.brm3),
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic,
+  exponentiate = c(FALSE, TRUE)
+)
+```
+
+```{r}
+#| label: modelsummary_plot
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+polis.brm3 |> modelplot()
+polis.brm3 |> modelplot(exponentiate = TRUE)
+```
+
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Further analyses 
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+
+In some disciplines it is useful to be able to calculate an LD50.  This is the
+value along the x-axis that corresponds to a probability of 50% - e.g. the
+switch-over point in Island perimeter to area Ratio at which the lizards go
+from more likely to be present to more likely to be absent.  It is the
+inflection point.
+
+It is also the point at which the slope (when back-transformed) is at its
+steepest and can be calculated as:
+
+$$
+-\frac{Intercept}{Slope}
+$$
+
+## rstanarm 
+
+```{r LD501a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.rstanarm3 |> tidy_draws() |>
+  mutate(LD50 = -1*`(Intercept)`/RATIO) |>
+  pull(LD50) |>
+  median_hdci()
+```
+
+## brms
+
+```{r LD502a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+polis.brm3 |> tidy_draws() |>
+  mutate(LD50 = -1*b_Intercept/b_RATIO) |>
+  pull(LD50) |>
+  median_hdci()
+```
+
+:::
+<!-- END_PRIVATE-->
+
+# Summary figure 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## rstanarm 
+:::: {.panel-tabset}
+
+### Simple
+
+```{r figureModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+polis.grid = with(polis, list(RATIO = seq(min(RATIO), max(RATIO), len=100)))
+
+newdata = emmeans(polis.rstanarm3, ~RATIO, at=polis.grid, type='response') |> as.data.frame()
+head(newdata)
+
+ggplot(newdata, aes(y=prob, x=RATIO)) + 
+    geom_point(data=polis, aes(y=PA)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
+    scale_y_continuous('PA') +
+    scale_x_continuous('RATIO') +
+    theme_classic()
+
+## spaghetti plot
+newdata = emmeans(polis.rstanarm3, ~RATIO, at=polis.grid) |>
+    gather_emmeans_draws() |>
+    mutate(.value = plogis(.value)) 
+newdata |> head()
+ggplot(newdata,  aes(y=.value,  x=RATIO)) +
+  geom_line(aes(group=.draw),  alpha=0.01) +
+  geom_point(data=polis,  aes(y=PA))
+```
+
+### Pretty
+
+```{r figureModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+polis.grid = with(polis, list(RATIO = seq(min(RATIO), max(RATIO), len=100)))
+
+newdata = emmeans(polis.rstanarm3, ~RATIO, at=polis.grid, type='response') |> as.data.frame()
+head(newdata)
+
+ggplot(newdata, aes(y=prob, x=RATIO)) + 
+    geom_point(data=polis, aes(y=PA)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
+    scale_y_continuous(expression(Presence/absence~of~italic(Uta)~lizards)) +
+    scale_x_continuous(expression(Island~perimeter:Area~ratio)) +
+    theme_classic()
+
+## spaghetti plot
+newdata = emmeans(polis.rstanarm3, ~RATIO, at=polis.grid) |>
+    gather_emmeans_draws() |>
+    mutate(.value = plogis(.value)) 
+newdata |> head()
+ggplot(newdata,  aes(y=.value,  x=RATIO)) +
+    geom_line(aes(group=.draw),  alpha=0.01) +
+    geom_point(data=polis,  aes(y=PA)) +
+    scale_y_continuous(expression(Presence/absence~of~italic(Uta)~lizards)) +
+    scale_x_continuous(expression(Island~perimeter:Area~ratio)) +
+    theme_classic()
+```
+
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### Simple
+
+```{r figureModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+polis.grid <- with(polis, list(RATIO = modelr::seq_range(RATIO, n = 100)))
+
+newdata <- polis.brm3 |>
+    emmeans(~RATIO, at = polis.grid, type = 'response') |>
+    as.data.frame()
+head(newdata)
+
+## Using raw data for points
+newdata |> 
+    ggplot(aes(y = prob, x = RATIO)) + 
+    geom_point(data = polis, aes(y = PA)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), fill = 'blue', alpha = 0.3) +
+    scale_y_continuous('PA') +
+    scale_x_continuous('RATIO') +
+    theme_classic()
+
+
+## Using partial residuals for points
+
+partial.obs <- polis |>
+    bind_cols(Pred = predict(polis.brm3)[,'Estimate'],
+              Resid = residuals(polis.brm3)[,'Estimate']) |>
+    mutate(
+        Obs = round(Pred + Resid, 0)
+    )
+
+newdata |> 
+    ggplot(aes(y = prob, x = RATIO)) + 
+    geom_point(data = partial.obs, aes(y = Obs)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), fill = 'blue', alpha = 0.3) +
+    scale_y_continuous('PA') +
+    scale_x_continuous('RATIO') +
+    theme_classic()
+
+## spaghetti plot
+newdata = emmeans(polis.brm3, ~RATIO, at=polis.grid) |>
+    gather_emmeans_draws() |>
+    mutate(.value = plogis(.value)) 
+newdata |> head()
+ggplot(newdata,  aes(y=.value,  x=RATIO)) +
+  geom_line(aes(group=.draw),  alpha=0.01) +
+  geom_point(data=polis,  aes(y=PA))
+
+```
+
+### Pretty
+
+```{r figureModel2b, results='markdown', eval=TRUE, mhidden=TRUE}
+## Using emmeans
+polis.grid = with(polis, list(RATIO = seq(min(RATIO), max(RATIO), len=100)))
+
+newdata = emmeans(polis.brm3, ~RATIO, at=polis.grid, type='response') |> as.data.frame()
+head(newdata)
+
+ggplot(newdata, aes(y=prob, x=RATIO)) + 
+    geom_point(data=polis, aes(y=PA)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
+    scale_y_continuous(expression(Presence/absence~of~italic(Uta)~lizards)) +
+    scale_x_continuous(expression(Island~perimeter:Area~ratio)) +
+    theme_classic()
+
+## spaghetti plot
+newdata = emmeans(polis.brm3, ~RATIO, at=polis.grid) |>
+    gather_emmeans_draws() |>
+    mutate(.value = plogis(.value)) 
+newdata |> head()
+ggplot(newdata,  aes(y=.value,  x=RATIO)) +
+    geom_line(aes(group=.draw),  alpha=0.01) +
+    geom_point(data=polis,  aes(y=PA)) +
+    scale_y_continuous(expression(Presence/absence~of~italic(Uta)~lizards)) +
+    scale_x_continuous(expression(Island~perimeter:Area~ratio)) +
+    theme_classic()
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# References
