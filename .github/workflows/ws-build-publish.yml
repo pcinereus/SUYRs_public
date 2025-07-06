@@ -211,17 +211,33 @@ jobs:
           sudo sed -i 's/^.*policy.*coder.*none.*PDF.*//' /etc/ImageMagick-6/policy.xml
 
       # Download previously rendered HTML files
-      - name: Download previously rendered HTMLs
-        uses: actions/download-artifact@v4
-        with:
-          name: rendered-html
-          path: temp-html
-        continue-on-error: true
+      #- name: Download previously rendered HTMLs
+      #  uses: actions/download-artifact@v4
+      #  with:
+      #    name: rendered-html
+      #    path: temp-html
+      #  continue-on-error: true
 
+      #- name: Restore HTML files to .code directory
+      #  run: |
+      #    if [ -d temp-html ]; then
+      #      cp temp-html/*.html .code/
+      #    else
+      #      echo "No previously rendered HTML files found. Skipping restore."
+      #    fi
+
+      - name: Restore HTML cache
+        uses: actions/cache@v4
+        with:
+          path: tmp-code
+          key: html-cache-${{ hashFiles('.code/*.html) }}
+          restore-keys: |
+            html-cache-
+            
       - name: Restore HTML files to .code directory
         run: |
-          if [ -d temp-html ]; then
-            cp temp-html/*.html .code/
+          if [ -d tmp-code ]; then
+            cp tmp-code/*.html .code/
           else
             echo "No previously rendered HTML files found. Skipping restore."
           fi
@@ -231,7 +247,6 @@ jobs:
         run: |
           mkdir ~/tmp
           Rscript -e "Sys.setenv(STANCFLAGS = '')"
-          # echo "library(quarto); quarto_render(\"tut/index.qmd\")" | R --no-save --no-restore;
           make -i ws_code
 
       # Copy html over to docs folder
@@ -246,15 +261,21 @@ jobs:
           ls -la .code
           ls -la
           ## apparently gh cant create an artifact out of a directory that starts with a .
-          cp -r .code tmp-code
+          cp .code/*.html tmp-code
 
-      # Upload rendered HTML artifacts
-      - name: Upload rendered HTMLs
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Save HTML cache
+        uses: actions/cache@v4
         with:
-          name: rendered-html
           path: tmp-code
+          key: html-cache-${{ hashFiles('.code/*.html) }}
+
+      ## Upload rendered HTML artifacts
+      #- name: Upload rendered HTMLs
+      #  if: always()
+      #  uses: actions/upload-artifact@v4
+      #  with:
+      #    name: rendered-html
+      #    path: tmp-code
 
       # configure git
       - name: Configure git
