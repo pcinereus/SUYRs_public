@@ -1,0 +1,4312 @@
+---
+title: "Bayesian GLM Part1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)     #for data wrangling etc
+library(rstanarm)      #for fitting models in STAN
+library(cmdstanr)      #for cmdstan
+library(brms)          #for fitting models in STAN
+library(standist)      #for exploring distributions
+library(coda)          #for diagnostics
+library(bayesplot)     #for diagnostics
+library(ggmcmc)        #for MCMC diagnostics
+library(DHARMa)        #for residual diagnostics
+library(rstan)         #for interfacing with STAN
+library(emmeans)       #for marginal means etc
+library(broom)         #for tidying outputs
+library(tidybayes)     #for more tidying outputs
+library(HDInterval)    #for HPD intervals
+library(ggeffects)     #for partial plots
+library(broom.mixed)   #for summarising models
+library(posterior)     #for posterior draws
+library(ggeffects)     #for partial effects plots
+library(patchwork)     #for multi-panel figures
+library(bayestestR)    #for ROPE
+library(see)           #for some plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(INLA)          #for approximate Bayes
+library(INLAutils)     #for additional INLA outputs
+library(modelsummary)  #for data and model summaries 
+theme_set(theme_grey()) #put the default ggplot theme back
+source('helperFunctions.R')
+bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
+```
+
+# Scenario
+
+Here is an example from @Fowler-1998-1998. An agriculturalist was
+interested in the effects of fertilizer load on the yield of grass.
+Grass seed was sown uniformly over an area and different quantities of
+commercial fertilizer were applied to each of ten 1 m<sup>2</sup>
+randomly located plots.  Two months later the grass from each plot was
+harvested, dried and weighed.  The data are in the file
+**fertilizer.csv** in the **data** folder.
+
+![Field of grass](../resources/turf.jpg){#fig-fertilizer width=70%}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+| FERTILIZER   | YIELD   |
+| ------------ | ------- |
+| 25           | 84      |
+| 50           | 80      |
+| 75           | 90      |
+| 100          | 154     |
+| 125          | 148     |
+| \...         | \...    |
+
+: Format of the fertilizer.csv data file {#tbl-fertilizer .table-condensed}
+
+:::
+
+::: {.column width="50%"}
+
+---------------- ---------------------------------------------------
+**FERTILIZER**:   Mass of fertilizer (g.m^-2^) - Predictor variable
+**YIELD**:        Yield of grass (g.m^-2^) - Response variable
+---------------- ---------------------------------------------------
+ 
+: Description of the variables in the fertilizer data file {#tbl-fertilizer1 .table-condensed}
+ 
+:::
+::::
+
+The aim of the analysis is to investigate the relationship between
+fertilizer concentration and grass yield.
+
+
+# Read in the data
+
+We will start off by reading in the Fertilizer data.  There are many functions
+in R that can read in a CSV file.  We will use a the `read_csv()` function as it
+is part of the tidyverse ecosystem.
+
+```{r}
+#| label: readData
+fert <- read_csv("../data/fertilizer.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+After reading in a dataset, it is always a good
+idea to quickly explore a few summaries in order to ascertain whether
+the imported data are correctly transcribed. In particular, we should
+pay attention to whether there are any unexpected missing values and
+ensure that each variable (column) has the expected class (e.g. that
+variables we expected to be considered numbers are indeed listed as
+either `<dbl>` or `<int>` and not `<char>`).
+<!-- END_PRIVATE-->
+
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(fert)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(fert)
+```
+
+## str
+```{r}
+str(fert)
+```
+
+## Easystats (datawizard)
+```{r}
+fert |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+fert |> modelsummary::datasummary_skim()
+```
+
+:::
+# Exploratory data analysis
+ 
+<!-- START_PRIVATE-->
+The individual responses ($y_i$, observed yields) are each
+expected to have been **independently** drawn from normal (**Gaussian**)
+distributions ($\mathcal{N}$). These distributions represent all the possible
+yields we could have obtained at the specific ($i^{th}$) level of Fertilizer.
+Hence the $i^{th}$ yield observation is expected to have been drawn from a normal
+distribution with a mean of $\mu_i$.
+
+Although each distribution is expected to come from populations that differ in
+their means, we assume that all of these distributions have the **same
+variance** ($\sigma^2$).
+
+We need to supply priors for each of the parameters to be estimated ($\beta_0$,
+$\beta_1$ and $\sigma$).  Whilst we want these priors to be sufficiently vague
+as to not influence the outcomes of the analysis (and thus be equivalent to the
+frequentist analysis), we do not want the priors to be so vague (wide) that they
+permit the MCMC sampler to drift off into parameter space that is both illogical
+as well as numerically awkward.
+
+As a starting point, lets assign the following priors (how we arrive
+on these values will be outlined in sections on defining priors):
+
+- $\beta_0$: Normal prior centred at 164 with a variance of 65
+- $\beta_1$: Normal prior centred at 0 with a variance of 1
+- $\sigma$: either a half cauchy centred at 0 with a variance of 2 or an
+  exponential with parameter of 0.016
+
+Note, when fitting models through either `rstanarm` or `brms`, the priors assume
+that the predictor(s) have been centred and are to be applied on the link
+scale.  In this case the link scale is an identity.
+
+
+<!-- END_PRIVATE-->
+
+Model formula:
+
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &= \beta_0 + \beta_1 x_i\\
+\beta_0 &\sim{} \mathcal{N}(164,65)\\
+\beta_1 &\sim{} \mathcal{N}(0,1)\\
+\sigma &\sim{} \mathcal{t}(3,0,65)\\
+OR\\
+\sigma &\sim{} \mathcal{cauchy}(0,65)\\
+OR\\
+\sigma &\sim{} \mathcal{Exp}(0.016)\\
+OR\\
+\sigma &\sim{} \mathcal{gamma}(2,0.05)\\
+\end{align}
+$$
+
+
+<!-- START_PRIVATE-->
+We intend to explore the relationship between
+Yield and Fertiliser using simple linear regression.  Such an analysis
+assumes:
+
+- **Normality**: each population is assumed to be normally
+  distributed. This can be initially assessed by exploring the
+  distribution of the response via either boxplots, violin plots or
+  histograms (depending on sample size).
+- **Homogeneity of variance**: each population is assumed to be
+  equally varied.  This can be initially assessed by exploring the
+  distribution of observed values around an imaginary line of best fit
+  through the cloud of data formed by a scatterplot of Yield against
+  Fertiliser. If the spread of points increases (or decreases) along
+  the trend line, it is likely that the populations are not equally
+  varied.
+- **Linearity**: in fitting a straight line through the cloud of data,
+  we are assuming that a linear trend is appropriate. If the trend is
+  not linear, then the inferred relationship may be
+  miss-representative of the true relationship.  In addition to an
+  imaginary line, we could fit either a loess or linear smoother
+  through the cloud to help us assess the likelihood of non-linearity.
+- **Independence**: to help ensure that the estimates are unbiased, we
+  must assume that all observations are independent. In this case, we
+  assume that the observations were collected from a randomised design
+  in which the level of Fertiliser was applied randomly to the
+  different patches of the field. If however, the researchers had
+  simply moved along the field applying progressively higher
+  Fertiliser concentrations, then there is a chance that they have
+  introduced additional biases or confounding factors. Similarly, if
+  the Fertiliser levels were applied in increasing doses over time,
+  there might also be biases. In the absence of any spatial or
+  temporal information associated with the collection of data, we
+  cannot directly assess this assumption. 
+
+
+::: {.panel-tabset}
+
+## scatterplot
+
+```{r}
+#| label: EDA1
+#| message: false
+
+ggplot(fert, aes(y = YIELD, x = FERTILIZER)) +
+  geom_point() +
+  geom_smooth()
+```
+
+## linear smoother
+```{r}
+#| label: EDA2
+#| message: false
+
+ggplot(fert, aes(y = YIELD, x = FERTILIZER)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+## boxplots
+```{r}
+#| label: EDA3
+#| message: false
+
+ggplot(fert, aes(y = YIELD)) +
+    geom_boxplot(aes(x = 1))
+```
+
+## violin plots
+```{r}
+#| label: EDA4
+#| message: false
+
+ggplot(fert, aes(y = YIELD)) +
+  geom_violin(aes(x = 1))
+```
+
+## histogram
+```{r}
+#| label: EDA5
+#| message: false
+
+ggplot(fert, aes(x = YIELD)) +
+  geom_histogram()
+```
+
+## density plots
+```{r}
+#| label: EDA6
+#| message: false
+
+ggplot(fert, aes(x = YIELD)) +
+  geom_density()
+```
+
+:::
+
+**Conclusions**:
+
+- there is no evidence of non-normality, non-homogeneity of variance
+  or non-linearity
+- we have no initial reason to suspect that the assumptions will not
+  be satisfied and thus it is reasonable to assume that the results
+  will be reliable.
+
+<!-- END_PRIVATE-->
+
+# Fit the model 
+
+Note, for routines that take more than a couple of seconds to perform
+(such as most Bayesian models), it is a good idea to cache the
+Rmarkdown chunks in which the routine is performed. That way, the
+routine will only be run the first time and any objects generated will
+be stored for future use. Thereafter, provided the code has not
+changed, the routine will not be re-run. Rather, `knitr` will just
+retrieve the cached objects and continue on.
+
+One of the most difficult aspects of performing Bayesian analyses is
+the specification of priors.  For instances where there are some
+previous knowledge available and a desire to incorporate those data,
+the difficulty is in how to ensure that the information is
+incorporated correctly.  However, for instances where there are no
+previous relevant information and so a desire to have the posteriors
+driven entirely by the new data, the difficulty is in how to define
+priors that are both vague enough (not bias results in their
+direction) and yet not so vague as to allow the MCMC sampler to drift
+off into unsupported regions (and thus get stuck and yield spurious
+estimates).
+
+For early implementations of MCMC sampling routines (such as
+Metropolis Hasting and Gibbs), it was fairly common to see very vague
+priors being defined.  For example, the priors on effects, were
+typically normal priors with mean of 0 and variance of `1e+06`
+(1,00,000).  These are very vague priors.  Yet for some samplers
+(e.g. NUTS), such vague priors can encourage poor behaviour of the
+sampler - particularly if the posterior is complex. It is now
+generally advised that priors should (where possible) be somewhat
+**weakly informative** and to some extent, represent the bounds of
+what are feasible and sensible estimates.
+
+The degree to which priors __influence__ an outcome (whether by having
+a pulling effect on the estimates or by encouraging the sampler to
+drift off into unsupported regions of the posterior) is dependent on:
+
+- the relative sparsity of the data - the larger the data, the less
+  weight the priors have and thus less influence they exert.
+- the complexity of the model (and thus posterior) - the more
+  parameters, the more sensitive the sampler is to the priors.
+
+The sampled posterior is the product of both the likelihood and the
+prior - all of which are multidimensional.  For most applications, it
+would be vertically impossible to define a sensible multidimensional
+prior.  Hence, our only option is to define priors on individual
+parameters (e.g. the intercept, slope(s), variance etc) and to hope
+that if they are individually sensible, they will remain collectively
+sensible.
+
+So having (hopefully) impressed upon the notion that priors are an
+important consideration, I will now attempt to synthesise some of the
+approaches that can be employed to arrive at weakly informative priors
+that have been gleaned from various sources.  Largely, this advice has
+come from the following resources:
+
+- https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
+- http://svmiller.com/blog/2021/02/thinking-about-your-priors-bayesian-analysis/
+
+I will outline some of the current main recommendations before
+summarising some approaches in a table.
+
+- weakly informative priors should contain enough information so as to
+  regularise (discourage unreasonable parameter estimates whilst
+  allowing all reasonable estimates).
+- for effects parameters on scaled data, an argument could be made for
+  a normal distribution with a standard deviation of 1
+  (e.g. `normal(0,1)`), although klsome prefer a t distribution with 3
+  degrees of freedom and standard deviation of 1
+  (e.g. `student_t(3,0,1)`) - apparently a flatter t is a more robust
+  prior than a normal as an uninformative prior...
+- for unscaled data, the above priors can be scaled by using the
+  standard deviation of the data as the prior standard deviation
+  (e.g. `student_t(3,0,sd(y))`, or `sudent_t(3,0,sd(y)/sd(x))`)
+- for priors of hierachical standard deviations, priors should
+  encourage shrinkage towards 0 (particularly if the number of groups
+  is small, since otherwise, the sampler will tend to be more
+  responsive to "noise").
+  
+| Family            | Parameter                            | brms                            | rstanarm                    |
+|-------------------|--------------------------------------|---------------------------------|-----------------------------|
+| Gaussian          | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | Sigma                                | `student_t(3,0,mad(y))`         | `exponential(1/sd(y))`      |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+| Poisson           | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+| Negative binomial | Intercept                            | `student_t(3,median(y),mad(y))` | `normal(mean(y),2.5*sd(y))` |
+|                   | 'Population effects' (slopes, betas) | flat, improper priors           | `normal(0,2.5*sd(y)/sd(x))` |
+|                   | Shape                                | `gamma(0.01, 0.01)`             | `exponential(1/sd(y))`      |
+|                   | 'Group-level effects'                | `student_t(3,0,mad(y))`         | `decov(1,1,1,1)`            |
+|                   | Correlation on group-level effects   | `ljk_corr_cholesky(1)`          |                             |
+
+Notes:
+
+`brms`
+
+https://github.com/paul-buerkner/brms/blob/c2b24475d727c8afd8bfc95947c18793b8ce2892/R/priors.R
+
+1. In the above, for non-Gaussian families, `y` is first transformed
+  according to the family link.  If the family link is `log`, then 0.1
+  is first added to 0 values.
+2. in `brms` the minimum standard deviation for the Intercept prior is
+   `2.5`
+3. in `brms` the minimum standard deviation for group-level priors is
+   `10`.
+
+`rstanarm`
+
+http://mc-stan.org/rstanarm/articles/priors.html
+
+1. in `rstanarm` priors on standard deviation and correlation
+   associated with group-level effects are packaged up into a single
+   prior (`decov` which is a decomposition of the variance and
+   covariance matrix).
+
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+	
+## frequentist
+
+For the purpose of comparing the frequentist and Bayesian outcomes, it might be
+useful to start by fitting the frequentist simple linear model.  We will also
+fit this model with the predictor (fertilizer concentration) centred.
+
+```{r lm, results='markdown', eval=TRUE, mhidden=TRUE}
+summary(fert.lm <- lm(YIELD ~ FERTILIZER, data = fert))
+sigma(fert.lm) 
+summary(fert.lm <- lm(YIELD ~ center(FERTILIZER), data = fert))
+sigma(fert.lm)
+```
+
+## rstanarm 
+:::: {.panel-tabset}
+
+### Using default priors
+In `rstanarm`, the default priors are designed to be weakly informative. They
+are chosen to provide moderate regularisation (to help prevent over-fitting) and
+help stabilise the computations.
+
+```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.rstanarm <- stan_glm(YIELD ~ FERTILIZER,
+                          data=fert,
+                          iter = 5000,
+                          warmup = 1000,
+                          chains = 3,
+                          thin = 5,
+                          refresh = 0)
+```
+
+In the above:
+
+- the formula and data arguments should be familiar as they are the same as for
+  many models in R
+- iter: indicates the number of MCMC iterations to perform per chain
+- warmup: indicates how many of the initial MCMC samples to exclude.  During the
+  warmup stage, the MCMC sampler is tuning its sampling operations to allow it
+  to determine the best way to create the chain.  While it is in this discovery
+  phase, the estimates it produces might be unrepresentative.
+- chains: indicates the number of independent chains to run.  The more chains,
+  the more random starts.  The point of multiple random starts is to minimise
+  the potential for the starting point to dictate the outcome.  It is possible
+  that a chain might get stuck sampling a single feature of the posterior and not discover
+  additional features.  Additional random starting points should hopefully
+  alleviate this. Either 3 or 4 is typical.
+- thin: indicates the rate at which the MCMC samples should be thinned in order
+  to eliminate auto-correlation between MCMC samples.  When the step lengths
+  between MCMC samples are small, the resulting parameter estimates will be
+  auto-correlated (since samples close by in the chain will be more similar than
+  those far apart).  The rate of thinning necessary will depend on the degree
+  of auto-correlation.  For stan models, a thinning rate of 5 is a good starting
+  point.
+- refresh: indicates how often the terminal display should be updated.  When
+  running a large model, this can be useful as it provides a form of progress.
+  However, when the routine is within an Rmarkdown document, it just results in
+  the output including each line of progress and a lot of space is taken up unnecessarily
+
+Having allowed `rstanarm` to formulate its own weakly informative priors, it is
+a good idea to explore what they are.  Firstly, out of curiosity, it might be
+interesting to see what it has chosen.  However, more importantly, we need to be
+able to document what the priors were and the `rstanarm` development team make
+it very clear that there is no guarantee that the default priors will remain the
+same into the future. 
+
+```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
+prior_summary(fert.rstanarm)
+```
+
+Note, consistent with good practice, `rstanarm` will centre all
+categorical predictors (whether the user centres them or not).  Whilst
+this does not impact on estimated slope(s), it does alter the
+intercept (arguably for the better).  Since all priors are applied on
+the scale of the parameters in the linear predictor (e.g. the
+intercept and slopes), the prior on intercept must be defined as if
+the predictors have been centred.
+
+Nevertheless, `rstanarm` will return a posterior for intercept that is
+consistent with how the user had defined the linear predictor - that
+is, if the user does not centre the predictors, then `rstanarm` will
+return the intercept posterior on a scale consistent with as if the
+predictors had not been centred, even though they were automatically
+scaled internally.
+
+When defining the spread of priors, `rstanarm` prefers to do so
+relative to the scaling of the data.  For example, for the slope, it
+takes the ratio of the standard deviations of the response and the
+predictor and multiplies them by a factor of 2.5 (by default).  Hence
+it is possible to define priors either in relative terms (by providing
+a scaling factor) or in absolute terms, by providing the desired
+priors along with the `autoscale = FALSE` _argument_.
+
+The above prior summary tells us:
+
+- for the intercept, it is using a normal prior with a mean of 164 and a
+  standard deviation of 2.5.  This mean value is based on the mean of the
+  response variable (rounded up).  The 2.5 is used for all intercepts.  The scale of the
+  prior is then adjusted proportional to the variability in the response, by
+  multiplying 2.5 by the standard deviation of the response (and rounding up).
+  
+```{r fitModel1c, results='markdown', eval=TRUE, mhidden=TRUE}
+mean(fert$YIELD)
+sd(fert$YIELD)
+2.5*sd(fert$YIELD)
+```
+
+- for the coefficients (in this case, just the slope), the default prior is a
+normal prior centred around 0 with a standard deviation of 2.5.  This is then
+adjusted for the scale of the data by multiplying the 2.5 by the ratio of the
+standard deviation of the response to the standard deviation of the predictor
+(then rounded). 
+
+```{r fitModel1d, results='markdown', eval=TRUE, mhidden=TRUE}
+2.5*sd(fert$YIELD)/sd(fert$FERTILIZER)
+```
+
+-  the auxiliary prior represents whatever additional prior is required for the
+   nominated model.  In the case of a Gaussian model, this will be $\sigma$, for
+   negative binomial, it will be the reciprocal of dispersion, for gamma, it
+   will be shape, etc .  By default in `rstanarm`, this
+   is a exponential with a rate of 1 which is then adjusted by division with the
+   standard deviation of the response.
+   
+```{r fitModel1e, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+1/sd(fert$YIELD)
+```
+
+### Assessing priors
+
+One way to assess the priors is to have the MCMC sampler sample purely from the
+prior predictive distribution without conditioning on the observed data.  Doing
+so provides a glimpse at the range of predictions possible under the priors.  On
+the one hand, wide ranging predictions would ensure that the priors are unlikely
+to influence the actual predictions once they are conditioned on the data.  On
+the other hand, if they are too wide, the sampler is being permitted to traverse
+into regions of parameter space that are not logically possible in the context
+of the actual underlying ecological context.  Not only could this mean that
+illogical parameter estimates are possible, when the sampler is traversing
+regions of parameter space that are not supported by the actual data, the sampler
+can become unstable and have difficulty.
+
+We can draw from the prior predictive distribution instead of conditioning on
+the response, by updating the model and indicating `prior_PD=TRUE`.  After
+refitting the model in this way, we can plot the predictions to gain insights
+into the range of predictions supported by the priors alone.
+
+```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.rstanarm1 <- update(fert.rstanarm,  prior_PD=TRUE)
+```
+
+```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE}
+ggpredict(fert.rstanarm1) |> plot(show_data=TRUE)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is fairly wide and the slope could range
+  from strongly negative to strongly positive.
+- at the same time, massive yields are not supported, so there is some
+  constraints on the parameters space
+- nevertheless, negative yields are considered possible, even though these are
+  clearly not logical.
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucked out of
+thin air):
+
+- $\beta_0$: normal centred at 164 with a standard deviation of 65
+- $\beta_1$: normal centred at 0 with a standard deviation of 2
+- $\sigma$: half-t (df = 3) centred at 0 with a standard deviation of 65
+
+We can visualise each of the above as:
+
+```{r fitModel1h1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 5, fig.height = 3}
+standist::visualize("normal(164, 65)", xlim = c(0, 300)) +
+standist::visualize("normal(0, 2)", xlim = c(-10, 10))
+standist::visualize("student_t(3, 0, 65)",
+                    "gamma(2,1)",
+                    "exponential(0.016)",
+                    xlim = c(-10, 50))
+
+standist::visualize("student_t(3, 0, 65)",
+                    "exponential(0.016)",
+                    xlim = c(-10, 300))
+```
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.rstanarm2= stan_glm(YIELD ~ FERTILIZER, data=fert,
+                         prior_intercept = normal(164, 65, autoscale=FALSE),
+                         prior = normal(0, 2, autoscale=FALSE),
+                         prior_aux = student_t(3, 0, 65, autoscale=FALSE),
+                         prior_PD=TRUE, 
+                         iter = 5000, warmup = 1000,
+                         chains = 3, cores = 3,
+                         thin = 5, refresh = 0
+                         )
+```
+
+```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE}
+ggpredict(fert.rstanarm2) |>
+  plot(show_data=TRUE)
+```
+
+Now lets refit, conditioning on the data.
+
+```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.rstanarm3= update(fert.rstanarm2,  prior_PD=FALSE)  
+```
+
+### Plotting prior and posterior
+
+```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+posterior_vs_prior(fert.rstanarm3, color_by='vs', group_by=TRUE,
+                   facet_args=list(scales='free_y'))
+```
+
+**Conclusions:**
+
+- in each case, the prior is substantially wider than the posterior, suggesting
+  that the posterior is not biased towards the prior.
+  
+```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggpredict(fert.rstanarm3) |> plot(show_data=TRUE)
+```
+
+
+::::	
+## brms 
+:::: {.panel-tabset}
+
+https://mc-stan.org/cmdstanr/articles/cmdstanr.html
+    
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularisation (to help prevent over-fitting) and
+help stabilise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.brm <- brm(bf(YIELD ~ FERTILIZER),
+               data = fert,
+               iter = 5000,
+               warmup = 1000,
+               chains = 3,
+               thin = 5,
+               refresh = 0,
+               backend = 'cmdstanr')
+```
+
+In the above:
+
+- the formula and data arguments should be familiar as they are the same as for
+  many models in R. That said, the formula specification of `brms` can define
+  models that are not possible by most other routines. To facilitate this
+  enhanced functionality, we usually define a `brms` formula within its own
+  `bf()` function along with the `family` (in this case, it is Gaussian, which
+  is the default and therefore can be omitted.)
+- iter: indicates the number of MCMC iterations to perform per chain
+- warmup: indicates how many of the initial MCMC samples to exclude.  During the
+  warmup stage, the MCMC sampler is tuning its sampling operations to allow it
+  to determine the best way to create the chain.  While it is in this discovery
+  phase, the estimates it produces might be unrepresentative.
+- chains: indicates the number of independent chains to run.  The more chains,
+  the more random starts.  The point of multiple random starts is to minimise
+  the potential for the starting point to dictate the outcome.  It is possible
+  that a chain might get stuck sampling a single feature of the posterior and not discover
+  additional features.  Additional random starting points should hopefully
+  alleviate this. Either 3 or 4 is typical.
+- thin: indicates the rate at which the MCMC samples should be thinned in order
+  to eliminate auto-correlation between MCMC samples.  When the step lengths
+  between MCMC samples are small, the resulting parameter estimates will be
+  auto-correlated (since samples close by in the chain will be more similar than
+  those far apart).  The rate of thinning necessary will depend on the degree
+  of auto-correlation.  For stan models, a thinning rate of 5 is a good starting
+  point.
+- refresh: indicates how often the terminal display should be updated.  When
+  running a large model, this can be useful as it provides a form of progress.
+  However, when the routine is within an Rmarkdown document, it just results in
+  the output including each line of progress and a lot of space is taken up unnecessarily
+
+The returned object (a list) contains a range of objects.  The output
+from `rstan` is contained in the `fit` list item.
+
+```{r fitModel2a2, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm |> names()
+```
+
+Having allowed `brms` to formulate its own weakly informative priors, it is
+a good idea to explore what they are.  Firstly, out of curiosity, it might be
+interesting to see what it has chosen.  However, more importantly, we need to be
+able to document what the priors were and the `brms` development team make
+it very clear that there is no guarantee that the default priors will remain the
+same into the future. 
+
+```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=2}
+options(width=100)
+prior_summary(fert.brm)
+options(width=80)
+```
+
+This tells us:
+
+- for the intercept, it is using a student t (flatter normal) prior with a mean of 161.5 and a
+  standard deviation of 90.4.  These mean and standard deviation values are
+  based on the median and median absolute deviation of the
+  response variable (rounded).
+
+**Note, all priors are on the link scale and on centered predictiors**
+
+```{r fitModel2c, results='markdown', eval=TRUE, mhidden=TRUE}
+median(fert$YIELD)
+mad(fert$YIELD)
+```
+
+`mad` is the median absolute deviation.  `mad` is to `var` as `median`
+is to `mean`.
+
+```{r student_t_dist, results='markdown', eval=TRUE}
+standist::visualize("student_t(3,161.5,90.4)", xlim=c(-100,1000))
+```
+
+- for the beta coefficients (in this case, just the slope), the
+  default prior is a **improper flat prior**. A flat prior essentially
+  means that any value between negative infinity and positive infinity
+  are equally likely. Whilst this might seem reckless, in practice, it
+  seems to work reasonably well for non-intercept beta parameters.
+
+- the prior on sigma is also a student t (although only the positive
+  half is used in the stan code), with mean of 0 and standard
+  deviation of 90.4.
+	  
+```{r student_t_dist1, results='markdown', eval=TRUE}
+standist::visualize("student_t(3,0,90.4)", xlim=c(-10,500))
+```
+	
+### Assessing priors 
+
+One way to assess the priors is to have the MCMC sampler sample purely
+from the prior predictive distribution without conditioning on the
+observed data.  Doing so provides a glimpse at the range of
+predictions possible under the priors.  On the one hand, wide ranging
+predictions would ensure that the priors are unlikely to influence the
+actual predictions once they are conditioned on the data.  On the
+other hand, if they are too wide, the sampler is being permitted to
+traverse into regions of parameter space that are not logically
+possible in the context of the actual underlying ecological context.
+Not only could this mean that illogical parameter estimates are
+possible, when the sampler is traversing regions of parameter space
+that are not supported by the actual data, the sampler can become
+unstable and have difficulty.
+
+In `brms`, we can inform the sampler to draw from the prior predictive
+distribution instead of conditioning on the response, by running the
+model with the `sample_prior = 'only'` argument.  Unfortunately, this
+cannot be applied when there are flat priors (since the posteriors
+will necessarily extend to negative and positive infinity).
+Therefore, in order to use this useful routine, we need to make sure
+that we have defined a proper prior for all parameters.
+
+Lets try a Gaussian (normal) distribution for the slope.  We will
+start with what is likely to be a very wide distribution (wide with
+respect to what we know about the likely slope).  `rstanarm` sets the
+default for such population-level effects at 2.5 times the ratio of
+standard deviations of the response and predictor.  The reason that
+2.5 is used is that in a standard normal distribution, a standard
+deviation of 2.5 encapsulates approximately 99% of the values.  Hence,
+a standard deviation of 2.5 would represent reasonably wide
+expectations (priors).  Given that the input data are unlikely to be
+standardised, we can instead standardise the priors by multiplying the
+2.5 by the ratio of standard deviations of the response and predictor.
+
+We could adopt similar logic here, but rather than use standard
+deviation, we could use median absolute deviation to be consistent
+with other prior specifications in `brms`.  In this case, the prior
+standard deviation would be `2.5 * mad(fert$YIELD)/mad(fert$FERTILIZER)` = `2.44` 
+(which I will round to 2.5).
+
+```{r normal_prior, results='markdown', eval=TRUE}
+standist::visualize("normal(0, 2.5)", "student_t(3, 0, 2.5)", xlim = c(-50,50))
+```
+
+```{r fitModel2d, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.brm1 <- brm(bf(YIELD ~ FERTILIZER),
+                 data = fert,
+                 prior = prior(student_t(3, 0, 2.5), class = 'b'), 
+                 sample_prior = 'only', 
+                 iter = 5000,
+                 warmup = 1000,
+                 chains = 3,
+                 thin = 5,
+                 backend = 'cmdstanr',
+                 refresh = 0)
+```
+::::: {.panel-tabset}
+
+#### ggpredict
+
+```{r fitModel2e1, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm1 |> ggpredict() |> plot(show_data=TRUE)
+```
+
+#### ggemmeans
+
+```{r fitModel2e2, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm1 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
+```
+
+#### conditional_effects
+
+```{r fitModel2e3, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm1 |> conditional_effects() |>  plot(points=TRUE)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is fairly wide and the slope could range
+  from strongly negative to strongly positive.
+- at the same time, massive yields are not supported, so there is some
+  constraints on the parameters space
+- nevertheless, negative yields are considered possible, even though these are
+  clearly not logical.
+
+:::::
+
+### Defining priors 
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still
+not likely to bias the outcomes, we could try the following priors
+(which I have mainly plucked out of thin air):
+
+- $\beta_0$: normal centred at 164 with a standard deviation of 65
+  - mean of 164: since `median(fert$YIELD)`
+  - sd pf 65: since `mad(fert$YIELD)`
+- $\beta_1$: normal centred at 0 with a standard deviation of 2.5
+  - sd of 2: since `2.5*(mad(fert$YIELD)/mad(fert$FERTILIZER))`
+- $\sigma$: half-t centred at 0 with a standard deviation of 65 OR
+  - sd pf 65: since `mad(fert$YIELD)`
+- $\sigma$: gamma with shape parameters of 2 and 1
+ 
+
+```{r priors, results='markdown', eval=TRUE}
+standist::visualize("normal(164, 65)", xlim = c(-100, 300))
+
+standist::visualize("normal(0, 90)", xlim = c(-10, 10))
+
+standist::visualize("student_t(3, 0, 65)",
+                    "normal(0, 65)",
+                    "gamma(2,0.05)",
+                    xlim = c(0, 100))
+   
+```
+
+::::: {.panel-tabset}
+
+#### Sample prior only
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+form <- bf(YIELD ~ scale(FERTILIZER, scale = FALSE)) 
+priors <- prior(normal(162, 90.4),  class='Intercept') +
+    prior(normal(0, 2), class='b') +
+    prior(student_t(3, 0, 90.4),  class='sigma')
+fert.brm2 <- brm(form,
+                data=fert,
+                prior=priors,
+                sample_prior = 'only', 
+                iter = 5000,
+                warmup = 1000,
+                chains = 3, cores = 3,
+                thin = 5,
+                backend = 'cmdstanr',
+                refresh = 0) 
+```
+
+:::::: {.panel-tabset}
+
+
+##### ggpredict
+
+```{r fitModel2i1, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm2 |>
+    ggpredict() |>
+    plot(show_data=TRUE) 
+```
+
+##### ggemmeans
+
+```{r fitModel2i2, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm2 |>
+    ggemmeans(~FERTILIZER) |>
+    plot(show_data = TRUE) 
+```
+
+##### conditional_effects
+
+```{r fitModel2i3, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm2 |>
+    conditional_effects() |>
+    plot(points = TRUE) 
+```
+
+::::::
+
+#### Sample prior and posterior
+
+```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+fert.brm3 <- update(fert.brm2, sample_prior = 'yes', refresh = 0)
+#OR  
+fert.brm3 = brm(bf(YIELD ~ scale(FERTILIZER, scale = FALSE)),
+                data=fert,
+                prior=priors,
+                sample_prior = 'yes', 
+                iter = 5000,
+                warmup = 1000,
+                chains = 3, cores = 3,
+                thin = 5,
+                backend = 'cmdstanr',
+                refresh = 0)
+```
+
+```{r fitModel2j2, results='markdown', eval=TRUE, cache=FALSE, echo = FALSE, mhidden=TRUE}
+
+```
+
+:::::: {.panel-tabset}
+
+
+##### ggpredict
+
+```{r fitModel2k1, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm3 |>
+    ggpredict() |>
+    plot(show_data=TRUE) 
+```
+
+##### ggemmeans
+
+```{r fitModel2k2, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm3 |>
+    ggemmeans(~FERTILIZER) |>
+    plot(show_data = TRUE) 
+```
+
+##### conditional_effects
+
+```{r fitModel2k3, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm3 |>
+    conditional_effects() |>
+    plot(points = TRUE) 
+```
+
+::::::
+:::::
+    
+### Plotting prior and posterior
+
+When we have indicated that the posterior should be informed by both
+the prior and the posterior, both prior (governed by priors alone) and
+posterior (governed by both priors and data/likelihood) draws are
+returned.  These can be compared by exploring the probabilities
+associated with specific hypotheses - the most obvious of which is
+that of no effect (that the parameter = 0).
+
+When doing so, ideally the posterior should be distinct from the
+prior.  If this is not the case, it might suggest that the posteriors
+are being too strongly driven by the priors.
+
+```{r posterior2, results='markdown', eval=TRUE}
+fert.brm3 |> get_variables()
+## fert.brm3 |> hypothesis('Intercept=0', class='b') |> plot
+fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE = 0') |> plot()
+## fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE=0') |> plot
+fert.brm3 |> hypothesis('sigma = 0', class = '') |> plot() 
+```
+
+Unfortunately, it is not possible to do this comparison sensibly for
+the intercept.  The reason for this is that the prior for intercept
+was applied to an intercept that is associated with centred
+continuous predictors (predictors are centred behind the scenes).
+Since we did not centre the predictor, the intercept returned is as if
+uncentred.  Hence, the prior and posterior are on different scales.
+ 
+```{r fitModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4}
+fert.brm3 |> get_variables()
+fert.brm3 |> SUYR_prior_and_posterior()
+```
+
+### Exploring the stan code
+
+```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.brm3 |> standata()
+fert.brm3 |> stancode()
+```
+
+::::
+
+## INLA 
+:::: {.panel-tabset}
+
+```{r INLApackages, results='markdown', eval=TRUE}
+library(INLA)
+```
+
+### Using default priors
+
+In `INLA`, the default priors are designed to be diffuse or weak.  They are
+chosen to provide moderate regularisation (to help prevent over-fitting) and
+help stabilise the computations.
+
+
+** Note as of mid 2022, the INLA developers have intentionally
+disabled the calculation of marginals in order to make the models
+faster**. Unfortunately, this prevents the calculation of residuals
+from the `INLAutils` package. So I will turn them on... More info can be viewed here
+https://groups.google.com/g/r-inla-discussion-group/c/2E9z3QfmeXw/m/XB0PoLqEBAAJ?pli=1
+
+```{r fitModel3a, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.inla <- inla(YIELD ~ FERTILIZER,
+                  data = fert,
+                  family = 'gaussian',
+                  control.predictor =  list(compute = TRUE, link =  1),
+                  control.compute = list(config = TRUE,
+                    dic = TRUE, waic = TRUE, cpo = TRUE,
+                    return.marginals.predictor=TRUE
+                    )
+                  )
+```
+
+In the above:
+
+- the `formula`, `data` and `family` arguments should be familiar as they are the same as for 
+  other models in R.
+- `control.compute`: allows us to indicate what additional actions
+  should be performed during the model fitting.  In this case, we have indicated:
+  
+  - `dic`: Deviance information criterion
+  - `waic`: Wantanabe information creterion
+  - `cpo`: out-of-sample estimates (measures of fit)
+  - `config`: return the full configuration - to allow drawing from the posterior. 
+
+
+```{r fitModel3a2, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.inla |> names()
+```
+
+Having allowed `INLA` to formulate its own "minimally informative"
+priors, it is a good idea to explore what they are.  Firstly, out of
+curiosity, it might be interesting to see what it has chosen.
+However, more importantly, we need to be able to document what the
+priors were and the `INLA` development team make it very clear that
+there is no guarantee that the default priors will remain the same
+into the future.
+
+In calcutating the posterior mode of hyperparameters, it is efficient
+to maximising the sum of the (log)-likelihood and the (log)-prior,
+hence, priors are defined on a log-scale.  The canonical prior for
+variance is the _gamma_ prior, hence in `INLA`, this is a _loggamma_.
+
+They are also defined according to their mean and **precision**
+(_inverse-scale_, rather than variance).  Precision is $1/\sigma$.
+
+To explore the default priors used by `INLA`, we can issue the
+following on the fitted model:
+
+```{r fitModel3b0, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=TRUE}
+inla.priors.used(fert.inla)
+```
+
+The above indicates:
+
+- the prior on the overal family (log) precision ($1/sigma$) is a
+  log-gamma with shape of 1 and scale of 0.00005.  Since this is a
+  log-gamma on log-precision, it is equivalent to a gamma (shape =
+  $1$, scale = $10^-5$) on precision.  Such a distribution is very
+  wide and has a mean of ($shape/scale =$ `r 1/0.00005`) and variance of
+  ($shape/scale^2 =$ `r 1/(0.00005)^2`).
+  
+```{r fitModel3b3, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("gamma(1, 0.00005)", xlim=c(-100,100000))
+```
+
+- the prior on the intercept is a Gaussian (normal) distribution with
+  mean of 0 and precision of 0 - this is effectively a uniform
+  distribution from $-\infty$ to $\infty$.
+- the prior on the slope is a Gaussian (normal) distribution with a
+  mean of 0 and a precision of 0.001 (which equates to a standard
+  deviation of $(1/0.001)^{0.5}$=`r sqrt(1/0.001)`.  This is also a
+  very wide distribution (consider what a slope large in magnitude of
+  100 means in the context of the rate of grass yield increase per
+  unit increase in fertiliser concentration).
+
+```{r fitModel3b1, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("normal(0, 31)", xlim=c(-100,100))
+```
+
+### Defining own priors
+
+**Family variance**
+
+In order to drive the specification of weekly informative priors for
+variance components (a prior that allows the data to dictate the
+parameter estimates whilst constraining the range of the marginal
+distribution within sensible bounds), we can consider the range over
+which the marginal distribution of variance components would be
+sensible. For the range [-R,R], the equivalent gamma parameters:
+
+$$
+\begin{align}
+a &= \frac{d}{2}\\
+b &= \frac{R^2d}{2*(t^d_{1-(1-q)/2})^2}
+\end{align}
+$$
+
+where $d$ is the degrees of freedom (for Cauchy marginal, $d=1$) and
+$t^d_{1-(1-q)/2}$ is the $q_{th}$ quantile of a Student t with $d$
+degrees of freedom. Hence if we considered variance likely to be in
+the range of [0,100], we could define a loggamma prior of:
+
+$$
+\begin{align}			
+a &= \frac{1}{2} = 0.5\\
+b &= \frac{100^2}{2*161.447} = 30.9\\
+\tau &\sim{} log\Gamma(0.5,30.9)
+\end{align}
+$$
+
+
+```{r fitModel3b5, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("gamma(0.5, 0.032)", xlim=c(-5,100))
+```
+
+**Intercept**
+
+The default prior on the intercept is a Gaussian with mean of 0 and
+precision of 0 (and thus effectively a flat uniform).  Alternatively,
+we could define priors on the intercept that are more realistic.  For
+example, we know that the median grass yield is `r min(fert$YIELD)`.
+Hence, the intercept is likely to be relatively close to this value.
+Note, arguably it would be more sensible to center the predictor
+variable (fertiliser concentration) so that the intercept would
+represent the yeild at the average fertiliser concentration.
+Furthermore, this would also be more computationally expedient. In
+fact, the only reason we are not doing so is so that we can directly
+compare the parameter estimates to the frequentist linear model.
+
+```{r fitModel3b9, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+min(fert$YIELD)
+median(fert$YIELD)
+mad(fert$YIELD)
+```
+
+We will multiply the variability (`r mad(fert$YIELD)`) by 3 so as to
+estimate an envelope that so as to fully capture the full range of
+expected values (`r 3*mad(fert$YIELD)`.
+
+```{r fitModel3b8, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("normal(80, 271.32)", xlim=c(-700,1000))
+```
+ 
+We could use these values as the basis for weekly informative priors
+on the intercept.  Note, as `INLA` priors are expressed in terms of
+precision rather than variance, an equvilent prior would be
+$\sim{}~\mathcal{N}(80, 0.00001)$ (e.g. $1/(MAD\times 3)^2$).
+
+
+**Fixed effects**
+
+The priors for the fixed effects (slope) is a Gaussian (normal)
+distributions with mean of 0 and precision (0.001). This implies that
+the prior for slope has a standard deviation of approximately 31
+(since $\sigma = \frac{1}{\sqrt{\tau}}$). As a general rule, three
+standard deviations envelopes most of a distribution, and thus this
+prior defines a distribution whose density is almost entirely within
+the range [-93,93]. Arguably, this is very wide for the slope given
+the range of the predictor variable.
+
+In order to generate realistic informative Gaussian priors (for the
+purpose of constraining the posterior to a logical range) for fixed
+parameters, the following formulae are useful:
+
+$$
+\begin{align}
+\mu &= \frac{z_2\theta_1 - z_1\theta_2}{z_2-z_1}\\
+\sigma &= \frac{\theta_2 - \theta_1}{z_2-z_1}
+\end{align}
+$$
+
+where $\theta_1$ and $\theta_2$ are the quantiles on the response
+scale and $z_1$ and $z_2$ are the corresponding quantiles on the
+standard normal scale. Hence, if we considered that the slope is
+likely to be in the range of [-10,10], we could specify a Normal prior
+with mean of $\mu=\frac{(qnorm(0.5,0,1)*0) - (qnorm(0.975,0,1)*10)}{10-0} = 0$ 
+and a standard deviation of $\sigma^2=\frac{10 - 0}{qnorm(0.975,0,1)-qnorm(0.5,0,1)} = 5.102$.
+In INLA (which defines priors in terms of precision rather than standard deviation), 
+the associated prior would be $\beta \sim{} \mathcal{N}(0, 0.0384)$.
+
+
+```{r fitModel3b4, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80)}
+standist::visualize("normal(0, 5.102)", xlim=c(-20,20))
+```
+
+In order to define each of the above priors, we could modify the `inla` call:
+
+
+```{r fitModel3b6, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.inla1 <- inla(YIELD ~ FERTILIZER,
+                  data = fert,
+                  family = 'gaussian',
+                  control.fixed = list(
+                      mean.intercept = 80,
+                      prec.intercept = 0.00001,
+                      mean = 0,
+                      prec = 0.0384),
+                  control.predictor =  list(compute = TRUE, link =  1),
+                  control.family = list(hyper = list(prec = list(prior = "loggamma",
+                                                                param = c(0.5, 0.032)))),
+                  control.compute = list(config = TRUE,
+                    return.marginals.predictor=TRUE,
+                    dic = TRUE,
+                    waic = TRUE,
+                    cpo = TRUE)
+                  ) 
+```
+
+Lets briefly compare the parameter estimates. In the following,
+`Model.1` is the model that employed the default priors and `Model.2`
+is the model that employed the user defined priors.
+
+```{r fitModel3b7, results='markdown', eval=TRUE, mhidden=TRUE}
+## Fixed effects
+rbind(Model.1 = fert.inla$summary.fixed, Model.2 = fert.inla1$summary.fixed)
+
+## Family hyperpriors (variance)
+rbind(Model.1 = fert.inla$summary.hyperpar, Model.2 = fert.inla1$summary.hyperpar)
+```
+
+It is clear that the two models yeild very similar parameter estimates.
+
+### Plotting prior vs posterior
+
+Note, the following will not appear in this tutorial as 
+the INLA plotting function has been really awkwardly written
+and is not compatible with Rmd.
+
+```{r fitModel3d0, results='markdown', eval=TRUE, mhidden=TRUE}
+plot(fert.inla1,
+     plot.fixed.effects = TRUE,
+     plot.lincomb = FALSE,
+     plot.random.effects = FALSE,
+     plot.hyperparameters = TRUE,
+     plot.predictor = FALSE,
+     plot.q = FALSE,
+     plot.cpo = FALSE,
+     plot.prior = TRUE,
+     single = FALSE)
+```
+
+```{r fitModel3d1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 6, fig.height = 3}
+plot_fixed_marginals(fert.inla1, priors = TRUE)
+```
+```{r fitModel3d1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 3, fig.height = 3}
+library(INLAutils)
+plot_hyper_marginals(fert.inla1, CI = TRUE)
+```
+Or the effects as a single figure..
+
+```{r fitModel3d1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 6, fig.height = 6}
+library(INLAutils)
+autoplot(fert.inla1)
+```
+
+```{r fitModel3d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8}
+marg.fix <- fert.inla1$marginals.fixed
+(nm <- names(marg.fix))
+p <- vector('list', length(nm))
+for (wch in 1:length(nm)) {
+    xy <- INLA:::inla.get.prior.xy(section = 'fixed', hyperid = nm[1] ,
+                                   all.hyper = fert.inla1$all.hyper,
+                                   range = 3*range(marg.fix[[wch]][,'x']))
+    p[[wch]] <- ggplot() +
+        geom_density(data=as.data.frame(marg.fix[[wch]]),
+                     aes(x=x, y=y, fill='Posterior'), alpha=0.2,
+                     stat='Identity') +
+        geom_density(data=as.data.frame(xy), aes(x=x, y=y, fill='Prior'), alpha = 0.2,
+                     stat='Identity')
+}
+patchwork::wrap_plots(p)
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+
+# MCMC sampling diagnostics 
+
+**MCMC sampling behaviour**
+
+Since the purpose of the MCMC sampling is to estimate the posterior of
+an unknown joint likelihood, it is important that we explore a range
+of diagnostics designed to help identify when the resulting likelihood
+might not be accurate.
+
+- **traceplots** - plots of the individual draws in sequence.  Traces
+  that resemble noise suggest that all likelihood features are likely
+  to have be traversed. Obvious steps or blocks of noise are likely to
+  represent distinct features and could imply that there are yet other
+  features that have not yet been traversed - necessitating additional
+  iterations.  Furthermore, each chain should be indistinguishable
+  from the others
+- **autocorrelation function** - plots of the degree of correlation
+  between pairs of draws for a range of lags (distance along the
+  chains).  High levels of correlation (after a lag of 0, which is
+  correlating each draw with itself) suggests a lack of independence
+  between the draws and that therefore, summaries such as mean and
+  median will be biased estimates.  Ideally, all non-zero lag
+  correlations should be less than 0.2.
+- **convergence diagnostics** - there are a range of diagnostics aimed
+  at exploring whether the multiple chains are likely to have
+  converged upon similar posteriors
+  - **R hat** - this metric compares between and within chain model
+    parameter estimates, with the expectation that if the chains have
+    converged, the between and within rank normalised estimates should
+    be very similar (and Rhat should be close to 1).  The more one
+    chains deviates from the others, the higher the Rhat value.
+    Values less than 1.05 are considered evidence of convergence.
+  - **Bulk ESS** - this is a measure of the effective sample size
+    from the whole (bulk) of the posterior and is a good measure of
+    the sampling efficiency of draws across the entire posterior
+  - **Tail ESS** - this is a measure of the effective sample size from
+    the 5% and 95% quantiles (tails) of the posterior and is a good
+    measure of the sampling efficiency of draws from the tail (areas
+    of the posterior with least support and where samplers can get
+    stuck).
+	
+
+
+`available_mcmc()`
+
+| Package   | Description       | function               | rstanarm                         | brms                               |
+|-----------|-------------------|------------------------|----------------------------------|------------------------------------|
+| bayesplot | Traceplot         | `mcmc_trace`           | `plot(mod, plotfun='trace')`     | `mcmc_plot(mod, type='trace')`     |
+|           | Density plot      | `mcmc_dens`            | `plot(mod, plotfun='dens')`      | `mcmc_plot(mod, type='dens')`      |
+|           | Density & Trace   | `mcmc_combo`           | `plot(mod, plotfun='combo')`     | `mcmc_plot(mod, type='combo')`     |
+|           | ACF               | `mcmc_acf_bar`         | `plot(mod, plotfun='acf_bar')`   | `mcmc_plot(mod, type='acf_bar')`   |
+|           | Rhat hist         | `mcmc_rhat_hist`       | `plot(mod, plotfun='rhat_hist')` | `mcmc_plot(mod, type='rhat_hist')` |
+|           | No. Effective     | `mcmc_neff_hist`       | `plot(mod, plotfun='neff_hist')` | `mcmc_plot(mod, type='neff_hist')` |
+| rstan     | Traceplot         | `stan_trace`           | `stan_trace(mod)`                | `stan_trace(mod)`                  |
+|           | ACF               | `stan_ac`              | `stan_ac(mod)`                   | `stan_ac(mod)`                     |
+|           | Rhat              | `stan_rhat`            | `stan_rhat(mod)`                 | `stan_rhat(mod)`                   |
+|           | No. Effective     | `stan_ess`             | `stan_ess(mod)`                  | `stan_ess(mod)`                    |
+|           | Density plot      | `stan_dens`            | `stan_dens(mod)`                 | `stan_dens(mod)`                   |
+| ggmcmc    | Traceplot         | `ggs_traceplot`        | `ggs_traceplot(ggs(mod))`        | `ggs_traceplot(ggs(mod))`          |
+|           | ACF               | `ggs_autocorrelation`  | `ggs_autocorrelation(ggs(mod))`  | `ggs_autocorrelation(ggs(mod))`    |
+|           | Rhat              | `ggs_Rhat`             | `ggs_Rhat(ggs(mod))`             | `ggs_Rhat(ggs(mod))`               |
+|           | No. Effective     | `ggs_effective`        | `ggs_effective(ggs(mod))`        | `ggs_effective(ggs(mod))`          |
+|           | Cross correlation | `ggs_crosscorrelation` | `ggs_crosscorrelation(ggs(mod))` | `ggs_crosscorrelation(ggs(mod))`   |
+|           | Scale reduction   | `ggs_grb`              | `ggs_grb(ggs(mod))`              | `ggs_grb(ggs(mod))`                |
+|           |                   |                        |                                  |                                    |
+
+<!-- START_PRIVATE-->
+
+In addition to the regular model diagnostics checking, for Bayesian analyses, it
+is also necessary to explore the MCMC sampling diagnostics to be sure that the
+chains are well mixed and have converged on a stable posterior.
+
+There are a wide variety of tests that range from the big picture, overall chain
+characteristics to the very specific detailed tests that allow the experienced
+modeller to drill down to the very fine details of the chain behaviour.
+Furthermore, there are a multitude of packages and approaches for exploring
+these diagnostics.
+
+::: {.panel-tabset}
+## rstanarm 
+
+:::: {.panel-tabset}
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+```{r modelValidation1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+
+Of these, we will focus on:
+
+- mcmc_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(fert.rstanarm3, plotfun='mcmc_trace')
+```
+   
+   The chains appear well mixed and very similar
+   
+- acf (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(fert.rstanarm3, 'acf_bar')
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- Rhat: Rhat is a measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(fert.rstanarm3, 'rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(fert.rstanarm3, 'neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r Validation1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+plot(fert.rstanarm3, 'combo')
+plot(fert.rstanarm3, 'violin')
+```
+</details>
+
+### stan plots
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_trace(fert.rstanarm3)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_ac(fert.rstanarm3) 
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_rhat(fert.rstanarm3) 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_ess(fert.rstanarm3)
+```
+
+  Ratios all very high.
+
+```{r modelValidation1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_dens(fert.rstanarm3, separate_chains = TRUE)
+```
+
+### ggmcmc
+
+The `ggmean` package also has a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=9}
+fert.ggs <- ggs(fert.rstanarm3)
+ggs_traceplot(fert.ggs)
+```
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_autocorrelation(fert.ggs)
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation1n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_Rhat(fert.ggs)
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation1o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_effective(fert.ggs)
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation1p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_crosscorrelation(fert.ggs)
+```
+
+```{r modelValidation1q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_grb(fert.ggs)
+```
+</details>
+
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+```{r modelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+
+Of these, we will focus on:
+
+- trace: this plots the estimates of each parameter over the
+  post-warmup length of each MCMC chain.  Each chain is plotted in a
+  different shade of blue, with each parameter in its own facet.
+  Ideally, each **trace** should just look like noise without any
+  discernible drift and each of the traces for a specific parameter
+  should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> mcmc_plot(type = 'combo')
+fert.brm3 |> mcmc_plot(type = 'trace')
+fert.brm3 |> mcmc_plot(type = 'dens_overlay')
+fert.brm3 |> mcmc_plot(type = 'nuts_treedepth')
+fert.brm3 |> mcmc_plot(type = 'nuts_divergence')
+fert.brm3 |> mcmc_plot(type = 'nuts_stepsize')
+```
+
+  The chains appear well mixed and very similar
+   
+- acf_bar (autocorrelation function): plots the autocorrelation
+  between successive MCMC sample lags for each parameter and each
+  chain
+  
+```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> mcmc_plot(type = 'acf_bar')
+```
+
+There is no evidence of autocorrelation in the MCMC samples
+
+- rhat_hist: Rhat is a **scale reduction factor** measure of
+  convergence between the chains.  The closer the values are to 1, the
+  more the chains have converged.  Values greater than 1.05 indicate a
+  lack of convergence.  There will be an Rhat value for each parameter
+  estimated.
+
+```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> mcmc_plot(type = 'rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff_hist (number of effective samples): the ratio of the number of
+  effective samples (those not rejected by the sampler) to the number
+  of samples provides an indication of the effectiveness (and
+  efficiency) of the MCMC sampler.  Ratios that are less than 0.5 for
+  a parameter suggest that the sampler spent considerable time in
+  difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> mcmc_plot(type = 'neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> mcmc_plot(type = 'combo')
+fert.brm3 |> mcmc_plot(type = 'violin')
+```
+</details>
+
+
+### stan plots
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+stan_trace(fert.brm3$fit)
+fert.brm3$fit |> stan_trace()
+fert.brm3$fit |> stan_trace(inc_warmup = TRUE)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3$fit |> stan_ac() 
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3$fit |> stan_rhat() 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3$fit |> stan_ess()
+```
+
+  Ratios all very high.
+
+```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3$fit |> stan_dens(separate_chains = TRUE)
+```
+
+### ggmcmc
+
+The `ggmcmc` package also has a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+fert.ggs <- fert.brm3$fit |> ggs(inc_warmup = TRUE, burnin = TRUE)  # does not seem to ignore burnin?
+fert.ggs |> ggs_traceplot()
+fert.ggs <- fert.brm3$fit |> ggs(inc_warmup = FALSE, burnin = TRUE)  # does not seem to ignore burnin?
+fert.ggs |> ggs_traceplot()
+```
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+fert.ggs |> ggs_autocorrelation()
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.ggs |> ggs_Rhat()
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.ggs |> ggs_effective()
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.ggs |> ggs_crosscorrelation()
+```
+
+```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.ggs |> ggs_grb()
+```
+</details>
+
+::::
+
+
+## INLA
+
+The sampling diagnostics are not relevant to INLA.
+Instead, we can focus on CPO and PIT
+
+```{r fitModel3d1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 6, fig.height = 6}
+fert.inla1.cpo <- data.frame(cpo = fert.inla1$cpo$cpo,
+           pit = fert.inla1$cpo$pit,
+           failure = fert.inla1$cpo$failure) |>
+    filter(failure == 0) |>
+    mutate(row = 1:n())
+
+g1 <- fert.inla1.cpo |>
+    ggplot(aes(y = cpo, x = row)) +
+    geom_point()
+g2 <- fert.inla1.cpo |>
+    ggplot(aes(x = cpo)) +
+    geom_histogram()
+g3 <- fert.inla1.cpo |>
+    ggplot(aes(y = pit, x = row)) +
+    geom_point()
+g4 <- fert.inla1.cpo |>
+    ggplot(aes(x = pit)) +
+    geom_histogram()
+
+(g1 + g2)/(g3 + g4)
+```
+
+Ideally, we want to see that no CPO or PIT is very different in value
+from any others (not the case here) and that the histograms are
+relatively flat (which they kind of are here - particularly
+considering the small amount of data).
+
+:::
+<!-- END_PRIVATE-->
+
+# Model validation 
+
+**Posterior probability checks**
+
+`available_ppc()`
+
+| Package   | Description       | function                     | rstanarm                                               | brms                                               |
+|-----------|-------------------|------------------------------|-------------------------------------------------------|----------------------------------------------------|
+| bayesplot | Density overlay   | `ppc_dens_overlay`           | `pp_check(mod, plotfun='dens_overlay')`               | `pp_check(mod, type='dens_overlay')`               |
+|           | Obs vs Pred error | `ppc_error_scatter_avg`      | `pp_check(mod, plotfun='error_scatter_avg')`          | `pp_check(mod, type='error_scatter_avg')`          |
+|           | Pred error vs x   | `ppc_error_scatter_avg_vs_x` | `pp_check(mod, x=, plotfun='error_scatter_avg_vs_x')` | `pp_check(mod, x=, type='error_scatter_avg_vs_x')` |
+|           | Preds vs x        | `ppc_intervals`              | `pp_check(mod, x=, plotfun='intervals')`              | `pp_check(mod, x=, type='intervals')`              |
+|           | Partial plot       | `ppc_ribbon`                 | `pp_check(mod, x=, plotfun='ribbon')`                 | `pp_check(mod, x=, type='ribbon')`                 |
+|           |                   |                              |                                                       |                                                    |
+
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## rstanarm 
+:::: {.panel-tabset}
+
+### pp check
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+```{r modelValidation3a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data. 
+
+```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(fert.rstanarm3,  plotfun='dens_overlay')
+```
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot
+
+```{r modelValidation3c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(fert.rstanarm3, plotfun='error_scatter_avg')
+```
+
+There is no obvious pattern in the residuals.
+
+- error_scatter_avg_vs_x: this is similar to a regular residual plot and as such
+  should be interpreted as such.
+
+```{r modelValidation3d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(fert.rstanarm3, x=fert$FERTILIZER, plotfun='error_scatter_avg_vs_x')
+```
+
+- intervals:  plots the observed data overlayed onto of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(fert.rstanarm3, x=fert$FERTILIZER, plotfun='intervals')
+```
+
+- ribbon: this is just an alternative way of expressing the above plot.
+
+```{r modelValidation3f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(fert.rstanarm3, x=fert$FERTILIZER,plotfun='ribbon')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation3g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(fert.rstanarm3)
+```
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+```{r modelValidation4a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- posterior_predict(fert.rstanarm3,  ndraws=250,  summary=FALSE)
+fert.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = fert$YIELD,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = 'gaussian')
+plot(fert.resids)
+```
+
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+::::
+
+
+## brms 
+:::: {.panel-tabset}
+
+### pp check
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+```{r modelValidation5a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed on top of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> pp_check( type='dens_overlay', ndraws=100)
+```
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot
+
+```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> pp_check(type='error_scatter_avg')
+```
+
+There is no obvious pattern in the residuals.
+
+- error_scatter_avg_vs_x: this is similar to a regular residual plot and as such
+  should be interpreted as such.
+
+```{r modelValidation5d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> pp_check(x='FERTILIZER', type='error_scatter_avg_vs_x')
+```
+
+- intervals:  plots the observed data overlayed on top of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+fert.brm3 |> pp_check(x='FERTILIZER', type='intervals')
+```
+
+- ribbon: this is just an alternative way of expressing the above plot.
+
+```{r modelValidation5f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pp_check(fert.brm3, x='FERTILIZER',type='ribbon')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(fert.brm3)
+```
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+yourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- fert.brm3 |> posterior_predict(ndraws=250,  summary=FALSE)
+fert.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = fert$YIELD,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = FALSE)
+fert.resids |> plot()
+```
+
+```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+
+fert.resids <- make_brms_dharma_res(fert.brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(fert.resids)) +
+               wrap_elements(~plotResiduals(fert.resids, form = factor(rep(1, nrow(fert))))) +
+               wrap_elements(~plotResiduals(fert.resids)) +
+               wrap_elements(~testDispersion(fert.resids))
+
+```
+
+The `integerResponse` argument indicates that noise will be added to
+the residuals such that they will become integers.  This is important
+in for Poisson, Negative Binomial and Binomial models.
+
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+::::
+
+
+## INLA
+
+:::: {.panel-tabset}
+
+### Out-of-sample performance
+
+`INLA` includes two measures of out-of-sample performace (measures of
+fit). 
+
+- **Conditional Predictive Ordinate (CPO)** is the density of the
+  observed value of $y_i$ within the out-of-sample ($y−i$) posterior
+  predictive distribution. A small CPO value associated with an
+  observation suggests that this observation is unlikely (or
+  surprising) in light of the model, priors and other data in the
+  model. In addition, the sum of the CPO values (or alternatively, the
+  negative of the mean natural logarithm of the CPO values) is a
+  measure of fit.
+  ```{r fitModel3e0, results='markdown', eval=TRUE, mhidden=TRUE}
+  fert.inla1$cpo$cpo
+  sum(fert.inla1$cpo$cop)
+  -mean(log(fert.inla1$cpo$cpo))
+  ```
+  In this case there are no CPO values that are considerably smaller
+  (order of magnitude smaller) than the others - so with respect to
+  the model, none of the observed values would be considered
+  'surprising'. Various assumptions are made behind INLA's
+  computations. If any of these assumptions fail for an observation,
+  it is flagged within (in this case) `cpo$failure` as a
+  non-zero. When this is the case, it is prudent to recalculate the
+  CPO values after removing the observations associated with failure
+  flags not equal to zero and re-fitting the model. This can be
+  performed using the `inla.cpo()` function.
+  ```{r fitModel3e1, results='markdown', eval=TRUE, mhidden=TRUE}
+  fert.inla1$cpo$failure
+  ```
+  In this case, there are no non-zero CPO values.
+
+- **Probability Integral Transforms (PIT)** provides a version of CPO
+  that is calibrated to the level of the Gaussian field so that it is
+  clearer whether or not any of the values are 'small' (all values
+  must be between 0 and 1). A histogram of PIT values that does not
+  look approximately uniform (flat) indicates a lack of model fit.
+  
+  Unfortunately, the following will not work inside of an Rmarkdown
+  (but will work fine on the console)
+  
+```{r fitModel3e3, results='markdown', eval=TRUE, hidden=FALSE}
+  plot(fert.inla1,
+       plot.fixed.effects = FALSE,
+       plot.lincomb = FALSE,
+       plot.random.effects = FALSE,
+       plot.hyperparameters = FALSE,
+       plot.predictor = FALSE,
+       plot.q = FALSE,
+       plot.cpo = TRUE,
+       plot.prior = FALSE) 
+```
+  In this case the PIT values do not appear to deviate from a uniform
+  distribution and thus do not indicate a lack of fit.
+
+```{r fitModel3d1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 6, fig.height = 6}
+```
+
+Ideally, we want to see that no CPO or PIT is very different in value
+from any others (not the case here) and that the histograms are
+relatively flat (which they kind of are here - particularly
+considering the small amount of data).
+
+In the following, the top left is the distribution of residuals and
+top right is the observed vs predicted values.
+
+```{r fitModel3e4, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot_inla_residuals(fert.inla1, observed = fert$YIELD)
+```
+
+**Conclusions-** 
+
+- the distribution of residuals is nearly uniform (keep in mind that
+  the sample size is very small in this example).
+- the fitted values approximate the observed values very well	
+
+The following figure represents the equivalent of a (standardised)
+residual plot.
+
+```{r fitModel3e5, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot_inla_residuals2(fert.inla1, observed = fert$YIELD)
+```
+
+
+### DHARMa residuals
+
+Unfortunately, `DHARMa` does not directly support `INLA`.  Therefore,
+in order to make use of this framework, we need to do some of the
+heavy lifting.  Specifically, we need to generate the posterior
+predictions associated with the observed data.
+
+Whilst we can draw random samples from the posterior with the
+`inla.posterior.sample()` _function_, this will only account for
+uncertainty in the fixed parameter estimates.  That is, it will not
+incorporate the overall uncertainty in the Gaussian distribution
+($\sigma$).  Therefore, we need to add this back on ourself (keep in
+mind that this will be in units of precision and thus needs to be
+back-scaled into units of standard deviation).  Furthermore, we will
+need to use the estimates of standard deviation to estimate the random
+noise to add onto the predictions.  This is done by resampling the
+family (Gaussian in this case).
+
+I acknowledge that this (resampling the SD) appears to be a bit of a
+hack and seems to go against the `INLA` principles.  Nevertheless, we
+are only doing this this for the purposes of checking residual
+diagnostics.
+
+```{r fitModel3f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8}
+## draw 250 samples from the posterior
+draws <- inla.posterior.sample(n=250, result = fert.inla)
+## extract the latent predictions for the observed data
+preds = t(sapply(draws, function(x) x$latent[1:nrow(fert)]))
+## extract the first (family precision) hyperprior
+preds.hyper <- sapply(draws, function(x) 1/sqrt(x$hyperpar[[1]]))
+## use this to generate gaussian noise 
+preds.hyper <- rnorm(length(preds.hyper), mean=0, sd=preds.hyper)
+## add the noise to each prediction
+preds <- sweep(preds, 1, preds.hyper, FUN = "+")
+## generate the DHARMa residuals
+fert.resids <- createDHARMa(simulatedResponse = t(preds),
+                           observedResponse = fert$YIELD,
+                           fittedPredictedResponse = apply(preds, 2, median),
+                           integerResponse = FALSE)
+fert.resids |> plot()
+```
+
+```{r fitModel3fa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 8}
+preds <- posterior_predict.inla(fert.inla, newdata=fert)
+fert.resids <- createDHARMa(simulatedResponse = t(preds),
+                                   observedResponse = fert$YIELD,
+                                   fittedPredictedResponse = apply(preds, 2, mean),
+                                   integerResponse = FALSE)
+wrap_elements(~testUniformity(fert.resids)) +
+               wrap_elements(~plotResiduals(fert.resids, form = factor(rep(1, nrow(fert))))) +
+               wrap_elements(~plotResiduals(fert.resids)) +
+               wrap_elements(~testDispersion(fert.resids)) 
+
+```
+ 
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Partial effects plots 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## rstanarm 
+:::: {.panel-tabset}
+
+### ggpredict
+
+```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> ggpredict() |> plot(show_data=TRUE)
+```
+
+### ggemmeans
+
+```{r partialPlot1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
+```
+
+### epred_draws
+
+```{r partialPlot1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> epred_draws(newdata=fert) |>
+ median_hdci() |>
+ ggplot(aes(x=FERTILIZER, y=.epred)) +
+ geom_ribbon(aes(ymin=.lower, ymax=.upper), fill='blue', alpha=0.3) + 
+ geom_line()
+```
+::::
+## brms 
+:::: {.panel-tabset}
+
+### conditional_effects
+
+```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> conditional_effects() 
+fert.brm3 |> conditional_effects() |> plot(points = TRUE)
+fert.brm3 |>
+    conditional_effects(spaghetti = TRUE, ndraws = 200) |>
+    plot(points = TRUE) 
+```
+
+### ggpredict
+
+```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> ggpredict() |> plot(show_data=TRUE)
+```
+
+### ggemmeans
+
+```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
+```
+
+### epred_draws
+
+```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |>
+    epred_draws(newdata = fert) |>
+    median_hdci() |>
+    ggplot(aes(x = FERTILIZER, y=.epred)) +
+    geom_ribbon(aes(ymin = .lower, ymax = .upper), fill = 'blue', alpha = 0.3) + 
+    geom_line()
+```
+::::
+## INLA 
+
+```{r partialPlot3a, results='markdown', eval=TRUE}
+plot(fert.inla1,
+     plot.fixed.effects = FALSE,
+     plot.lincomb = FALSE,
+     plot.random.effects = FALSE,
+     plot.hyperparameters = FALSE,
+     plot.predictor =TRUE,
+     plot.q = FALSE,
+     plot.cpo = FALSE,
+     plot.prior = FALSE)
+```
+
+
+```{r partialPlot3a1, results='markdown', eval=TRUE}
+newdata <- fert |> tidyr::expand(FERTILIZER = modelr::seq_range(FERTILIZER, n=100))
+Xmat <- model.matrix(~FERTILIZER, newdata)
+
+nms <- colnames(fert.inla1$model.matrix)
+n <- sapply(nms, function(x) 0, simplify=FALSE)
+draws <- inla.posterior.sample(n=250, result = fert.inla1, selection = n)
+coefs <- t(sapply(draws, function(x) x$latent))
+Fit = coefs %*% t(Xmat) |>
+    as.data.frame() |>
+    mutate(Rep=1:n()) |>
+    pivot_longer(cols=-Rep) |>
+    group_by(name) |>
+    median_hdci(value) |>
+    ungroup() |>
+    mutate(name = as.integer(as.character(name))) |>
+    arrange(name) 
+newdata <- newdata |>
+    bind_cols(Fit)
+
+newdata |>
+    ggplot(aes(x=FERTILIZER)) +
+    geom_ribbon(aes(ymin=.lower, ymax=.upper), fill='orange', color=NA, alpha=0.3) +
+    geom_line(aes(y=value), color='orange') +
+    geom_point(data=fert, aes(y=YIELD)) +
+    theme_classic()
+```
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation 
+
+Rather than simply return point estimates of each of the model
+parameters, Bayesian analyses capture the full posterior of each
+parameter.  These are typically stored within the `list` structure of
+the output object.
+
+As with most statistical routines, the overloaded `summary()` function
+provides an overall summary of the model parameters.  Typically, the
+summaries will include the means / medians along with credibility
+intervals and perhaps convergence diagnostics (such as R hat).
+However, more thorough investigation and analysis of the parameter
+posteriors requires access to the full posteriors.
+
+There is currently a plethora of functions for extracting the full
+posteriors from models.  In part, this is a reflection of a rapidly
+evolving space with numerous packages providing near equivalent
+functionality (it should also be noted, that over time, many of the
+functions have been deprecated due to inconsistencies in their names).
+Broadly speaking, the functions focus on draws from the posterior of
+either the parameters (intercept, slope, standard deviation etc),
+**linear predictor**, **expected values** or **predicted values**.
+The distinction between the latter three are highlighted in the
+following table.
+
+| Property          | Description                                                                                  |
+|-------------------|----------------------------------------------------------------------------------------------|
+| linear predictors | values predicted on the link scale                                                           |
+| expected values   | predictions (on response scale) without residual error (predicting expected mean outcome(s)) |
+| predicted values  | predictions (on response scale) that incorporate residual error                              |
+|                   |                                                                                              |
+| fitted values     | predictions on the response scale                                                            |
+
+The following table lists the various ways of extracting the full
+posteriors of the model parameters parameters, **expected** values and
+**predicted** values. The crossed out items are now deprecated and
+function with a namespace of `__` mean that the functionality is
+provided via a range of packages.
+
++---------------------------------+-------------------+---------------------------------------------------------+
+| Function                        | Values            | Description                                             |
++=================================+===================+=========================================================+
+| `__::as.matrix()`               | Parameters        | Returns $n\times p$ matrix                              |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `__::as.data.frame()`           | Parameters        | Returns $n\times p$ data.frame                          |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `__::as_tibble()`               | Parameters        | Returns $n\times p$ tibble                              |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `posterior::as_draws_df()`      | Parameters        | Returns $n\times p$ data.frame with additional info     |
+|                                 |                   | about chain, interaction and draw                       |
++---------------------------------+-------------------+---------------------------------------------------------+
+| ~~`brms::posterior_samples()`~~ | ~~Parameters~~    | ~~Returns $n\times p$ data.frame~~                      |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::tidy_draws()`       | Parameters        | Returns $n\times p$ tibble with addition info about     |
+|                                 |                   | the chain, iteration and draw                           |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstan::extract()`              | Parameters        | Returns a $p$ length list of $n$ length vectors         |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::spread_draws()`     | Parameters        | Returns $n\times r$ tibble with additional info about   |
+|                                 |                   | chain, interaction and draw                             |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::gather_draws()`     | Parameters        | Returns a gathered `spread_draws` tibble                |
+|                                 |                   | with additional info about chain, interaction and draw  |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_linpred()` | Linear predictors | Returns $n\times N$ tibble on the link scale            |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_linpred()`     | Linear predictors | Returns $n\times N$ tibble on the link scale            |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::linpred_draws()`    | Linear predictors | Returns tibble with $n\times N rows and `.linpred`      |
+|                                 |                   | on the link scale additional info about chain,          |
+|                                 |                   | interaction and draw                                    |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_epred()`   | Expected values   | Returns $n\times N$ tibble on the response scale        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_epred()`       | Expected values   | Returns $n\times N$ tibble on the response scale        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::epred_draws()`      | Expected values   | Returns tibble with $n\times N rows and `.epred` on     |
+|                                 |                   | the response scale additional info about chain,         |
+|                                 |                   | interaction and draw                                    |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `rstanarm::posterior_predict()` | Expected values   | Returns $n\times N$ tibble of predictions (including    |
+|                                 |                   | residuals) on the response scale                        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `brms::posterior_predict()`     | Expected values   | Returns $n\times N$ tibble of predictions (including    |
+|                                 |                   | residuals) on the response scale                        |
++---------------------------------+-------------------+---------------------------------------------------------+
+| `tidybayes::predicted_draws()`  | Expected values   | Returns tibble with $n\times N rows and `.prediction`   |
+|                                 |                   | (including residuals) on the response scale additional  |
+|                                 |                   | info about chain, interaction and draw                  |
++---------------------------------+-------------------+---------------------------------------------------------+
+
+
+where $n$ is the number of MCMC samples and $p$ is the number of
+parameters to estimate, $N$ is the number of newdata rows and $r$ is
+the number of requested parameters.  For the `tidybayes` versions in
+the table above, the function expects a model to be the first
+parameter (and a dataframe to be the second).  There are also `add_`
+versions which expect a dataframe to be the first argument and the
+model to be the second.  These alternatives facilitate pipings with
+different starting objects.
+
+
+| Function      | Description                                                                    |
+|---------------|--------------------------------------------------------------------------------|
+| `median_qi`   | Median and quantiles of specific columns                                       |
+| `median_hdi`  | Median and Highest Probability Density Interval of specific columns            |
+| `median_hdci` | Median and continuous Highest Probability Density Interval of specific columns |
+| `tidyMCMC`    | Median/mean and quantiles/hpd of all columns                                   |
+
+
+<!-- START_PRIVATE-->
+
+It is important to remember that when working with Bayesian models, everything
+is a distribution.  Whilst point estimates (such as a mean) of the parameters
+can be calculated from these distributions, we start off with a large number of
+estimates per parameter.
+
+::: {.panel-tabset}
+
+## rstanarm 
+
+`rstanarm` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+:::: {.panel-tabset}
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+
+```{r summariseModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> summary()
+```
+
+```{r summariseModel1a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+fert.sum <- summary(fert.rstanarm3)
+```
+
+**Conclusions:**
+
+- in the Model Info, we are informed that the total MCMC posterior sample size
+  is `r nrow(as.matrix(fert.rstanarm3))` and that there were 10 raw observations.
+- the estimated intercept (expected yield when fertilizer concentration is 0) is
+  `r round(fert.sum[1,1],2)`.  This is the mean of the posterior distribution
+  for this parameter.
+- the estimated slope (rate at which yield changes per 1 unit change in
+  fertilizer concentration), is `r round(fert.sum[2,1],2)` (mean) or 
+  `r round(fert.sum[2,4],2)` (median) with a standard deviation of `r round(fert.sum[2,2],2)`.
+  The 90% credibility intervals indicate that we are 90% confident that the slope is between 
+  `r round(fert.sum[2,1],2)` and `r round(fert.sum[2,5],2)` - e.g. there is a significant positive trend.
+- sigma is estimated to be `r round(fert.sum[3,1],2)`
+- Rhat and number of effective samples for each parameter are also provided as
+  MCMC diagnostics and all look good.
+
+
+### tidyMCMC
+
+```{r summariseModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tidyMCMC(fert.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,
+         conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+```
+```{r summariseModel1b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+fert.tidy <- tidyMCMC(fert.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+```
+
+**Conclusions:**
+
+- the estimated intercept (expected yield when fertilizer concentration is 0) is
+  `r round(as.numeric(fert.tidy[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter.
+- the estimated slope (rate at which yield changes per 1 unit change in
+  fertilizer concentration), is `r round(as.numeric(fert.tidy[2,2]),2)` (median) with a standard error of `r round(as.numeric(fert.tidy[2,3]),2)`.
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(fert.tidy[2,4]),2)` and `r round(as.numeric(fert.tidy[2,5]),2)` - e.g. there is a significant positive trend.
+- sigma is estimated to be `r round(as.numeric(fert.tidy[3,2]),2)`
+- Rhat and number of effective samples for each parameter are also provided and all look good.
+
+### summarise_draws (posterior)
+
+```{r summariseModel1dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3$stanfit |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+We can also alter the CI level.
+
+```{r summariseModel1d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3$stanfit |>
+    summarise_draws(median,
+                    ~HDInterval::hdi(.x, credMass = 0.9),
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+### as_draws_df (posterior)
+
+```{r summariseModel1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3$stanfit |> as_draws_df()
+
+fert.rstanarm3$stanfit |>
+    as_draws_df() |>
+    summarise_draws(median,
+                    ~ HDInterval::hdi(.x),
+                    rhat,
+                    ess_bulk, ess_tail)
+```
+
+### tidy_draws
+
+This is purely a graphical depiction on the posteriors.
+
+```{r summariseModel1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> tidy_draws()
+```
+
+### gather_draws
+
+```{r summariseModel1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.draw <- fert.rstanarm3 |> gather_draws(`(Intercept)`, FERTILIZER, sigma)
+## OR via regex
+fert.draw <- fert.rstanarm3 |> gather_draws(`.Intercept.*|FERT.*|sigma`,  regex=TRUE)
+fert.draw
+```
+
+We can then summarise this
+
+```{r summariseModel1c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.draw |> median_hdci()
+```
+
+```{r summariseModel1c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+fert.gather <- fert.rstanarm3 |> gather_draws(`(Intercept)`,FERTILIZER,sigma) |>
+  median_hdci()
+```
+
+```{r summariseModel1c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+fert.rstanarm3 |> 
+  gather_draws(`(Intercept)`, FERTILIZER, sigma) |> 
+  ggplot() + 
+  stat_halfeye(aes(x=.value,  y=.variable)) +
+  facet_wrap(~.variable, scales='free')
+```
+
+**Conclusions:**
+
+- the estimated intercept (expected yield when fertilizer concentration is 0) is
+  `r round(as.numeric(fert.gather[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter.
+- the estimated slope (rate at which yield changes per 1 unit change in
+  fertilizer concentration), is `r round(as.numeric(fert.gather[2,2]),2)` (mean) or (median).
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(fert.gather[2,3]),2)` and `r round(as.numeric(fert.gather[2,4]),2)` - e.g. there is a significant positive trend.
+- sigma is estimated to be `r round(as.numeric(fert.gather[3,2]),2)`
+
+### bayesplot
+
+```{r summariseModel1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> plot(plotfun='mcmc_intervals') 
+```
+
+### spread_draws
+
+```{r summariseModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> spread_draws(`(Intercept)`, FERTILIZER, sigma)
+# OR via regex
+fert.rstanarm3 |> spread_draws(`.Intercept.*|FERT.*|sigma`,  regex=TRUE)
+```
+
+### posterior_samples
+
+Note, this is not deprecated
+
+```{r summariseModel1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> posterior_samples() |> as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> bayes_R2() |> median_hdci()
+```
+
+### Empirical p-value
+
+It is possible to obtain an empirical p-value (for those that cannot live
+without p-values).  This is essentially compares (for any posterior) that the
+mean is zero compared to a multivariate distribution with elliptical contours.
+
+```{r summariseModel1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mcmcpvalue <- function(samp)
+{
+    ## elementary version that creates an empirical p-value for the
+    ## hypothesis that the columns of samp have mean zero versus a
+    ## general multivariate distribution with elliptical contours.
+    
+    ## differences from the mean standardized by the observed
+    ## variance-covariance factor
+    
+    ## Note, I put in the bit for single terms
+    if (length(dim(samp))==0) {
+        std <- backsolve(chol(var(samp)),cbind(0, t(samp)) - mean(samp),transpose = TRUE)
+        sqdist <- colSums(std * std)
+        sum(sqdist[-1] > sqdist[1])/length(samp)
+    }
+    else {
+        std <- backsolve(chol(var(samp)),cbind(0, t(samp)) - colMeans(samp),transpose = TRUE)
+        sqdist <- colSums(std * std)
+        sum(sqdist[-1] > sqdist[1])/nrow(samp)
+    }
+    
+}
+
+mcmcpvalue(as.matrix(fert.rstanarm3)[, c("FERTILIZER")])
+```
+
+::::
+
+## brms 
+
+`brms` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+:::: {.panel-tabset}
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+
+```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> summary()
+```
+
+```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+fert.sum <- summary(fert.brm3)
+```
+ 
+**Conclusions:**
+
+- in the initial block of information, we are reminded on the formula as well as
+  chain fitting characteristics.  We are also informed that the total number of
+  post-warmup MCMC samples is
+  is `r nrow(as.matrix(fert.brm3))`.
+- the estimated intercept (expected yield when fertilizer concentration is 0) is
+  `r round(fert.sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
+  for this parameter.
+- the estimated slope (rate at which yield changes per 1 unit change in
+  fertilizer concentration), is `r round(fert.sum$fixed[2,1],2)` (mean) with a 
+  standard error of `r round(fert.sum$fixed[2,2],2)`.
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(fert.sum$fixed[2,3],2)` and `r round(fert.sum$fixed[2,4],2)` - e.g. there is a significant positive trend.
+- sigma is estimated to be `r round(fert.sum$spec_pars[1,1],2)`
+- Rhat and number of effective samples for each parameter are also provided as
+  MCMC diagnostics and all look good.
+
+### tidyMCMC
+
+```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3$fit |>
+    tidyMCMC(estimate.method = 'median',
+             conf.int = TRUE,
+             conf.method = 'HPDinterval',
+             rhat = TRUE, ess = TRUE)
+```
+```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+fert.tidy <- tidyMCMC(fert.brm3$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+```
+
+**Conclusions:**
+
+- the estimated intercept (expected yield when fertilizer concentration is 0) is
+  `r round(as.numeric(fert.tidy[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter.
+- the estimated slope (rate at which yield changes per 1 unit change in
+  fertilizer concentration), is `r round(as.numeric(fert.tidy[2,2]),2)` (median) with a standard error of `r round(as.numeric(fert.tidy[2,3]),2)`.
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(fert.tidy[2,4]),2)` and `r round(as.numeric(fert.tidy[2,5]),2)` - e.g. there is a significant positive trend.
+- sigma is estimated to be `r round(as.numeric(fert.tidy[3,2]),2)`
+- Rhat and number of effective samples for each parameter are also provided and all look good.
+
+### summarise_draws (posterior)
+
+```{r summariseModel2dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+We can also alter the CI level.
+
+```{r summariseModel2d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |>
+    summarise_draws(median,
+                    ~HDInterval::hdi(.x, credMass = 0.9),
+                    rhat, length, ess_bulk, ess_tail)
+```
+
+To narrow down to just the parameters of interest, see the code under the **tidy_draws** tab.
+	
+### as_draws_df (posterior)
+
+```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> as_draws_df()
+```
+
+### tidy_draws
+
+Return the draws (samples) for each parameter in wide format
+
+```{r summariseModel2d1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> tidy_draws()
+
+fert.brm3 |> get_variables()
+fert.brm3$fit |>
+    tidy_draws() |>
+    dplyr::select(matches('^b_.*|^sigma'))  |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    rhat, length, ess_bulk, ess_tail)
+## if we want to express the slope in terms of the original scale of the
+## fertilizer concentration, we need to back scale the slope
+##fert.brm3$data
+##attr(fert.brm3$data[, 2], "scaled:scale")
+#fert_sigma <- attr(fert.brm3$data[, "scale(FERTILIZER)"], "scaled:scale")
+fert.brm3$fit |>
+    tidy_draws() |>
+    dplyr::select(matches('^b_.*|^sigma'))  |>
+    ## mutate(FERTILIZER =  b_scaleFERTILIZER / fert_sigma)  |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    rhat, length, ess_bulk, ess_tail)
+## for just the slope...
+## fert.brm3 |> emtrends(~ 0, var = "FERTILIZER")
+```
+
+The above can be useful for exploring the full posteriors of all the
+parameters of performing specific calculations using the posteriors,
+summarising the parameters takes a few more steps.
+
+```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |>
+    tidy_draws() |>
+    gather_variables() |>
+    median_hdci()
+```
+
+The `gather_draws` on the other hand, conveniently combines
+`tidy_draws` and `gather_variables` together in a single command.
+Furthermore, it returns all of the variables.  The `spread_draws`
+function allows users to target specific variables (either by naming
+them in full or via regexp).
+
+### gather_draws
+
+```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> get_variables()
+fert.brm3 |>
+    gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |>
+    median_hdci()
+## OR via regex
+fert.brm3 |>
+    gather_draws(`b_.*|sigma`,  regex=TRUE) |>
+    median_hdci()
+```
+```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+fert.gather <- fert.brm3 |>
+    gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |>
+    median_hdci()
+```
+
+```{r summariseModel2c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+fert.brm3 |> 
+  gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |> 
+  ggplot() + 
+  stat_halfeye(aes(x = .value,  y = .variable)) +
+  facet_wrap(~.variable, scales = 'free')
+
+fert.brm3 |> 
+  gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |> 
+  ggplot() + 
+  stat_halfeye(aes(x = .value,  y = .variable)) 
+```
+
+**Conclusions:**
+
+- the estimated intercept (expected yield when fertilizer concentration is 0) is
+  `r round(as.numeric(fert.gather[1,2]),2)`.  This is the median of the posterior distribution
+  for this parameter.
+- the estimated slope (rate at which yield changes per 1 unit change in
+  fertilizer concentration), is `r round(as.numeric(fert.gather[2,2]),2)` (mean) or (median).
+  The 95% credibility intervals indicate that we are 95% confident that the slope is between 
+  `r round(as.numeric(fert.gather[2,3]),2)` and `r round(as.numeric(fert.gather[2,4]),2)` - e.g. there is a significant positive trend.
+- sigma is estimated to be `r round(as.numeric(fert.gather[3,2]),2)`
+
+ 
+### spread_draws
+
+Select just the parameters of interest.
+
+```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> spread_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma)
+# OR via regex
+fert.brm3 |> spread_draws(`b_.*|sigma`,  regex=TRUE)
+```
+
+### bayesplot
+
+```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> mcmc_plot(type='intervals') 
+```
+
+### posterior_samples
+
+Note, this is now deprecated
+ 
+```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> posterior_samples() |> as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> bayes_R2(summary=FALSE) |> median_hdci()
+```
+
+### Empirical p-value
+
+It is possible to obtain an empirical p-value (for those that cannot live
+without p-values).  This is essentially compares (for any posterior) that the
+mean is zero compared to a multivariate distribution with elliptical contours.
+
+```{r summariseModel2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+mcmcpvalue <- function(samp)
+{
+    ## elementary version that creates an empirical p-value for the
+    ## hypothesis that the columns of samp have mean zero versus a
+    ## general multivariate distribution with elliptical contours.
+    
+    ## differences from the mean standardized by the observed
+    ## variance-covariance factor
+    
+    ## Note, I put in the bit for single terms
+    if (length(dim(samp))==0) {
+        std <- backsolve(chol(var(samp)),cbind(0, t(samp)) - mean(samp),transpose = TRUE)
+        sqdist <- colSums(std * std)
+        sum(sqdist[-1] > sqdist[1])/length(samp)
+    }
+    else {
+        std <- backsolve(chol(var(samp)),cbind(0, t(samp)) - colMeans(samp),transpose = TRUE)
+        sqdist <- colSums(std * std)
+        sum(sqdist[-1] > sqdist[1])/nrow(samp)
+    }
+    
+}
+
+mcmcpvalue(as.matrix(fert.brm3)[, c("b_scaleFERTILIZERscaleEQFALSE")])
+```
+
+### Modelsummary
+```{r}
+#| label: modelsummary
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+fert.brm3 |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic
+)
+```
+
+```{r}
+#| label: modelsummary_plot
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+fert.brm3 |> modelplot()
+```
+
+::::
+
+## INLA 
+
+INLA captures a summary of the parameter posteriors within the fitted object.
+
+:::: {.panel-tabset}
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+
+```{r summariseModel3a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.inla1 |> summary()
+```
+
+```{r summariseModel3a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+fert.inla1.sum <- summary(fert.inla1)
+```
+
+**Conclusions:**
+
+- in the initial block of information, we are reminded of the function _call_
+- a breakdown of the various components of the time taken for the
+  analysis to run
+- the 'Fixed effects' indicate that the:
+  -  estimated Intercept is `r fert.inla1.sum$fixed[1,1]` (mean) or 
+     `r fert.inla1.sum$fixed[1,4]` (median)
+  -  estimated slope is `r fert.inla1.sum$fixed[2,1]` (mean) or 
+     `r fert.inla1.sum$fixed[2,4]` (median)
+  -  the 95% Credibility intervals indicate that we are 95% confident
+     that the slope is between `r fert.inla1.sum$fixed[2,3]` and 
+	 `r fert.inla1.sum$fixed[2,5]`
+- the `Model hyperparameters' indicate that the:
+  -  the precision of the Gaussian distribution is 
+     `r fert.inla1.sum$hyperpar[1,1]` (mean) and 
+	 `r fert.inla1.sum$hyperpar[1,4]` (median) .  Precision is $\tau = 1/\sigma^2$
+     and thus, $\sigma$ is estimated to be 
+	 `r 1/sqrt(fert.inla1.sum$hyperpar[1,4])`
+  -  WAIC (Watanabe-Akaike information criterion is estimated to be 
+     `r fert.inla1.sum$waic$waic`
+
+### Plot of posteriors
+::::: {.panel-tabset}
+
+#### Fixed effects
+```{r posteriors3a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=3}
+brinla::bri.fixed.plot(fert.inla1)
+```
+
+#### Hyperparameters
+
+```{r posteriors3a2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+brinla::bri.hyperpar.plot(fert.inla1)
+```
+:::::
+
+### Posterior draws 
+::::: {.panel-tabset}
+
+Since INLA is a Bayesian approximation, unlike full Bayesian methods,
+there are not chains of posterior draws.  However, we can use the
+`inla.posterior.sample()` _function_, to **generate** draws of
+parameter and fitted value posteriors from the fitted model.  In the
+following code snippet, we will generate 1000 draws from the fitted
+model (for repeatability, I will also set a random seed).
+
+The output of this function is a _list_ and items are packed in
+according to the sample (draw) number.  I find this awkward to work
+with and prefer to have the data organised by parameters.  However,
+prior to reorganising the list, I will query the latent (fixed and
+fitted values) parameter names to help with filtering to just the ones
+I am interested in later on.
+
+```{r posteriors3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+## Get all the draws as a list
+n <- 1000
+draws <- inla.posterior.sample(n = n, result = fert.inla1, seed = 1)
+## Redimension the list for the latent (fixed and fitted) values 
+(latent.names <- draws[[1]]$latent |> rownames())
+```
+
+The names that begin with `Predictor:` are the _fitted_ values.
+Essentially, they are the estimated predicted values associated with
+the observed data.  The `(Intercept):1` and `FERTILIZER:1` are the
+intercept and slope respectively.
+
+Now to convert the list of draws into a data.frame.
+
+```{r posteriors3c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+draws <- sapply(draws, function(x) x[['latent']]) |>
+    as.data.frame() |>
+    set_names(paste0('Draw',1:n)) |>
+    mutate(Parameter = latent.names) |>
+    dplyr::select(Parameter, everything())
+draws
+```
+
+This will convert the list into a $s\times p$ data.frame, where $s$ is
+the number of draws (1000 in this case) and $p$ is the number of
+latent parameters (12 in this case) plus an additional column to keep
+track of the Parameters.
+
+Finally, we might like to lengthen this data set for more convenient
+plotting and summarising.
+
+```{r posteriors3d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+fert.draws <- draws |> pivot_longer(cols =- Parameter, names_to='Draws')
+fert.draws
+```
+
+#### Intervals
+
+To focus on and filter to just the fixed effects, we could now:
+
+```{r posteriors3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+fert.draws |>
+    filter(grepl('Intercept|FERTILIZER', Parameter)) |>
+    group_by(Parameter) |>
+    median_hdci(value)
+
+fert.draws |>
+    filter(grepl('Intercept|FERTILIZER', Parameter)) |>
+    ggplot(aes(x=value, y= Parameter)) +
+    geom_vline(xintercept = 0, linetype = 'dashed') + 
+    stat_pointinterval(point_interval = median_hdci)
+## or separate into panels
+fert.draws |>
+    filter(grepl('Intercept|FERTILIZER', Parameter)) |>
+    ggplot(aes(x=value)) +
+    geom_vline(xintercept = 0) +
+    stat_pointinterval(point_interval = median_hdci) +
+    facet_grid(~Parameter, scales = 'free_x')
+```
+
+#### Density intervals 
+
+```{r posteriors3f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+fert.draws |>
+    filter(grepl('Intercept|FERTILIZER', Parameter)) |>
+    group_by(Parameter) |>
+    nest() |>
+    mutate(hpd = map(data, ~median_hdci(.x$value)),
+           Density = map(data, function(.x) {d <- density(.x$value); data.frame(x=d$x, y=d$y)}),
+           Quant = map2(Density, hpd, ~factor(findInterval(.x$x, .y[,c('ymin','ymax')])))
+           ) |>
+    unnest(c(Density, Quant)) |>
+    ggplot(aes(x = x, y=y, fill = Quant)) +
+    geom_vline(xintercept = 0) +
+    geom_ribbon(aes(ymin=0, ymax = y)) +
+    facet_wrap(~Parameter, scales = "free") 
+```
+ 
+#### Ridges
+
+```{r posteriors3g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+fert.draws |>
+    filter(grepl('Intercept|FERTILIZER', Parameter)) |>
+    ggplot(aes(x=value, y = Parameter, fill = stat(quantile))) +
+    geom_vline(xintercept = 0, linetype = 'dashed') +
+    ggridges::stat_density_ridges(geom = "density_ridges_gradient",
+                                  calc_ecdf = TRUE,
+                                  quantile_fun = function(x, probs) quantile(x,probs),
+                                  quantiles = c(0.025, 0.975)) +
+    scale_fill_viridis_d()
+fert.draws |>
+    filter(grepl('Intercept|FERTILIZER', Parameter)) |>
+    ggplot(aes(x=value, y = Parameter, fill = stat(quantile))) +
+    geom_vline(xintercept = 0, linetype = 'dashed') +
+    ggridges::stat_density_ridges(geom = "density_ridges_gradient",
+                                  calc_ecdf = TRUE,
+                                  quantile_fun = function(x, probs) quantile(x,probs),
+                                  quantiles = c(0.025, 0.975)) +
+    scale_fill_viridis_d() +
+    facet_grid(~Parameter, scales = 'free_x')
+```
+:::::
+### $R^2$
+
+```{r posteriors3h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=3}
+cor(fert.inla1$summary.fitted.values[,'mean'],
+    fert$YIELD)^2
+```
+
+::::
+
+:::
+
+<!-- END_PRIVATE-->
+
+
+# Predictions
+
+<!-- START_PRIVATE-->
+
+There are a large number of candidate routines for performing prediction. We
+will go through many of these.  It is worth noting that prediction is
+technically the act of estimating what we expect to get if we were to collect a
+**single** new observation from a particular population (e.g. a specific level
+of fertilizer concentration).  Often this is not what we want.  Often we want
+the **fitted** values - estimates of what we expect to get if we were to collect
+**multiple** new observations and average them. 
+
+So while fitted values represent the expected underlying processes occurring in
+the system, predicted values represent our expectations from sampling from such
+processes.
+
+| Package         | Function              | Description                                                                                                | Summarise with  |
+| ---             | ---                   | ------                                                                                                     | ---             |
+| `rstantools`    | `posterior_predict`   | Draw from the posterior of a prediction (includes sigma) - _predicts single observations_                  | `tidyMCMC()`    |
+| `rstantools`    | `posterior_linpred`   | Draw from the posterior of the fitted values (**on the link scale**) - _predicts average observations_     | `tidyMCMC()`    |
+| `rstantools`    | `posterior_epred`     | Draw from the posterior of the fitted values (**on the response scale**) - _predicts average observations_ | `tidyMCMC()`    |
+| `tidybayes`     | `predicted_draws`     | Extract the posterior of _prediction_ values                                                               | `median_hdci()` |
+| `tidybayes`     | `epred_draws`         | Extract the posterior of _expected_ values                                                                 | `median_hdci()` |
+| ~~`tidybayes`~~ | ~~`fitted_draws`~~    | ~~Extract the posterior of _fitted_ values~~                                                               | `median_hdci()` |
+| `tidybayes`     | `add_predicted_draws` | Adds draws from the posterior of _predictions_ to a data frame (of prediction data)                        | `median_hdci()` |
+| `tidybayes`     | `add_fitted_draws`    | Adds draws from the posterior of _fitted_ values to a data frame (of prediction data)                      | `median_hdci()` |
+| `emmeans`       | `emmeans`             | Estimated marginal means from which posteriors can be drawn (via `tidy_draws`                              | `median_hdci()` |
+|                 |                       |                                                                                                            |                 |
+
+For simple models prediction is essentially taking the model formula complete
+with parameter (coefficient) estimates and solving for new values of the
+predictor. To explore this, we will use the fitted model to predict Yield for a
+Fertilizer concentration of 110.
+
+We will therefore start by establishing this prediction domain as a data frame
+to use across all of the prediction routines.
+
+```{r predictions0a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+## establish a data set that defines the new data to predict against
+newdata <- data.frame(FERTILIZER = 110)
+```
+
+::: {.panel-tabset}
+
+## rstanarm 
+
+:::: {.panel-tabset}
+
+### emmeans
+
+```{r predictions1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> emmeans(~FERTILIZER,  at=newdata)
+```
+
+### predicted values
+
+```{r predictions1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> tidybayes::predicted_draws(newdata) |> median_hdci()
+## or
+newdata |> tidybayes::add_predicted_draws(fert.rstanarm3) |> median_hdci()
+## or
+fert.rstanarm3 |> posterior_predict(newdata=newdata) |>
+  tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
+```
+
+### expected values
+
+```{r predictions1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> epred_draws(newdata) |> median_hdci()
+## or
+newdata |> add_epred_draws(fert.rstanarm3) |> median_hdci()
+## or
+fert.rstanarm3 |> posterior_epred(newdata=newdata) |>
+  tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
+```
+
+### linear predictor
+
+```{r predictions1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> linpred_draws(newdata) |> median_hdci()
+## or
+newdata |> add_linpred_draws(fert.rstanarm3) |> median_hdci()
+## or
+fert.rstanarm3 |> posterior_linpred(newdata=newdata) |>
+  tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
+```
+### manual calculations
+
+```{r predictions1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+## Establish an appropriate model matrix
+Xmat = model.matrix(~FERTILIZER, data=newdata)
+### get the posterior draws for the linear predictor
+coefs <- fert.rstanarm3$stanfit |>
+    as_draws_df() |>
+    dplyr::select(c('(Intercept)','FERTILIZER')) |>
+    as.matrix()
+fit <- coefs %*% t(Xmat)
+fit |> median_hdci()
+## or
+coefs <- fert.rstanarm3 |>
+    tidy_draws() |> 
+    dplyr::select(c('(Intercept)','FERTILIZER')) |>
+    as.matrix()
+fit <- coefs %*% t(Xmat)
+fit |> median_hdci()
+## or
+coefs <- fert.rstanarm3$stanfit |>
+    as_draws_matrix() |> 
+    subset_draws(c("(Intercept)", "FERTILIZER"))
+fit <- coefs %*% t(Xmat)
+fit |> median_hdci()
+```
+
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### emmeans
+
+**This is the option we will focus on for most of the worksheets**
+
+```{r predictions2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |>
+    emmeans(~FERTILIZER, at = newdata)
+## OR
+fert.brm3 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    tidy_draws() |>
+    median_hdci()
+fert.mcmc <- fert.brm3 |>
+  emmeans(~FERTILIZER, at = newdata) |>
+  tidy_draws()
+
+```
+
+What is the probability that if we apply a fertiliser concentration of 110 units, the yield will exceed 120 units?
+
+```{r predictions2ba1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+
+fert.brm3 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    tidy_draws() |>
+    ggplot(aes(x = `FERTILIZER 110`)) +
+    geom_vline(xintercept = 120) + 
+    geom_density(fill = "orange", alpha = 0.3)
+fert.brm3 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    tidy_draws() |>
+    summarise_draws(
+        median,
+      HDInterval::hdi,
+      Pg = ~ mean(.x > 120)
+    )
+```
+
+### predicted values
+
+```{r predictions2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> tidybayes::predicted_draws(newdata) |> median_hdci()
+## or
+newdata |> tidybayes::add_predicted_draws(fert.brm3) |> median_hdci()
+## or
+fert.brm3 |> posterior_predict(newdata=newdata) |>
+    as.mcmc() |>
+  tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
+```
+
+### expected values
+
+```{r predictions2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> epred_draws(newdata) |> median_hdci()
+## or
+newdata |> add_epred_draws(fert.brm3) |> median_hdci()
+## or
+fert.brm3 |> posterior_epred(newdata=newdata) |>
+    as.mcmc() |>
+  tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
+```
+
+### linear predictor
+
+```{r predictions2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> linpred_draws(newdata) |> median_hdci()
+## or
+newdata |> add_linpred_draws(fert.brm3) |> median_hdci()
+## or
+fert.brm3 |> posterior_linpred(newdata=newdata) |>
+    as.mcmc() |> 
+  tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
+```
+### manual calculations
+
+```{r predictions2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+## Establish an appropriate model matrix
+Xmat = model.matrix(~FERTILIZER, data=newdata)
+### get the posterior draws for the linear predictor
+coefs <- fert.brm3 |>
+    as_draws_df() |>
+    dplyr::select(c('b_Intercept','b_scaleFERTILIZERscaleEQFALSE')) |>
+    as.matrix()
+fit <- coefs %*% t(Xmat)
+fit |> median_hdci() |> bind_cols(newdata)
+## or
+coefs <- fert.brm3 |>
+    tidy_draws() |> 
+    dplyr::select(c('b_Intercept','b_scaleFERTILIZERscaleEQFALSE')) |>
+    as.matrix()
+fit <- coefs %*% t(Xmat)
+fit |> median_hdci() |> bind_cols(newdata)
+## or
+coefs <- fert.brm3 |>
+    as_draws_matrix() |> 
+    subset_draws(c("b_Intercept", "b_scaleFERTILIZERscaleEQFALSE"))
+fit <- coefs %*% t(Xmat)
+fit |> median_hdci() |> bind_cols(newdata)
+## or
+## Establish an appropriate model matrix
+Xmat = model.matrix(~FERTILIZER, data=newdata)
+### get the posterior draws for the linear predictor
+coefs <- fert.brm3 |> posterior_samples(pars=c('b_Intercept','b_scaleFERTILIZERscaleEQFALSE')) |> as.matrix()
+fit <- coefs %*% t(Xmat)
+fit |> median_hdci() |> bind_cols(newdata)
+```
+
+
+::::
+
+
+## INLA 
+:::: {.panel-tabset}
+
+As with most things to do with INLA, things are done a little
+differently.  In INLA, there are three options for predictions:
+
+1. generate draws of the parameters and calculate the outer product of
+   these and a model matrix associated with the newdata.
+2. bind the newdata to the observed data when fitting the model which
+   will result in INLA estimating the fitted values during model
+   fitting. In this approach, the response values associated with the
+   newdata should all be `NA`.
+3. define a linear combinations and pass this into the model during
+   fitting
+
+Lets explore each of these in turn.
+
+### From draws
+
+```{r predictions3a, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+## Expected values
+Xmat <- model.matrix(~FERTILIZER, newdata)
+nms <- colnames(fert.inla1$model.matrix)
+sel <- sapply(nms, function(x) 0, simplify = FALSE)
+n <- 1000
+draws <- inla.posterior.sample(n = n, result = fert.inla1, selection = sel, seed = 1)
+coefs <- t(sapply(draws, function(x) x$latent))
+Fit <- coefs %*% t(Xmat) |>
+  as.data.frame() |>
+  mutate(Rep = 1:n()) |>
+  pivot_longer(cols = -Rep) |>
+  group_by(name) |>
+  median_hdci(value) |>
+  ungroup() |>
+  mutate(name = as.integer(as.character(name))) |>
+  arrange(name)
+newdata.inla <- newdata |>
+  bind_cols(Fit)
+newdata.inla
+
+## Predictions
+Fit <- coefs %*% t(Xmat) 
+draws <- inla.posterior.sample(n = n, result = fert.inla1, seed = 1)
+sigma <- sqrt(1/(sapply(draws, function(x) x$hyperpar)))
+sigma <- sapply(sigma, function(x) rnorm(1,0,sigma))
+Fit <- sweep(Fit, MARGIN = 1, sigma, FUN = "+") |>
+    as.data.frame() |>
+    mutate(Rep = 1:n()) |>
+    pivot_longer(cols = -Rep) |>
+    group_by(name) |>
+    median_hdci(value) |>
+    bind_cols(newdata) |> 
+    ungroup() |>
+    dplyr::select(FERTILIZER, everything(), -name)
+Fit
+
+## or
+fun <- function(coefs = NA) {
+    ## theta[1] is the precision
+    return (Intercept + FERTILIZER * coefs[,'FERTILIZER'] +
+            rnorm(nrow(coefs), sd = sqrt(1/theta[1])))
+}
+Fit <- inla.posterior.sample.eval(fun, draws, coefs = newdata) |>
+    as.data.frame() |>
+    bind_cols(newdata) |>
+    pivot_longer(cols = -FERTILIZER) |>
+    group_by(FERTILIZER) |>
+    median_hdci(value)
+    
+Fit
+
+```
+
+### Fitted (expected) values
+
+```{r predictions3b, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+fert.pred <- fert |>
+    bind_rows(newdata)
+i.newdata <- (nrow(fert) +1):nrow(fert.pred)
+fert.inla2 <- inla(YIELD ~ FERTILIZER,
+  data = fert.pred,
+  family = "gaussian",
+  control.fixed = list(
+    mean.intercept = 80,
+    prec.intercept = 0.00001,
+    mean = 0,
+    prec = 0.0384
+  ),
+  control.family = list(hyper = list(prec = list(
+    prior = "loggamma",
+    param = c(0.5, 0.31)
+  ))),
+  control.compute = list(config = TRUE, dic = TRUE, waic = TRUE, cpo = TRUE)
+)
+
+fert.inla2$summary.fitted.values[i.newdata,]
+## or on the link scale...
+fert.inla2$summary.linear.predictor[i.newdata,]
+```
+
+### Linear combinations
+
+```{r predictions3c, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+Xmat <- model.matrix(~FERTILIZER, data=newdata)
+lincomb <- inla.make.lincombs(as.data.frame(Xmat))
+
+fert.inla3 <- inla(YIELD ~ FERTILIZER,
+  data = fert,
+  family = "gaussian",
+  lincomb = lincomb,
+  control.fixed = list(
+    mean.intercept = 80,
+    prec.intercept = 0.00001,
+    mean = 0,
+    prec = 0.0384
+  ),
+  control.family = list(hyper = list(prec = list(
+    prior = "loggamma",
+    param = c(0.5, 0.31)
+  ))),
+  control.compute = list(config = TRUE, dic = TRUE, waic = TRUE, cpo = TRUE)
+)
+
+fert.inla3$summary.lincomb.derived
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Hypothesis testing 
+
+<!-- START_PRIVATE-->
+
+Since we have the entire posterior, we are able to make probability statements.
+We simply count up the number of MCMC sample draws that satisfy a condition (e.g
+represent a slope greater than 0) and then divide by the total number of MCMC
+samples.
+
+For this exercise, we will explore the following:
+
+- what this the probability that Yield increases with increasing Fertilizer
+  concentration - this is just asking what proportion of the drawn slopes are
+  greater than 0.
+- how much of a change in yield do we expect if fertilizer concentration is
+  increased from 100 to 200 units and what is the probability that the change is
+  more than 50%
+
+::: {.panel-tabset}
+
+## rstanarm 
+
+:::: {.panel-tabset}
+
+### Prob. of effect
+
+```{r Probability1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> hypothesis('FERTILIZER>0')
+```
+
+**Conclusions:**
+
+- the probability of a positive effect of Fertilizer on grass Yield is 1.  That
+  is, there is, we are 100% confident that there is an effect.
+- the evidence ratio is normally the ratio of the number of cases that satisfy
+  the hypothesis to the number of cases that do not.  Since the number of cases
+  that do not satisfy the hypothesis is 0, the evidence ratio is Inf (since
+  division by 0)
+
+Alternatively...
+
+```{r Probability1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
+fert.rstanarm3 |> tidy_draws() |> summarise(P=mean(FERTILIZER>0))
+```
+
+**Conclusions:**
+
+- the probability of a positive effect of Fertilizer on grass Yield is 1.  That
+  is, there is, we are 100% confident that there is an effect.
+
+### ROPE
+
+The procedure highlighted above for calculating excedence
+probabilities evaluates the degree of evidence for a effect in a
+particular direction.  However, there are other instances where there
+is a desire to evaluate the evidence that something has change (either
+increased or decreased).  Such purposes are similar to the Frequentist
+pursuit of testing a null hypothesis (e.g. effect = 0).
+
+The Region of Practical Equivalence (ROPE) evaluates evidence that an
+effect is "practically equivalent" to a value (e.g. 0) by calculating
+the proportion of effects that are within a nominated range.
+@Kruschke-2018-270 argued that for standardized parameters, the range
+of -0.1 to 0.1 would envelop a negligible effect based on @Cohen-1988.
+@Kruschke-2018-270 also suggested that this range could be extended to
+non-standardized parameters by multiplying by the standard deviation
+of the response.  Accordingly, calculating the proportion of posterior
+density within this ROPE could act as a form of "null-hypothesis"
+testing in a Bayesian framework.
+
+```{r Probability1bb, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
+0.1 * sd(fert$YIELD)/sd(fert$FERTILIZER)
+## Cannot pipe to rope if want to pipe rope to plot()
+bayestestR::rope(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI") 
+bayestestR::rope(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI") |> plot()
+
+bayestestR::equivalence_test(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI")  
+bayestestR::equivalence_test(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI") |> plot()
+
+```
+
+### Change 100 to 200 (Method 1)
+
+```{r Probability1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:2}
+newdata <- list(FERTILIZER=c(200, 100)) 
+fert.rstanarm3 |> emmeans(~FERTILIZER,  at=newdata) |> pairs()
+fert.mcmc <- fert.rstanarm3 |> emmeans(~FERTILIZER,  at=newdata) |> pairs() |>
+  as.data.frame()
+```
+
+**Conclusions:**
+
+- the change in Yield associated with an increase in Fertilizer concentration
+  from 100 to 200 is `r fert.mcmc[1, 2] |> round(2)`.
+
+We can alternatively express this as a percentage change...
+
+```{r Probability1c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:2}
+newdata <- list(FERTILIZER=c(200, 100)) 
+fert.rstanarm3 |> emmeans(~FERTILIZER,  at=newdata) |> regrid(transform = "log") |> pairs() |> regrid()
+```
+
+If we want to derive other properties, such as the percentage change, then we
+use `tidy_draws()` and then simple `tidyverse` spreadsheet operation.
+
+```{r Probability1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |> emmeans(~FERTILIZER,  at=newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    regrid() |>
+    tidy_draws() |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    P= ~ mean(.x>1.5))
+
+fert.mcmc <- fert.rstanarm3 |> emmeans(~FERTILIZER,  at=newdata) |> 
+  tidy_draws() |>
+  rename_with(~str_replace(., 'FERTILIZER ', 'p')) |>
+  mutate(Eff=p200 - p100,
+         PEff=100*Eff/p100)
+fert.mcmc |> head()
+```
+
+Now we can calculate the medians and HPD intervals of each column (and ignore
+the `.chain`, `.iteration` and `.draw`).
+
+```{r Probability1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.mcmc |> tidyMCMC(estimate.method='median',
+                       conf.int=TRUE, conf.method='HPDinterval')
+```
+
+Alternatively, we could use `median_hdci`
+
+```{r Probability1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.mcmc |> median_hdci(PEff)
+fert.mcmc |> median_hdci(PEff, Eff)
+```
+
+**Conclusions:**
+
+- the percentage change in Yield associated with an increase in Fertilizer concentration
+  from 100 to 200 is `r fert.mcmc |> median_hdci(PEff) |> _[1, 1] |> as.numeric() |> round(2)`% 
+  with a 95% credibility interval of 
+  `r fert.mcmc |> median_hdci(PEff) |> _[1, 2] |> as.numeric() |> round(2)`
+  `r fert.mcmc |> median_hdci(PEff) |> _[1, 3] |> as.numeric() |> round(2)`
+
+To get the probability that the effect is greater than a 50% increase.
+
+```{r Probability1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, paged.print=FALSE}
+fert.mcmc |> summarise(P=mean(PEff>50))
+```
+
+**Conclusions:**
+
+- the probability that Yield will increase by more than 50 following an increase
+  in Fertilizer concentration from 100 to 200 is
+  `r fert.mcmc |> summarise(P=mean(PEff>50)) |> as.numeric() |> round(2)`.
+
+
+Finally, we could alternatively use `hypothesis()`. Note that when we do so, the
+estimate is the difference between the effect and the hypothesised effect (50%).
+
+```{r Probability1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.mcmc |> hypothesis('PEff>50')
+```
+
+### Change 100 to 200 (Method 2)
+	
+```{r Probability1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+ newdata = list(FERTILIZER=c(200, 100)) 
+ fert.rstanarm3 |>
+     emmeans(~FERTILIZER,  at=newdata) |>
+     pairs() |>
+     tidy_draws() |>
+     summarise(across(contains('contrast'),
+                      list(P = ~ mean(.>50),
+                           HDCI = ~ median_hdci(.)),
+                      .names = c('{.fn}')
+                      )) |>
+     tidyr::unpack(HDCI)
+```
+ 
+We can also express this as a percentage change
+	
+```{r Probability1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+ newdata = list(FERTILIZER=c(200, 100)) 
+ ## Simple
+ fert.rstanarm3 |>
+     emmeans(~FERTILIZER,  at=newdata) |>
+     regrid(transform = 'log') |>
+     pairs() |>
+     regrid() 
+
+ ## More advanced (both P and percent change)
+ fert.mcmc <- fert.rstanarm3 |>
+     emmeans(~FERTILIZER,  at=newdata) |>
+     regrid(transform = 'log') |>
+     pairs() |>
+     regrid() |>
+     tidy_draws() |>
+     mutate(across(contains('contrast'), ~ 100*(. - 1)))
+
+ fert.mcmc |>
+     summarise(across(contains('contrast'),
+                      list(P = ~ mean(.>50),
+                           HDCI = ~ median_hdci(.)),
+                      .names = c('{.fn}')
+                      )) |>
+     tidyr::unpack(HDCI)
+
+ ## OR
+ fert.mcmc |>
+     summarise_draws(median,
+                     HDInterval::hdi,
+                     P = ~ mean(.x>50))
+```
+ 
+### Change 100 to 200 (Method 3)
+	
+```{r Probability1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.rstanarm3 |>
+     linpred_draws(newdata = as.data.frame(newdata)) |>
+     ungroup() |>
+     group_by(.draw) |>
+     summarise(Eff = -1 * diff(.linpred),
+               PEff = 100*Eff/.linpred[2]) |>
+     ungroup() |>
+     mutate(P = mean(PEff>50)) |>
+     pivot_longer(cols = -.draw) |>
+     group_by(name) |>
+     median_hdci()
+
+ ##OR
+ fert.rstanarm3 |>
+     epred_draws(newdata = as.data.frame(newdata)) |>
+     ungroup() |>
+     group_by(.draw) |>
+     summarise(Eff = -1 * diff(.epred),
+               PEff = 100*Eff/.epred[2]) |>
+     ungroup() |>
+     mutate(P = mean(PEff>50)) |>
+     pivot_longer(cols = -.draw) |>
+     group_by(name) |>
+     median_hdci()
+
+ ##OR for prediction of individual values
+ fert.rstanarm3 |>
+     predicted_draws(newdata = as.data.frame(newdata)) |>
+     ungroup() |>
+     group_by(.draw) |>
+     summarise(Eff = -1 * diff(.prediction),
+               PEff = 100*Eff/.prediction[2]) |>
+     ungroup() |>
+     mutate(P = mean(PEff>50)) |>
+     pivot_longer(cols = -.draw) |>
+     group_by(name) |>
+     median_hdci()
+```
+
+::::
+
+## brms 
+
+:::: {.panel-tabset}
+
+### Prob. of effect
+
+```{r Probability2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0')
+fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0') |> plot (ignore_prior= TRUE)
+fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0') |> _[['samples']] |> median_hdci()
+```
+
+**Conclusions:**
+
+- the probability of a positive effect Fertilizer on grass yield is 1.  That
+  is, there is, we are 100% confident that there is an effect.
+- the evidence ratio is normally the ratio of the number of cases that satisfy
+  the hypothesis to the number of cases that do not.  Since the number of cases
+  that do not satisfy the hypothesis is 0, the evidence ratio is Inf (since
+  division by 0)
+
+Alternatively...
+
+```{r Probability2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
+fert.brm3 |> get_variables()
+fert.brm3 |>
+    gather_draws(b_scaleFERTILIZERscaleEQFALSE) |>
+    summarise(P=mean(.value>0))
+# OR
+fert.brm3 |>
+    tidy_draws() |>
+    summarise(P = mean(b_scaleFERTILIZERscaleEQFALSE > 0))
+# OR
+fert.brm3 |>
+    tidy_draws() |>
+    ## mutate(FERTILIZER = b_scaleFERTILIZER / fert_sigma) |>
+    ## dplyr::select(matches("^FERT")) |>
+  dplyr::select(matches("^b_scaleFERT")) |>
+  summarise_draws(median,
+                  P = ~ mean(.x > 0)
+    )
+```
+
+**Conclusions:**
+
+- the probability of a positive effect of Fertilizer on grass Yield is 1.  That
+  is, there is, we are 100% confident that there is an effect.
+
+```{r Probability2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
+fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0.9')
+fert.brm3 |>
+    hypothesis('scaleFERTILIZERscaleEQFALSE > 0.9') |>
+    plot(ignore_prior = TRUE)
+# This returns a list
+fert.brm3 |>
+    hypothesis('scaleFERTILIZERscaleEQFALSE > 0.9') |>
+    plot(ignore_prior = TRUE) |>
+    _[[1]] +
+    geom_vline(xintercept=0, linetype='dashed')
+
+# OR
+fert.brm3 |>
+    tidy_draws() |>
+    ## mutate(FERTILIZER = b_scaleFERTILIZER / fert_sigma) |>
+    ## dplyr::select(matches("^FERT")) |>
+    dplyr::select(matches("^b_scaleFERT")) |>
+    summarise_draws(median,
+        P = ~ mean(.x > 0.7)
+    )
+fert.brm3 |>
+    tidy_draws() |>
+    ## mutate(FERTILIZER = b_scaleFERTILIZER / fert_sigma) |>
+    mutate(FERTILIZER = b_scaleFERTILIZERscaleEQFALSE) |>
+    ggplot(aes(x=FERTILIZER)) +
+    geom_density(fill='orange') +
+    geom_vline(xintercept=0.7, linetype='dashed')
+```
+
+### ROPE
+
+The procedure highlighted above for calculating excedence
+probabilities evaluates the degree of evidence for a effect in a
+particular direction.  However, there are other instances where there
+is a desire to evaluate the evidence that something has change (either
+increased or decreased).  Such purposes are similar to the Frequentist
+pursuit of testing a null hypothesis (e.g. effect = 0).
+
+The Region of Practical Equivalence (ROPE) evaluates evidence that an
+effect is "practically equivalent" to a value (e.g. 0) by calculating
+the proportion of effects that are within a nominated range.
+@Kruschke-2018-270 argued that for standardized parameters, the range
+of -0.1 to 0.1 would envelop a negligible effect based on @Cohen-1988.
+@Kruschke-2018-270 also suggested that this range could be extended to
+non-standardized parameters by multiplying by the standard deviation
+of the response.  Accordingly, calculating the proportion of posterior
+density within this ROPE could act as a form of "null-hypothesis"
+testing in a Bayesian framework.
+
+```{r Probability2bb, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
+0.1 * sd(fert$YIELD)/sd(fert$FERTILIZER)
+0.1 * sd(fert$YIELD)
+## Cannot pipe to rope if want to pipe rope to plot()
+bayestestR::rope(fert.brm3,
+                 parameters = "FERTILIZER",
+                 range = c(-0.08, 0.08),
+                 ## range = c(-6.4, 6.4),
+                 ci_method = "HDI"
+)
+bayestestR::rope(fert.brm3,
+    parameters = "FERTILIZER",
+    range = c(-0.08, 0.08),
+    ## range = c(-6.4, 6.4),
+    ci_method = "HDI"
+    ) |>
+  plot()
+
+bayestestR::equivalence_test(fert.brm3,
+                             parameters = "FERTILIZER",
+                             range = c(-0.08, 0.08),
+                             ## range = c(-6.4, 6.4),
+                             ci_method = "HDI"
+)
+bayestestR::equivalence_test(fert.brm3,
+    parameters = "FERTILIZER",
+    range = c(-0.08, 0.08),
+    ## range = c(-6.4, 6.4),
+    ci_method = "HDI"
+    ) |>
+  plot()
+
+```
+
+### Change 100 to 200 (Method 1)
+
+```{r Probability2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:2}
+newdata <- data.frame(FERTILIZER = c(200, 100)) 
+fert.brm3 |>
+    emmeans(~FERTILIZER,  at = newdata) |>
+    pairs()
+fert.mcmc <- fert.brm3 |>
+    emmeans(~FERTILIZER,  at = newdata) |>
+    pairs() |>
+    as.data.frame()
+```
+
+**Conclusions:**
+
+- the change in Yield associated with an increase in Fertilizer concentration
+  from 100 to 200 is `r fert.mcmc[1, 2] |> round(2)`.
+
+We can alternatively express this as a percentage change...
+
+```{r Probability2c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:2}
+newdata <- list(FERTILIZER=c(200, 100)) 
+fert.brm3 |>
+    emmeans(~FERTILIZER,  at=newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    regrid()
+
+fert.brm3 |>
+    emmeans(~FERTILIZER, at = newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    regrid() |>
+    tidy_draws() |>
+    ## gather_emmeans_draws() |>
+    ## dplyr::select(-.chain, -.iteration, -.draw) |>
+    ## median_qi()
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    P = ~ mean(.x > 1.5))
+  
+```
+
+If we want to derive other properties, such as the percentage change, then we
+use `tidy_draws()` and then simple `tidyverse` spreadsheet operation.
+
+It is in combination with `emmeans()` that `tidy_draws()` really comes into its own.
+
+```{r Probability2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |> emmeans(~FERTILIZER,  at=newdata) |>
+    regrid(transform = "log") |>
+    pairs() |>
+    regrid() |>
+    tidy_draws() |>
+    summarise_draws(median,
+                    HDInterval::hdi,
+                    P= ~ mean(.x>1.5))
+
+fert.mcmc <- fert.brm3 |>
+    emmeans(~FERTILIZER,  at = newdata) |> 
+    tidy_draws() |>
+    rename_with(~str_replace(., 'FERTILIZER ', 'p')) |>
+    mutate(Eff=p200 - p100,
+           PEff=100*Eff/p100)
+fert.mcmc |> head()
+```
+
+Now we can calculate the medians and HPD intervals of each column (and ignore
+the `.chain`, `.iteration` and `.draw`).
+
+```{r Probability2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.mcmc |>
+    tidyMCMC(estimate.method='median',
+             conf.int=TRUE, conf.method='HPDinterval')
+```
+
+Alternatively, we could use `median_hdci()` to focus on a specific column.
+
+```{r Probability2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.mcmc |> median_hdci(PEff)
+fert.mcmc |> median_hdci(PEff, Eff)
+```
+
+```{r Probability2ff, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.mcmc |>
+    ggplot() +
+    geom_density(aes(x=PEff))
+```
+
+**Conclusions:**
+
+- the percentage change in Yield associated with an increase in Fertilizer concentration
+  from 100 to 200 is `r fert.mcmc |> median_hdci(PEff) |> _[1, 1] |> as.numeric() |> round(2)`% 
+  with a 95% credibility interval of 
+  `r fert.mcmc |> median_hdci(PEff) |> _[1, 2] |> as.numeric() |> round(2)`
+  `r fert.mcmc |> median_hdci(PEff) |> _[1, 3] |> as.numeric() |> round(2)`
+
+To get the probability that the effect is greater than a 50% increase.
+
+```{r Probability2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, paged.print=FALSE}
+fert.mcmc |> summarise(P=mean(PEff>50))
+```
+
+**Conclusions:**
+
+- the probability that Yield will increase by more than 50 following an increase
+  in Fertilizer concentration from 100 to 200 is
+  `r fert.mcmc |> summarise(P=mean(PEff>50)) |> as.numeric() |> round(2)`.
+
+
+Finally, we could alternatively use `hypothesis()`. Note that when we do so, the
+estimate is the difference between the effect and the hypothesised effect (50%).
+
+```{r Probability2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.mcmc |> hypothesis('PEff>50')
+```
+
+### Change 100 to 200 (Method 2)
+
+```{r Probability2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+newdata = list(FERTILIZER=c(200, 100)) 
+fert.brm3 |>
+    emmeans(~FERTILIZER,  at=newdata) |>
+    pairs() |>
+    tidy_draws() |>
+    summarise(across(contains('contrast'),
+                     list(P = ~ mean(.>80),
+                          HDCI = ~ median_hdci(.)),
+                     .names = c('{.fn}')
+                     )) |>
+    tidyr::unpack(HDCI)
+```
+
+We can also express this as a percentage change
+
+```{r Probability2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+newdata = list(FERTILIZER=c(200, 100)) 
+## Simple
+fert.brm3 |>
+    emmeans(~FERTILIZER,  at=newdata) |>
+    regrid(transform = 'log') |>
+    pairs() |>
+    regrid() 
+
+## More advanced (both P and percent change)
+fert.mcmc <- fert.brm3 |>
+    emmeans(~FERTILIZER,  at=newdata) |>
+    regrid(transform = 'log') |>
+    pairs() |>
+    regrid() |>
+    tidy_draws() |>
+    mutate(across(contains('contrast'), ~ 100*(. - 1)))
+
+fert.mcmc |>
+    summarise(across(contains('contrast'),
+                     list(P = ~ mean(.>50),
+                          HDCI = ~ median_hdci(.)),
+                     .names = c('{.fn}')
+                     )) |>
+    tidyr::unpack(HDCI)
+
+```
+
+### Change 100 to 200 (Method 3)
+
+```{r Probability2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert.brm3 |>
+    linpred_draws(newdata = as.data.frame(newdata)) |>
+    ungroup() |>
+    group_by(.draw) |>
+    summarise(Eff = -1 * diff(.linpred),
+              PEff = 100*Eff/.linpred[2]) |>
+    ungroup() |>
+    mutate(P = mean(PEff>50)) |>
+    pivot_longer(cols = -.draw) |>
+    group_by(name) |>
+    median_hdci()
+
+##OR
+fert.brm3 |>
+    epred_draws(newdata = as.data.frame(newdata)) |>
+    ungroup() |>
+    group_by(.draw) |>
+    summarise(Eff = -1 * diff(.epred),
+              PEff = 100*Eff/.epred[2]) |>
+    ungroup() |>
+    mutate(P = mean(PEff>50)) |>
+    pivot_longer(cols = -.draw) |>
+    group_by(name) |>
+    median_hdci()
+
+##OR for prediction of individual values
+fert.brm3 |>
+    predicted_draws(newdata = as.data.frame(newdata)) |>
+    ungroup() |>
+    group_by(.draw) |>
+    summarise(Eff = -1 * diff(.prediction),
+              PEff = 100*Eff/.prediction[2]) |>
+    ungroup() |>
+    mutate(P = mean(PEff>50)) |>
+    pivot_longer(cols = -.draw) |>
+    group_by(name) |>
+    median_hdci()
+```
+
+::::
+
+:::
+
+<!-- END_PRIVATE-->
+
+# Summary figures 
+
+<!-- START_PRIVATE-->
+
+::: {.panel-tabset}
+
+## rstanarm 
+
+:::: {.panel-tabset}
+
+### Simple
+
+```{r summaryFig1a, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.list = with(fert, list(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len=100)))
+newdata = emmeans(fert.rstanarm3, ~FERTILIZER, at=fert.list) |> as.data.frame()
+head(newdata)
+
+ggplot(newdata, aes(y=emmean, x=FERTILIZER)) + 
+geom_point(data=fert, aes(y=YIELD)) +
+geom_line() + 
+geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
+scale_y_continuous('YIELD') +
+scale_x_continuous('FERTILIZER') +
+theme_classic()
+
+## spaghetti plot
+newdata = emmeans(fert.rstanarm3, ~FERTILIZER, at=fert.list) |>
+  gather_emmeans_draws()
+newdata |> head()
+ggplot(newdata,  aes(y=.value,  x=FERTILIZER)) +
+  geom_line(aes(group=.draw),  alpha=0.01) +
+  geom_point(data=fert,  aes(y=YIELD))
+```
+
+### Pretty
+
+```{r summaryFig1b, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.list = with(fert, list(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len=100)))
+newdata = emmeans(fert.rstanarm3, ~FERTILIZER, at=fert.list) |> as.data.frame()
+head(newdata)
+
+ggplot(newdata, aes(y=emmean, x=FERTILIZER)) + 
+    geom_point(data=fert, aes(y=YIELD)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
+    scale_y_continuous(expression(Grass~yield~(g.m^-2)), breaks = seq(50,300, by = 50)) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.m^-2))) +
+    theme_classic()
+
+## spaghetti plot
+newdata = emmeans(fert.rstanarm3, ~FERTILIZER, at=fert.list) |>
+    gather_emmeans_draws()
+newdata |> head()
+ggplot(newdata,  aes(y=.value,  x=FERTILIZER)) +
+    geom_line(aes(group=.draw),  colour = 'orange', alpha=0.01) +
+    geom_point(data=fert,  aes(y=YIELD)) +
+    scale_y_continuous(expression(Grass~yield~(g.m^-2)), breaks = seq(50,300, by = 50)) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.m^-2))) +
+    theme_classic()
+```
+::::
+
+## brms 
+:::: {.panel-tabset}
+
+### Simple
+
+```{r summaryFig2a, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.grid <- with(fert, list(FERTILIZER = modelr::seq_range(FERTILIZER, n = 100)))
+fert.grid <- with(fert, list(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len = 100)))
+
+newdata <- fert.brm3 |>
+    emmeans(~FERTILIZER, at=fert.grid) |>
+    as.data.frame()
+head(newdata)
+
+ggplot(newdata, aes(y=emmean, x=FERTILIZER)) + 
+    geom_point(data=fert, aes(y=YIELD)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
+    scale_y_continuous('YIELD') +
+    scale_x_continuous('FERTILIZER') +
+    theme_classic()
+
+## spaghetti plot
+newdata = emmeans(fert.brm3, ~FERTILIZER, at = fert.grid) |>
+    gather_emmeans_draws()
+newdata |> head()
+ggplot(newdata,  aes(y = .value,  x = FERTILIZER)) +
+    geom_line(aes(group = .draw),  color = 'blue', alpha = 0.01) +
+    geom_point(data = fert,  aes(y = YIELD)) +
+    theme_classic()
+  
+```
+
+### Pretty
+
+```{r summaryFig2b, results='markdown', eval=TRUE, mhidden=TRUE}
+fert.list = with(fert, list(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len=100)))
+newdata = emmeans(fert.brm3, ~FERTILIZER, at=fert.list) |> as.data.frame()
+head(newdata)
+
+ggplot(newdata, aes(y=emmean, x=FERTILIZER)) + 
+    geom_point(data=fert, aes(y=YIELD)) +
+    geom_line() + 
+    geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
+    scale_y_continuous(expression(Grass~yield~(g.m^-2)), breaks = seq(50,300, by = 50)) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.m^-2))) +
+    theme_classic()
+
+## spaghetti plot
+newdata = emmeans(fert.brm3, ~FERTILIZER, at=fert.list) |>
+    gather_emmeans_draws()
+newdata |> head()
+ggplot(newdata,  aes(y=.value,  x=FERTILIZER)) +
+    geom_line(aes(group=.draw),  colour = 'orange', alpha=0.01) +
+    geom_point(data=fert,  aes(y=YIELD)) +
+    scale_y_continuous(expression(Grass~yield~(g.m^-2)), breaks = seq(50,300, by = 50)) +
+    scale_x_continuous(expression(Fertilizer~concentration~(g.m^-2))) +
+    theme_classic()
+```
+
+::::
+:::
+
+<!-- END_PRIVATE-->
+
+<!-- START_PRIVATE-->
+
+# Methods 
+
+- The relationship between grass yield and fertiliser concentration
+  was explored using linear regression in a Bayesian framework.
+- specifically, the yield of grass was modelled against fertiliser 
+  concentration with a Gaussian family and weakly informative priors.
+- (equation and priors)
+- the Bayesian model included 3 chains, each of 5000 iterations, 
+  thinned to a rate of 5, and excluded the first 1000 iterations (warmup)
+- the model was found to be well mixed and converged (all Rhat <
+  1.05) on a stable posterior (see suppl.) and was validated via 
+  DHARMa (cite) residuals
+- all statistical models were performed in the R (4.4.1) Statistical
+  and Graphical Environment [@R-4.4.1] via the _brms_ [@brms] package
+
+# Results
+
+- Grass yield was found to have a positive linear relationship with
+  fertiliser concentration (stats)
+- Every one unit increase in fertiliser concentration was found to be
+  associated with a 0.8 gram increase in grass yield
+- Doubling the fertiliser concentration from 100 to 200 (units) is
+  expected to increase the yield by x grams
+
+```{r}
+#| label: report_test
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+fert.brm3 |> report()
+```
+
+<!-- END_PRIVATE-->
+
+# References
+
