@@ -2268,8 +2268,8 @@ vertical-align: -.125em;
 <pre><code>
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 1).
 Chain 1: 
-Chain 1: Gradient evaluation took 9e-06 seconds
-Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.09 seconds.
+Chain 1: Gradient evaluation took 8e-06 seconds
+Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.08 seconds.
 Chain 1: Adjust your expectations accordingly!
 Chain 1: 
 Chain 1: 
@@ -2286,9 +2286,9 @@ Chain 1: Iteration: 1600 / 2000 [ 80%]  (Sampling)
 Chain 1: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Chain 1: Iteration: 2000 / 2000 [100%]  (Sampling)
 Chain 1: 
-Chain 1:  Elapsed Time: 0.012 seconds (Warm-up)
+Chain 1:  Elapsed Time: 0.013 seconds (Warm-up)
 Chain 1:                0.012 seconds (Sampling)
-Chain 1:                0.024 seconds (Total)
+Chain 1:                0.025 seconds (Total)
 Chain 1: 
 
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 2).
@@ -2312,8 +2312,8 @@ Chain 2: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Chain 2: Iteration: 2000 / 2000 [100%]  (Sampling)
 Chain 2: 
 Chain 2:  Elapsed Time: 0.012 seconds (Warm-up)
-Chain 2:                0.012 seconds (Sampling)
-Chain 2:                0.024 seconds (Total)
+Chain 2:                0.011 seconds (Sampling)
+Chain 2:                0.023 seconds (Total)
 Chain 2: 
 
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 3).
@@ -2336,9 +2336,9 @@ Chain 3: Iteration: 1600 / 2000 [ 80%]  (Sampling)
 Chain 3: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Chain 3: Iteration: 2000 / 2000 [100%]  (Sampling)
 Chain 3: 
-Chain 3:  Elapsed Time: 0.013 seconds (Warm-up)
-Chain 3:                0.013 seconds (Sampling)
-Chain 3:                0.026 seconds (Total)
+Chain 3:  Elapsed Time: 0.012 seconds (Warm-up)
+Chain 3:                0.01 seconds (Sampling)
+Chain 3:                0.022 seconds (Total)
 Chain 3: 
 
 SAMPLING FOR MODEL &#39;anon_model&#39; NOW (CHAIN 4).
@@ -2361,9 +2361,9 @@ Chain 4: Iteration: 1600 / 2000 [ 80%]  (Sampling)
 Chain 4: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Chain 4: Iteration: 2000 / 2000 [100%]  (Sampling)
 Chain 4: 
-Chain 4:  Elapsed Time: 0.012 seconds (Warm-up)
+Chain 4:  Elapsed Time: 0.013 seconds (Warm-up)
 Chain 4:                0.012 seconds (Sampling)
-Chain 4:                0.024 seconds (Total)
+Chain 4:                0.025 seconds (Total)
 Chain 4: </code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
@@ -2376,12 +2376,12 @@ Formula: y ~ x
 
 Regression Coefficients:
           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-Intercept     0.15      0.30    -0.41     0.76 1.00     2639     1661
-x            -0.05      0.26    -0.57     0.45 1.00     2869     1950
+Intercept    -0.11      0.46    -1.06     0.80 1.00     2080     1660
+x            -0.17      0.42    -1.07     0.65 1.00     2285     1562
 
 Further Distributional Parameters:
       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-sigma     0.86      0.28     0.50     1.54 1.00     1870     1870
+sigma     1.04      0.33     0.63     1.88 1.00     1945     2147
 
 Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 and Tail_ESS are effective sample size measures, and Rhat is the potential
