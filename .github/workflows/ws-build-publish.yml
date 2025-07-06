@@ -245,7 +245,8 @@ jobs:
           echo "Current dir: $(pwd)"
           ls -la .code
           ls -la
-          cp .code tmp-code
+          ## apparently gh cant create an artifact out of a directory that starts with a .
+          cp -r .code tmp-code
 
       # Upload rendered HTML artifacts
       - name: Upload rendered HTMLs
