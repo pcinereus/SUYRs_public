@@ -6,8 +6,8 @@ date-format: "DD/MM/YYYY"
 format: 
   html:
     ## Format
-    theme: [default, ../public/resources/ws-style.scss]
-    css: ../public/resources/ws_style.css
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
     html-math-method: mathjax
     ## Table of contents
     toc: true
@@ -50,7 +50,7 @@ mainfont: Arial
 mathfont: LiberationMono
 monofont: DejaVu Sans Mono
 classoption: a4paper
-bibliography: ../public/resources/references.bib
+bibliography: ../resources/references.bib
 ---
 
 ```{r}
@@ -115,7 +115,7 @@ randomly located plots.  Two months later the grass from each plot was
 harvested, dried and weighed.  The data are in the file
 **fertilizer.csv** in the **data** folder.
 
-![Field of grass](../public/resources/turf.jpg){#fig-fertilizer width=70%}
+![Field of grass](../resources/turf.jpg){#fig-fertilizer width=70%}
 
 :::: {.columns}
 
@@ -158,7 +158,7 @@ is part of the tidyverse ecosystem.
 
 ```{r}
 #| label: readData
-fert <- read_csv("../public/data/fertilizer.csv", trim_ws = TRUE)
+fert <- read_csv("../data/fertilizer.csv", trim_ws = TRUE)
 ```
 
 <!-- START_PRIVATE-->
@@ -1025,7 +1025,7 @@ fert.brm3 = brm(bf(YIELD ~ scale(FERTILIZER, scale = FALSE)),
 ```
 
 ```{r fitModel2j2, results='markdown', eval=TRUE, cache=FALSE, echo = FALSE, mhidden=TRUE}
-save(fert.brm3, file = '../ws/testing/fert.brm3.RData') 
+
 ```
 
 :::::: {.panel-tabset}
