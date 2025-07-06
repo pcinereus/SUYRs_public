@@ -238,6 +238,7 @@ jobs:
         run: |
           if [ -d tmp-code ]; then
             cp tmp-code/*.html .code/
+            ls -la .code
           else
             echo "No previously rendered HTML files found. Skipping restore."
           fi
