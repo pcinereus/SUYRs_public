@@ -261,6 +261,7 @@ jobs:
           ls -la .code
           ls -la
           ## apparently gh cant create an artifact out of a directory that starts with a .
+          mkdir -p tmp-code
           cp .code/*.html tmp-code
 
       - name: Save HTML cache
