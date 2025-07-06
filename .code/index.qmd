@@ -49,3 +49,4 @@ bibliography: ../resources/references.bib
 ## Bayesian
 
 - [Bayesian GLM example 1](bglm_example1.html)
+- [Bayesian GLM example 2](bglm_example2.html)
