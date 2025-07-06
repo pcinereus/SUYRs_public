@@ -252,7 +252,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rendered-html
-          path: .code/**/*.html
+          path: .code
 
       # configure git
       - name: Configure git
