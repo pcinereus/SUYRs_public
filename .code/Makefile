@@ -20,6 +20,7 @@ $(HTML_FILES) : %.html : %.qmd
 	$(info Source = $<; Destination = $@)
 	sed -i 's/public\///g' $<
 	sed -i 's/save\(.*RData\)//g' $<
+	sed -i 's/save\(.*brm.*\)//g' $<
 	sed -E -i 's/backend\s*=\s*["'"'"']cmdstanr?["'"'"']/backend = "rstan"/g' $<
 	echo "library(quarto); quarto_render(\"$<\")" | R --no-save --no-restore;
 
