@@ -216,9 +216,15 @@ jobs:
         with:
           name: rendered-html
           path: temp-html
+        continue-on-error: true
 
       - name: Restore HTML files to .code directory
-        run: cp temp-html/*.html .code/
+        run: |
+          if [ -d temp-html ]; then
+            cp temp-html/*.html .code/
+          else
+            echo "No previously rendered HTML files found. Skipping restore."
+          fi
 
       # Render worksheets
       - name: Make worksheets
