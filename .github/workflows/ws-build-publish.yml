@@ -245,6 +245,7 @@ jobs:
           echo "Current dir: $(pwd)"
           ls -la .code
           ls -la
+          cp .code tmp-code
 
       # Upload rendered HTML artifacts
       - name: Upload rendered HTMLs
@@ -252,7 +253,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rendered-html
-          path: .code
+          path: tmp-code
 
       # configure git
       - name: Configure git
