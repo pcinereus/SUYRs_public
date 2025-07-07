@@ -26,6 +26,8 @@ jobs:
         with:
           path: tmp-code
           key: html-cache2-${{ hashFiles('.code/*.qmd') }}
+          restore-keys: |
+            html-cache2-
           
       - name: Restore HTML files to .code directory
         run: |
