@@ -236,8 +236,13 @@ jobs:
             
       - name: Restore HTML files to .code directory
         run: |
+          echo "Contents of the .code directory before copy"
+          ls -la .code
+          echo "Contents of the tmp-code directory"
+          ls -la tmp-code
           if [ -d tmp-code ]; then
             cp tmp-code/*.html .code/
+            echo "Contents of the .code directory after copy"
             ls -la .code
           else
             echo "No previously rendered HTML files found. Skipping restore."
