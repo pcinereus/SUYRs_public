@@ -40,3 +40,11 @@ jobs:
           else
             echo "No previously rendered HTML files found. Skipping restore."
           fi
+          
+      - name: fake make
+        run: |
+          cp .code/bglm_example1.qmd .code/bglm_example1.html
+
+      - name: copy html files
+        run: |
+          cp -p .code/*.html tmp-code
