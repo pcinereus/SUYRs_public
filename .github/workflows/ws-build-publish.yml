@@ -199,9 +199,10 @@ jobs:
 
           #unzip -d ubuntu/ resources/Ubuntu.zip
           #mv ubuntu /usr/share/fonts/
+          mv resources/xkcd.ttf /usr/share/fonts/
 
-          #fc-cache -fv
-          #fc-list
+          fc-cache -fv
+          fc-list
 
       # install quarto
       - name: Install quarto
