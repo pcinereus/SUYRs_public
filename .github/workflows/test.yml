@@ -33,6 +33,8 @@ jobs:
           ls -la
           echo "Contents of the .code directory before copy"
           ls -la .code
+          echo "Contents of the tmp-code directory"
+          ls -la tmp-code
           if [ -d tmp-code ]; then
             echo "Contents of the tmp-code directory"
             ls -la tmp-code
