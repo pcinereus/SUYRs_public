@@ -46,13 +46,18 @@ engine: knitr
 bibliography: ../resources/references.bib
 ---
 
-## Bayesian
+## Bayesian GLM
 
-- [Simple Bayesian GLM](bglm_example1.html)
-- [Logistic Bayesian GLM](bglm_example2.html)
-- [Bayesian GLM](bglm_example3.html)
-- [Multiple regression Bayesian GLM](bglm_example4.html)
-- [Bayesian GLM single categorical predictor](bglm_example5.html)
-- [Bayesian GLM two categorical predictors](bglm_example6.html)
-- [Bayesian GLM with autocorrelation](bglm_example7.html)
-- [Causation and DAGs](bglm_example8.html)
+- [Simple Bayesian GLM (bglm_example1.html)](bglm_example1.html)
+- [Logistic Bayesian GLM (bglm_example2.html)](bglm_example2.html)
+- [Bayesian GLM (bglm_example3.html)](bglm_example3.html)
+- [Multiple regression Bayesian GLM (bglm_example4.html)](bglm_example4.html)
+- [Bayesian GLM single categorical predictor (bglm_example5.html)](bglm_example5.html)
+- [Bayesian GLM two categorical predictors (bglm_example6.html)](bglm_example6.html)
+- [Bayesian GLM with autocorrelation (bglm_example7.html)](bglm_example7.html)
+- [Causation and DAGs (bglm_example8.html)](bglm_example8.html)
+
+
+## Hierarchical Bayesian GLM
+
+- [Simple Hierarchical Bayesian GLM (bglmm_example1.html)](bglm_example8.html)
