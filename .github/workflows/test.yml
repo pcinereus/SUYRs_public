@@ -21,3 +21,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
      
+      - name: Restore HTML cache
+        uses: actions/cache@v4
+        with:
+          path: tmp-code
+          key: html-cache-${{ hashFiles('tmp-code/*.html') }}
+          
+      - name: Restore HTML files to .code directory
+        run: |
+          echo "Contents of the .code directory before copy"
+          ls -la .code
+          echo "Contents of the tmp-code directory"
+          ls -la tmp-code
+          if [ -d tmp-code ]; then
+            cp -p tmp-code/*.html .code/
+            echo "Contents of the .code directory after copy"
+            ls -la .code
+          else
+            echo "No previously rendered HTML files found. Skipping restore."
+          fi
