@@ -51,7 +51,7 @@ jobs:
 
       - name: copy html files
         run: |
-          cp -p .code/*.html tmp-code
+          cp -p .code/*.html tmp-code/
           ls -la tmp-code
       
       # Save updated HTML cache
