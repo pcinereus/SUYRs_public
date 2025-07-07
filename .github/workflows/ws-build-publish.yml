@@ -231,8 +231,8 @@ jobs:
         with:
           path: tmp-code
           key: html-cache-${{ hashFiles('tmp-code/*.html') }}
-          restore-keys: |
-            html-cache-
+          #restore-keys: |
+          #  html-cache-
             
       - name: Restore HTML files to .code directory
         run: |

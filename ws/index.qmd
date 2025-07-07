@@ -50,4 +50,5 @@ bibliography: ../resources/references.bib
 
 - [Simple Bayesian GLM example](bglm_example1.html)
 - [Logistic Bayesian GLM example](bglm_example2.html)
-- [Gaussian Bayesian GLM example](bglm_example3.html)
+- [Bayesian GLM example](bglm_example3.html)
+- [Multiple regression Bayesian GLM example](bglm_example4.html)
