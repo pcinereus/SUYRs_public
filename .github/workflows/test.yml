@@ -29,6 +29,8 @@ jobs:
           
       - name: Restore HTML files to .code directory
         run: |
+          echo "Contents of the root directory"
+          ls -la
           echo "Contents of the .code directory before copy"
           ls -la .code
           if [ -d tmp-code ]; then
@@ -48,3 +50,4 @@ jobs:
       - name: copy html files
         run: |
           cp -p .code/*.html tmp-code
+          ls -la tmp-code
