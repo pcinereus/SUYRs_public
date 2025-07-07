@@ -4198,7 +4198,7 @@ ggplot(newdata,  aes(y=.value,  x=FERTILIZER)) +
 #| cache: false
 fert.brm3 |> report()
 ```
-
+the end
 <!-- END_PRIVATE-->
 
 # References
