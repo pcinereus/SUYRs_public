@@ -1,4 +1,4 @@
-name: Render and publish the tutorials
+name: Test caching
 
 on:
   workflow_dispatch:
