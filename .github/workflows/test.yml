@@ -53,3 +53,10 @@ jobs:
         run: |
           cp -p .code/*.html tmp-code
           ls -la tmp-code
+      
+      # Save updated HTML cache
+      - name: Save updated HTML cache
+        uses: actions/cache@v4
+        with:
+          path: tmp-code
+          key: html-cache2-${{ hashFiles('.code/*.qmd') }}
