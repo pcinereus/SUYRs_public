@@ -1,0 +1,23 @@
+name: Render and publish the tutorials
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render-tutorials:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    name: ${{ matrix.config.r }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - { r: '4.3.3' }
+        
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+     
