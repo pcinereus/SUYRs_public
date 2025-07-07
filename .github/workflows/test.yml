@@ -49,7 +49,7 @@ jobs:
           
       - name: fake make
         run: |
-          #cp .code/bglm_example1.qmd .code/bglm_example1.html
+          cp .code/bglm_example1.qmd .code/bglm_example1.html
           cp .code/bglm_example2.qmd .code/bglm_example2.html
 
       - name: copy html files
