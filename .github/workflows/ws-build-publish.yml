@@ -39,7 +39,7 @@ jobs:
       - name: Install Graphviz
         run: sudo apt-get install graphviz
 
-       Install ImageMagick - appears it must be from source
+      # Install ImageMagick - appears it must be from source
       - name: Install imagemagick
         run: |
           sudo apt-get update
