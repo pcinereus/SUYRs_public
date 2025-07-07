@@ -76,7 +76,6 @@ Load the necessary libraries
 #| cache: false
 
 library(tidyverse)  #for data wrangling etc
-library(rstanarm)   #for fitting models in STAN
 library(cmdstanr)   #for cmdstan
 library(brms)       #for fitting models in STAN
 library(standist)   #for exploring distributions
@@ -84,7 +83,6 @@ library(HDInterval) #for HPD intervals
 library(posterior)  #for posterior draws
 library(coda)       #for diagnostics
 library(bayesplot)  #for diagnostics
-library(ggmcmc)     #for diagnostics
 library(rstan)      #for interfacing with STAN
 library(DHARMa)     #for residual diagnostics
 library(emmeans)    #for marginal means etc
@@ -94,10 +92,8 @@ library(tidybayes)  #for more tidying outputs
 library(ggeffects)  #for partial plots
 library(patchwork)  #for multiple figures
 library(bayestestR) #for ROPE
-library(see)        #for some plots
 library(ggridges)   #for ridge plots
 library(easystats)     #framework for stats, modelling and visualisation
-library(modelsummary)
 source('helperFunctions.R')
 ```
 

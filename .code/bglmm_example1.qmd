@@ -1,0 +1,1543 @@
+---
+title: "Bayesian GLMM Part1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format: 
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE,
+                      tidy = "styler")
+options(tinytex.engine = "xelatex")
+```
+
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(tidyverse)  #for data wrangling etc
+library(rstanarm)   #for fitting models in STAN
+library(cmdstanr)   #for cmdstan
+library(brms)       #for fitting models in STAN
+library(standist)   #for exploring distributions
+library(HDInterval) #for HPD intervals
+library(posterior)  #for posterior draws
+library(coda)       #for diagnostics
+library(bayesplot)  #for diagnostics
+library(ggmcmc)     #for diagnostics
+library(rstan)      #for interfacing with STAN
+library(DHARMa)     #for residual diagnostics
+library(emmeans)    #for marginal means etc
+library(broom)      #for tidying outputs
+library(broom.mixed) #for tidying MCMC outputs
+library(tidybayes)  #for more tidying outputs
+library(ggeffects)  #for partial plots
+library(patchwork)  #for multiple figures
+library(bayestestR) #for ROPE
+library(see)        #for some plots
+library(ggridges)   #for ridge plots
+library(easystats)     #framework for stats, modelling and visualisation
+library(modelsummary)
+source('helperFunctions.R')
+```
+
+# Scenario
+
+A plant pathologist wanted to examine the effects of two different
+strengths of tobacco virus on the number of lesions on tobacco leaves.
+She knew from pilot studies that leaves were inherently very variable
+in response to the virus. In an attempt to account for this leaf to
+leaf variability, both treatments were applied to each leaf. Eight
+individual leaves were divided in half, with half of each leaf
+inoculated with weak strength virus and the other half inoculated with
+strong virus. So the leaves were blocks and each treatment was
+represented once in each block. A completely randomised design would
+have had 16 leaves, with 8 whole leaves randomly allocated to each
+treatment.
+
+![Tobacco plant](../resources/TobaccoPlant.jpg){#fig-tobacco height="300"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+LEAF   TREAT    NUMBER
+------ -------- --------
+1      Strong   35.898
+1      Week     25.02
+2      Strong   34.118
+2      Week     23.167
+3      Strong   35.702
+3      Week     24.122
+\...   \...     \...
+
+: Format of tobacco.csv data files {#tbl-tobacco .table-condensed}
+
+:::
+
+::: {.column width="50%"}
+
+------------ ----------------------------------------------------------------------------------------------------
+**LEAF**     The blocking factor - Factor B
+**TREAT**    Categorical representation of the strength of the tobacco virus - main factor of interest Factor A
+**NUMBER**   Number of lesions on that part of the tobacco leaf - response variable
+------------ ----------------------------------------------------------------------------------------------------
+
+: Description of the variables in the tobacco data file {#tbl-tobacco1 .table-condensed}
+
+:::
+::::
+
+
+# Read in the data
+
+```{r}
+#| label: readData
+tobacco <- read_csv("../data/tobacco.csv", trim_ws = TRUE)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+glimpse(tobacco)
+```
+
+## head
+```{r}
+## Explore the first 6 rows of the data
+head(tobacco)
+```
+
+## str
+```{r}
+str(tobacco)
+```
+
+## Easystats (datawizard)
+```{r}
+tobacco |> datawizard::data_codebook()
+```
+
+## Skim (modelsummary)
+```{r}
+tobacco |> modelsummary::datasummary_skim()
+tobacco |> modelsummary::datasummary_skim(by = "TREATMENT")
+```
+
+
+:::
+<!-- END_PRIVATE-->
+ 
+
+# Exploratory data analysis
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+Along with ensuring that all categorical variables are specifically declared as
+factors, if we intend to use either `rstanarm` or `brms`, we also need to ensure
+that all __varying__ effects are also declared as factors. 
+
+```{r processData, results='markdown', eval=TRUE}
+tobacco <- tobacco |> mutate(LEAF = factor(LEAF),
+                             TREATMENT = factor(TREATMENT))
+tobacco |> head()
+```
+
+## Boxplots
+
+To explore the assumptions of homogeneity of variance and normality, a boxplot
+of each Treatment level is appropriate.
+
+```{r tobaccoEDA2, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(tobacco,  aes(y = NUMBER,  x = TREATMENT)) +
+  geom_boxplot()
+```
+
+**Conclusions:**
+
+- both normality and homogeneity of variance seem satisfied
+
+## Line plots
+It can also be useful to get a sense of the consistency across blocks (LEAF).
+That is, do all Leaves have a similar baseline level of lesion susceptibility
+and do they respond similarly to the treatment.
+
+```{r tobaccoEDA3, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(tobacco,  aes(y = NUMBER,  x = as.numeric(LEAF))) +
+  geom_line(aes(linetype = TREATMENT))
+
+## If we want to retain the original LEAF labels
+ggplot(tobacco,  aes(y = NUMBER,  x = as.numeric(LEAF))) +
+  geom_blank(aes(x = LEAF)) +
+  geom_line(aes(linetype = TREATMENT))
+```
+
+**Conclusions:**
+
+- it is clear that some leaves are more susceptible to lesions (e.g. Leaf 7)
+  than other leaves (e.g. Leaf 4)
+- most leaves (other than Leaf 4 and 6) have a similar response to the
+  Treatments - that is most have higher number of lesions from the Strong
+  Treatment than the Weak Treatment.
+
+## Paired plots
+Given that there are only two levels of Treatment (Strong and Weak), it might be
+easier to visualise the differences in baselines and effect consistency by
+plotting as:
+
+```{r tobaccoEDA4, results='markdown', eval=TRUE, mhidden=TRUE}
+ggplot(tobacco,  aes(y = NUMBER,  x = TREATMENT,  group = LEAF)) +
+  geom_point() +
+  geom_line(aes(x = as.numeric(TREATMENT))) 
+```
+
+**Conclusions:**
+
+- this figure reiterates the points made earlier about the varying baselines and
+  effect consistency.
+
+
+The above figure also serves as a good way to visualise certain aspects of mixed
+effects models.  When we fit a mixed effects model that includes a random
+blocking effect (in this case LEAF), we are indicating that we are allowing
+there to be a different intercept for each block (LEAF).  In the current case,
+the intercept will represent the first Treatment level (Strong).  So the random
+effect is specifying that the intercept can vary from Leaf to Leaf.
+
+We can think of the model as having two tiers (a hierarchy), where the tiers of
+the hierarchy represent progressively smaller (typically) spatial scales.  In
+the current example, the largest spatial units are the leaves (blocking factor).
+Within the leaves, there are the two Treatments (Strong and Weak) and within the
+Treatments are the individual observations.
+
+From a frequentist perspective, this model might be referred to as a mixed
+effects model in which the `TREATMENT` is a 'fixed' effect and the `LEAF` is a
+'random' effect.  Such terminology is inconsistent in a Bayesian context since
+all parameters are 'random'.  Instead, these would be referred to as
+_population-level_ and _group-level_ effects respectively.  Group-level effects
+are so called because they are effects that differ within each group (e.g. level
+of a blocking factor), whereas population effects are those that have been
+pooled across all groups.
+
+:::
+
+<!-- END_PRIVATE-->
+
+Model formula:
+$$
+\begin{align}
+y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
+\mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
+\beta_0 &\sim{} \mathcal{N}(35, 20)\\
+\beta_1 &\sim{} \mathcal{N}(0, 10)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_j^2 &\sim{} \mathcal{Cauchy}(0,5)\\
+\sigma^2 &\sim{} Gamma(2,1)\
+\end{align}
+$$
+
+where:
+
+- $\bf{X}$ is the model matrix representing the overall intercept and
+  effects of the treatment on the number of lesions.
+- $\boldsymbol{\beta}$ is a vector of the population-level effects
+  parameters to be estimated.
+- $\boldsymbol{\gamma}$ is a vector of the group-level effect parameters
+- $\bf{Z}$ represents a cell means model matrix for the random intercepts (and
+  possibly random slopes) associated with leaves.
+- the population-level intercept ($\beta_0$) has a gaussian prior with location
+  of 31 and scale of 10
+- the population-level effect ($\beta_1$) has a gaussian prior with location of
+  0 and scale of 10
+- the group-level effects are assumed to sum-to-zero and be drawn from a
+  gaussian distribution with mean of 0 and covariance of $\Sigma$  
+- $\boldsymbol{\Sigma}$ is the variance-covariance matrix between the
+  groups (individual leaves).  It turns out that it is difficult to
+  apply a prior on this covariance matrix, so instead, the covariance
+  matrix is decomposed into a correlation matrix
+  ($\boldsymbol{\Omega}$) and a vector of variances
+  ($\boldsymbol{\sigma_l}$) which are the diagonals ($\boldsymbol{D}$)
+  of the covariance matrix.
+- $\boldsymbol{\Omega}$ 
+$$
+\gamma \sim{} N(0,\Sigma)\\
+\Sigma -> \Omega, \tau\\
+$$
+where $\Sigma$ is a covariance matrix.
+
+<!-- START_PRIVATE-->
+
+It turns out that it is difficult to apply a prior on a covariance matrix, so
+instead, we decompose the covariance matrix into a correlation matrix and variance.
+
+https://jrnold.github.io/bayesian_notes/appendix.html - Section 20.15.3 Covariance-Correlation Matrix Decomposition
+
+- Covariance matrix can be decomposed into a correlation matrix and a vector of
+  variances
+- The variances can be further decomposed into the product of a
+  simplex vector (which is a probability vector, non-negative and sums
+  to 1) and the trace (product of the order of the matrix and the
+  scale of the scale parameter, also the sum of its diagonal elements)
+  of a matrix.  Each element of the simplex vector represents the
+  proportion of the trace that is attributable to the corresponding
+  variable.
+- A prior on all the above is a decov (decomposition of covariance) function
+
+- The prior on the correlation matrix is called LKJ
+- density is proportional to the determinant of the correlation matrix raised to
+  the power of the positive regularization paramter minus one.
+
+- The prior on the simplex vector is a symmetric Dirichlet prior which
+  has a single (positive) concentration parameter (default of 1
+  implying the prior is jointly uniform over the same of simplex
+  vectors of that size) A symmetric Dirichlet prior is used for the
+  simplex vector.  The Dirichlet prior has a single (positive)
+  concentration parameter
+
+- The positive scale paramter has a gamma prior (with default shape
+  and scale of 1 - implying a unit-exponential distribution)
+
+- alternatively, the lkj prior can be used for covariance.
+- as with decov, it decomposes into correlation and variances, however the
+  variances are not further decomosed into a simplex vector and trace.
+- instead the standard deviations (variance squared) for each of the group
+  specific paramters are given half student-t distribution with scale and df
+  paramters specified through the scale (default 10) and df (default 1)
+  arguments of the lkj function.
+- the lkj prior is similar, yet faster than decov
+
+<!-- END_PRIVATE-->
+# Fit the model
+
+<!-- START_PRIVATE-->	
+::: {.panel-tabset}
+## rstanarm
+:::: {.panel-tabset}
+### Using default priors
+In `rstanarm`, the default priors are designed to be weakly informative. They
+are chosen to provide moderate regularlization (to help prevent overfitting) and
+help stabalise the computations.
+
+```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+tobacco.rstanarm <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
+                               data = tobacco,
+                               family = gaussian(), 
+                               iter = 5000,
+                               warmup = 2000,
+                               chains = 3,
+                               thin = 5,
+                               refresh = 0)
+```
+
+```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+tobacco.rstanarm |> prior_summary()
+```
+This tells us:
+
+- for the intercept (when the family is Gaussian), a normal prior with
+  a mean of 31 and a standard deviation of 16 is used.  The 2.5 is
+  used for scaling all parameter standard deviations.  The value of 31
+  is based on the mean of the response (`mean(tobacco$NUMBER)`) and
+  the scaled standard deviation of 16 is based on multiplying the
+  scaling factor by the standard deviation of the response.
+
+```{r fitModel1c, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+2.5*sd(tobacco$NUMBER)
+```
+
+- for the coefficients (in this case, just the difference between strong and
+weak innoculation), the default prior is a normal prior centered around 0 with a
+standard deviation of 2.5.  This is then adjusted for the scale of the data by
+multiplying the 2.5 by the ratio of the standard deviation of the response by
+the stanard devation of the numerical dummy variables for the predictor (then rounded). 
+
+```{r fitModel1d, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+2.5*sd(tobacco$NUMBER)/apply(model.matrix(~TREATMENT, tobacco), 2, sd)
+```
+
+-  the auxillary prior represents whatever additional prior is required for the
+   nominated model.  In the case of a Gaussian model, this will be $\sigma$, for
+   negative binomial, it will be the reciprocal of dispersion, for gamma, it
+   will be shape, etc .  By default in `rstanarm`, this
+   is a exponential with a rate of 1 which is then adjusted by devision with the
+   standard deviation of the response.
+   
+```{r fitModel1e, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+1/sd(tobacco$NUMBER)
+```
+
+ 
+### Assessing priors
+Lets now run with priors only so that we can explore the range of values they
+allow in the posteriors.
+
+```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+tobacco.rstanarm1 <- update(tobacco.rstanarm,  prior_PD=TRUE)
+```
+
+```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+ggpredict(tobacco.rstanarm1) |> plot(show_data = TRUE)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is faily wide and the predicted means could range
+  from a small negative number to a relatively large positive number.
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucket out of
+thin air):
+
+- $\beta_0$: normal centered at 35 with a standard deviation of 7
+  - mean of 33: since `median(tobacco$NUMBER)`
+  - sd of 7: since `mad(tobacco$NUMBER)`
+- $\beta_1$: normal centred at 0 with a standard deviation of 13
+  - sd of 13: since `sd(tobacco$NUMBER) / apply(model.matrix(~TREATMENT, tobacco), 2, sd)`
+- $\sigma$: exponential with rate of 0.15
+  - since `1 / sd(tobacco$NUMBER)`
+- $\Sigma$: decov with:
+  - regularization: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+tobacco.rstanarm2 <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
+                                data = tobacco,
+                                family = gaussian(), 
+                                prior_intercept = normal(35, 7, autoscale = FALSE),
+                                prior = normal(0, 13, autoscale = FALSE),
+                                prior_aux=rstanarm::exponential(0.15, autoscale = FALSE),
+                                prior_covariance = decov(1, 1, 1, 1), 
+                                prior_PD = TRUE, 
+                                iter = 5000,
+                                warmup = 1000,
+                                chains = 3,
+                                thin = 5,
+                                refresh = 0
+                                )
+```
+
+```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+tobacco.rstanarm2 |>
+    ggpredict() |>
+    plot(show_data = TRUE)
+```
+
+Now lets refit, conditioning on the data.
+
+```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
+tobacco.rstanarm3 <- update(tobacco.rstanarm2,  prior_PD=FALSE)
+```
+ 
+### Plotting prior and posterior
+
+```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+posterior_vs_prior(tobacco.rstanarm3, color_by='vs', group_by=TRUE,
+                   facet_args=list(scales='free_y'))
+```
+
+**Conclusions:**
+
+- in each case, the prior is substantially wider than the posterior, suggesting
+  that the posterior is not biased towards the prior.
+  
+```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggemmeans(tobacco.rstanarm3,  ~TREATMENT) |> plot(show_data=TRUE)
+ggpredict(tobacco.rstanarm3,  ~TREATMENT) |> plot(show_data=TRUE)
+```
+::::
+## brms 
+:::: {.panel-tabset}
+### Using default priors
+
+In `brms`, the default priors are designed to be weakly informative.  They are
+chosen to provide moderate regularlization (to help prevent overfitting) and
+help stabalise the computations.
+
+Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
+For most models, the compilation of the stan code takes around 45 seconds.
+
+```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80), echo=c(-4,-6)}
+tobacco.form <- bf(NUMBER ~ (1|LEAF) + TREATMENT,
+                   family = gaussian() 
+                   )
+options(width=100)
+tobacco.form |> get_prior(data=tobacco)
+options(width=80)
+## tobacco.brm <- brm(tobacco.form,
+##                   data=tobacco,
+##                   iter = 5000,
+##                   warmup = 1000,
+##                   chains = 3,
+##                   thin = 5,
+##                   refresh = 0)
+```
+
+
+### Defining priors
+
+The following link provides some guidance about defining priors.
+[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
+
+When defining our own priors, we typically do not want them to be scaled.
+
+If we wanted to define our own priors that were less vague, yet still not likely
+to bias the outcomes, we could try the following priors (mainly plucket out of
+thin air):
+
+- $\beta_0$: normal centered at 31 with a standard deviation of 7
+  - mean of 31: since `mean(tobacco$NUMBER)`
+  - sd of 7: since `sd(tobacco$NUMBER)`
+- $\beta_1$: normal centred at 0 with a standard deviation of 13
+  - sd of 13: since `sd(tobacco$NUMBER) / apply(model.matrix(~TREATMENT, tobacco), 2, sd)`
+- $\sigma$: half-cauchy with parameters 0 and 6.5
+  - since `sd(tobacco$NUMBER)`
+- $\sigma_j$: half-cauchy with parameters 0 and 2.5
+  - since `sqrt(sd(tobacco$NUMBER))`
+  - we want this prior to have most mass close to zero for the purpose
+    of **regularisation**
+- $\Sigma$: decov with:
+  - regularization: the exponent for a LKJ prior on the correlation matrix.  A
+    value of 1 (default) implies a joint uniform prior
+  - concentration: the concentration parameter for a symmetric Dirichlet
+    distribution.  A value of 1 (default) implies a joint uniform distribution
+  - shape and scale: the shape and scale parameters for a gamma prior on the
+    scale and scale parameters of the
+    decov prior.  A value of 1 for both (default) simplifies the gamma prior to
+    a unit-exponential distribution.
+
+Note, for hierarchical models, the model will tend to want to have a
+large $sigma$ in order to fit the data better.  It is a good idea to
+__regularise__ this tendency by applying a prior that has most mass
+around zero.  Suitable candidates include:
+
+- half-t: as the degrees of freedom approach infinity, this will approach a half-normal 
+- half-cauchy: this is essentially a half-t with 1 degree of freedom
+- exponential
+
+I will also overlay the raw data for comparison.
+
+```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, fig.width = 10, fig.height = 7}
+tobacco |> 
+    group_by(TREATMENT) |>
+    summarise(median(NUMBER),
+              mad(NUMBER))
+sd(tobacco$NUMBER)   # 6.5
+standist::visualize("normal(35,3)", xlim=c(-10,100))
+standist::visualize("normal(0, 10)", xlim=c(-20,20))
+standist::visualize(
+              "student_t(3,0,10)",
+              "gamma(2,1)",
+                    "gamma(2,0.5)",
+                    "gamma(5,0.1)",
+                    "exponential(1)",
+                    "exponential(0.15)",
+                    "cauchy(0,6.5)",
+                    "cauchy(0, 2.5)",  # since sqrt(6.5) = 2.5
+                    "cauchy(0,1)",
+                    xlim=c(-10,25))
+```
+
+```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+priors <- prior(normal(35,10), class = 'Intercept') +
+    prior(normal(0, 8), class = 'b') +
+    prior(student_t(3,0,5), class = 'sigma') +
+    prior(student_t(3,0,5), class = 'sd') 
+tobacco.form <- bf(NUMBER ~ (TREATMENT|LEAF) + TREATMENT,
+                     family = gaussian()
+                   )
+tobacco.brm2 <- brm(tobacco.form, 
+                  data = tobacco,
+                  prior = priors,
+                  sample_prior = 'only',
+                  iter = 5000,
+                  warmup = 2500,
+                  chains = 3, cores = 3,
+                  thin = 5,
+                  refresh = 0,
+                  backend = "cmdstanr"
+                  )
+```
+
+Note in the above model, the output may have included a warning
+message alerting us the presence of **divergent transitions**.
+Divergent transitions are an indication that the sampler has
+encountered poor sampling conditions - the more divergent transitions,
+the more severe the issue.
+
+Typically, divergent transitions are the result of either:
+
+- a miss-specified model
+- priors that permit the sampler to drift into unsupported areas
+- complex posterior "features" (with high degrees of curvature) for
+  which the sampler was inadequately tuned during the warmup phase
+
+One useful way to diagnose the cause of divergent transitions is to
+explore a parallel coordinates plot. Each parameter is on the x-axis
+and each line represents a single MCMC draw. Divergent transitions
+will be highlighted in red (by default). If lines pinch together at a
+particular parameter, then it points to that dimension as the cause of
+divergent transitions.
+
+```{r fitModel2h1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, fig.width = 8, fig.height = 3}
+tobacco.np <- nuts_params(tobacco.brm2)
+tobacco.mcmc <- as.array(tobacco.brm2)
+mcmc_parcoord(x = tobacco.mcmc, np = tobacco.np) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+tobacco.brm2 |> mcmc_parcoord(np = tobacco.np) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+tobacco.brm2 |> mcmc_parcoord(regex_pars = "^b.*|^r.*") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+Accordingly, these divergent transitions can be addressed by either:
+
+- reviewing the model structure
+- adopting tighter priors
+- increase the **adaptive delta** from the default of 0.8 to closer
+  to 1.  The adaptive delta defines the average acceptance probability
+  that the sampler should aspire to during the warmup phase.
+  Increasing the adaptive delta results in a smaller step size (and
+  thus fewer divergences and more robust samples) however it will also
+  result in slower sampling speeds.
+
+```{r partialPlot2h1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm2 |>
+    ggpredict() |>
+    plot(show_data = TRUE)
+```
+
+
+
+```{r fitModel2h1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+tobacco.brm3 <- update(tobacco.brm2,  
+                       sample_prior = 'yes',
+                       control = list(adapt_delta = 0.99, max_treedepth =  20),
+                       refresh = 0, cores = 3) 
+
+```
+
+```{r partialPlot2h1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |>
+    ggpredict() |>
+    plot(show_data = TRUE)
+```
+
+### Plotting prior and posterior
+
+```{r posterior2h2, results='markdown', eval=TRUE}
+tobacco.brm3 |> get_variables()
+tobacco.brm3 |> hypothesis('TREATMENTWeak=0') |> plot()
+```
+
+```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+tobacco.brm3 |> SUYR_prior_and_posterior()
+```
+
+### Random intercept/slope model
+
+While we are here, we might like to explore a random intercept/slope model
+
+
+```{r fitModel2h3, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+priors <- prior(normal(35,10), class = 'Intercept') +
+    prior(normal(0, 8), class = 'b') +
+    prior(student_t(3,0,5), class = 'sigma') +
+    prior(cauchy(0, 5), class = 'sd') +
+    prior(lkj_corr_cholesky(1), class = 'cor')
+tobacco.form <- bf(NUMBER ~ (TREATMENT|LEAF) + TREATMENT,
+                     family = gaussian()
+                   )
+ 
+tobacco.brm4 <-  brm(tobacco.form, 
+                  data = tobacco,
+                  prior = priors,
+                  sample_prior = 'yes',
+                  iter = 5000,
+                  warmup = 1000,
+                  chains = 3,
+                  thin = 5,
+                  refresh = 0,
+                  control = list(adapt_delta=0.99),
+                  backend = "cmdstanr"
+                  )
+
+```
+
+```{r posterior2k, results='markdown', eval=TRUE}
+tobacco.brm4 |> get_variables()
+tobacco.brm4 |> hypothesis('TREATMENTWeak=0') |> plot()
+```
+
+```{r posterior2k1, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+tobacco.brm4 |> SUYR_prior_and_posterior()
+```
+
+```{r posterior2k2, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
+tobacco.brm4 |>
+  posterior_samples() |>
+  dplyr::select(-`lp__`) |>
+  pivot_longer(everything(), names_to = 'key') |> 
+  filter(!str_detect(key, '^r')) |>
+  mutate(Type = ifelse(str_detect(key, 'prior'), 'Prior', 'Posterior'),
+         ## Class = ifelse(str_detect(key, 'Intercept'),  'Intercept',
+         ##         ifelse(str_detect(key, 'b'),  'b', 'sigma')),
+         Class = case_when(
+             str_detect(key, '(^b|^prior).*Intercept$') ~ 'Intercept',
+             str_detect(key, 'b_TREATMENT|prior_b') ~ 'TREATMENT',
+             str_detect(key, 'sd') ~ 'sd',
+             str_detect(key, '^cor|prior_cor') ~ 'cor',
+             str_detect(key, 'sigma') ~ 'sigma'),
+         Par = str_replace(key, 'b_', '')) |>
+  ggplot(aes(x = Type,  y = value, color = Par)) +
+  stat_pointinterval(position = position_dodge())+
+  facet_wrap(~Class,  scales = 'free')
+
+```
+
+### Compare models
+
+We can compare the two models using LOO
+
+```{r fitModel2h3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+(l.1 <- tobacco.brm3 |> loo()) 
+(l.2 <- tobacco.brm4 |> loo())
+loo_compare(l.1, l.2)
+```
+
+Whilst the random intercept/slope has a slightly smaller looic, when
+we consider the standard error (or rather an interval of +- 2.5xSE),
+there is no support for this more complex model over the simpler
+random intercept only model.  Consequently, we will continue with the
+random intercept model.
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# MCMC sampling diagnostics 
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+In addition to the regular model diagnostics checking, for Bayesian analyses, it
+is also necessary to explore the MCMC sampling diagnostics to be sure that the
+chains are well mixed and have converged on a stable posterior.
+
+There are a wide variety of tests that range from the big picture, overal chain
+characteristics to the very specific detailed tests that allow the experienced
+modeller to drill down to the very fine details of the chain behaviour.
+Furthermore, there are a multitude of packages and approaches for exploring
+these diagnostics.
+
+## brms 
+:::: {.panel-tabset}
+### bayesplot
+
+The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
+Probability Checks (PPC), all of which have a convenient `plot()` interface.
+Lets start with the MCMC diagnostics.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_mcmc()
+```
+</details>
+
+Of these, we will focus on:
+
+- trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain.  Each chain is plotted in a different shade of
+  blue, with each parameter in its own facet.  Ideally, each **trace** should
+  just look like noise without any discernible drift and each of the traces for
+  a specific parameter should look the same (i.e, should not be displaced above
+  or below any other trace for that parameter).
+
+```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> mcmc_plot(type='trace')
+```
+  
+   The chains appear well mixed and very similar
+   
+- acf_bar (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> mcmc_plot(type='acf_bar')
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- rhat_hist: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> mcmc_plot(type='rhat_hist')
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- neff_hist (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm2 |> mcmc_plot(type='neff_hist')
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> mcmc_plot(type='combo')
+tobacco.brm3 |> mcmc_plot(type='violin')
+```
+</details>
+
+### stan plots
+
+The `rstan` package offers a range of MCMC diagnostics.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- stan_trace: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+  
+```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> get_variables()
+pars <- tobacco.brm3 |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
+
+tobacco.brm3$fit |> stan_trace(pars = pars)
+```
+
+   The chains appear well mixed and very similar
+   
+- stan_acf (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3$fit |>
+    stan_ac(pars = pars)
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3$fit |> stan_rhat() 
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm2$fit |> stan_ess()
+```
+
+  Ratios all very high.
+
+```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+### ggmcmc
+
+The `ggmean` package also as a set of MCMC diagnostic functions.
+Lets start with the MCMC diagnostics.
+
+Of these, we will focus on:
+
+- ggs_traceplot: this plots the estimates of each parameter over the post-warmup
+  length of each MCMC chain. Each chain is plotted in a different colour, with
+  each parameter in its own facet. Ideally, each **trace** should just look like
+  noise without any discernible drift and each of the traces for a specific
+  parameter should look the same (i.e, should not be displaced above or below
+  any other trace for that parameter).
+
+```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+tobacco.ggs <- tobacco.brm3 |> ggs(burnin = FALSE, inc_warmup = FALSE)
+tobacco.ggs |> ggs_traceplot()
+``` 
+
+   The chains appear well mixed and very similar
+   
+- gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
+  MCMC sample lags for each parameter and each chain
+  
+```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+ggs_autocorrelation(tobacco.ggs)
+```
+
+   There is no evidence of autocorrelation in the MCMC samples
+
+- stan_rhat: Rhat is a **scale reduction factor** measure of convergence between the chains.  The closer the
+  values are to 1, the more the chains have converged.  Values greater than 1.05
+  indicate a lack of convergence.  There will be an Rhat value for each
+  parameter estimated.
+
+```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_Rhat(tobacco.ggs)
+```
+
+  All Rhat values are below 1.05, suggesting the chains have converged.
+  
+- stan_ess (number of effective samples): the ratio of the number of effective
+  samples (those not rejected by the sampler) to the number of samples provides
+  an indication of the effectiveness (and efficiency) of the MCMC sampler.
+  Ratios that are less than 0.5 for a parameter suggest that the sampler spent
+  considerable time in difficult areas of the sampling domain and rejected more
+  than half of the samples (replacing them with the previous effective sample).  
+  
+  If the ratios are low, tightening the priors may help.
+  
+```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_effective(tobacco.ggs)
+```
+
+  Ratios all very high.
+
+<details><summary>More diagnostics</summary>
+```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_crosscorrelation(tobacco.ggs)
+```
+
+```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+ggs_grb(tobacco.ggs)
+```
+</details>
+
+### pp check
+Post predictive checks provide additional diagnostics about the fit of the
+model.  Specifically, they provide a comparison between predictions drawn from
+the model and the observed data used to train the model.
+
+<details><summary>See list of available diagnostics by name</summary>
+```{r modelValidation5a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+available_ppc()
+```
+</details>
+
+- dens_overlay: plots the density distribution of the observed data (black line)
+overlayed ontop of 50 density distributions generated from draws from the model
+(light blue).  Ideally, the 50 realisations should be roughly consistent with
+the observed data.
+
+```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+The model draws appear to be consistent with the observed data.
+
+- error_scatter_avg: this plots the observed values against the average
+  residuals. Similar to a residual plot, we do not want to see any patterns in
+  this plot.  Note, this is not really that useful for models that involve a
+  binomial response
+
+```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> pp_check(type = 'error_scatter_avg')
+```
+
+This is not really interpretable
+
+- intervals:  plots the observed data overlayed ontop of posterior predictions
+associated with each level of the predictor.  Ideally, the observed data should
+all fall within the predictive intervals.
+
+
+```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+tobacco.brm3 |> pp_check(group = 'TREATMENT', type = 'intervals')
+tobacco.brm3 |> pp_check(group = 'TREATMENT', type = 'intervals_grouped')
+tobacco.brm3 |> pp_check(group = 'TREATMENT', type = 'violin_grouped')
+```
+
+The `shinystan` package allows the full suite of MCMC diagnostics and posterior
+predictive checks to be accessed via a web interface.
+
+```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+#library(shinystan)
+#launch_shinystan(tobacco.brm2)
+```
+
+### DHARMa residuals
+
+DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
+directly use the `simulateResiduals()` function to generate the simulated
+residuals.  However, if we are willing to calculate some of the components
+ourself, we can still obtain the simulated residuals from the fitted stan model.
+
+We need to supply:
+
+- simulated (predicted) responses associated with each observation.
+- observed values
+- fitted (predicted) responses (averaged) associated with each observation
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- tobacco.brm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
+tobacco.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = tobacco$NUMBER,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = FALSE)
+plot(tobacco.resids, quantreg = FALSE)
+```
+
+```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+tobacco.resids <- make_brms_dharma_res(tobacco.brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(tobacco.resids)) +
+               wrap_elements(~plotResiduals(tobacco.resids, form = factor(rep(1, nrow(tobacco))))) +
+               wrap_elements(~plotResiduals(tobacco.resids, quantreg = FALSE)) +
+               wrap_elements(~testDispersion(tobacco.resids)) 
+```
+
+
+**Conclusions:**
+
+- the simulated residuals do not suggest any issues with the residuals
+- there is no evidence of a lack of fit.
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Partial effects plots
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+:::: {.panel-tabset}
+### conditional_effects
+
+```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |>
+    conditional_effects() |>
+    plot(points = TRUE)
+```
+
+### ggpredict
+
+```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |>
+    ggpredict() |>
+    plot(show_data = TRUE)
+```
+
+### ggemmeans
+
+```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |>
+    ggemmeans(~TREATMENT) |>
+    plot(show_data = TRUE) +
+    geom_point(data = tobacco, aes(y = NUMBER, x = as.numeric(TREATMENT)))
+```
+
+### fitted_draws
+
+```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+Partial.obs <- tobacco.brm3$data |>
+    mutate(Pred = predict(tobacco.brm3)[,'Estimate'],
+           Resid = resid(tobacco.brm3)[,'Estimate'],
+           Obs = Pred + Resid)
+
+tobacco.brm3 |>
+    fitted_draws(newdata = tobacco) |>
+    median_hdci() |>
+    ggplot(aes(x = TREATMENT, y = .value)) +
+    geom_pointrange(aes(ymin = .lower, ymax = .upper)) + 
+    geom_line() +
+    geom_point(data = Partial.obs,  aes(y = Obs,  x = TREATMENT), color = 'red',
+               position = position_nudge(x = 0.1)) +
+    geom_point(data = tobacco,  aes(y = NUMBER,  x = TREATMENT),
+               position = position_nudge(x = 0.05))
+
+tobacco.brm3 |>
+    epred_draws(newdata = tobacco) |>
+    ggplot() +
+    geom_violin(data = tobacco, aes(y = NUMBER, x = TREATMENT), fill = 'blue', alpha = 0.2) +
+    geom_point(data = tobacco, aes(y = NUMBER, x = TREATMENT),
+               position = position_jitter(width = 0.1, height = 0)) +
+    geom_violin(aes(y = .epred, x = TREATMENT), fill = 'orange', alpha = 0.2) +
+    theme_bw()
+```
+::::
+:::
+<!-- END_PRIVATE-->
+
+# Model investigation
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms
+:::: {.panel-tabset}
+`brms` captures the MCMC samples from `stan` within the returned list.
+There are numerous ways to retrieve and summarise these samples.  The first
+three provide convenient numeric summaries from which you can draw conclusions,
+the last four provide ways of obtaining the full posteriors. 
+
+### summary
+
+The `summary()` method generates simple summaries (mean, standard deviation as
+well as 10, 50 and 90 percentiles).
+	
+```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |> summary()
+```
+
+```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
+tobacco.sum <- summary(tobacco.brm3)
+```
+
+**Conclusions:**
+
+- the intercept indicates that the Strong treatment has an average of 
+  `r round(tobacco.sum$fixed[1,1], 2)` lesions.
+- the Weak treatment has `r round(-1*tobacco.sum$fixed[2,1], 2)` fewer lesions. 
+- the variance in intercepts across all Leaves is 
+  `r round(tobacco.sum$random[[1]][1,1],2)`
+- the scale of variance between Leaves is very similar to the variance within Leaves 
+  (sigma, `r round(tobacco.sum$spec_pars[1,1], 2)`).
+
+### summarise_draws
+
+```{r summariseModel2i2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |>
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    N =  ~ length(.x),
+    Pl =  ~mean(.x < 0),
+    Pg =  ~mean(.x > 0),
+    rhat,
+    ess_bulk,
+    ess_tail
+  )
+
+## or if you want to exclude some parameters
+tobacco.brm3 |>
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    rhat,
+    ess_bulk,
+    ess_tail
+  ) |>
+  filter(str_detect(variable, 'prior|^r_|^lp__', negate = TRUE)) 
+```
+
+### as_draws_df (posteriors)
+
+```{r summariseModel2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |> as_draws_df()
+tobacco.brm3 |>
+  as_draws_df() |>
+  dplyr::select(matches("^b_.*|^sigma$|^sd_.*")) |> 
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    Pg = ~ mean(.x > 0),
+    Pl = ~ mean(.x < 0),
+    rhat,
+    ess_bulk,
+    ess_tail
+  )
+## or if you want to exclude some parameters
+tobacco.brm3 |>
+  as_draws_df() |>
+  summarise_draws(
+    median,
+    ~ HDInterval::hdi(.x),
+    rhat,
+    ess_bulk,
+    ess_tail
+  ) |>
+  filter(str_detect(variable, 'prior|^r_|^lp__', negate = TRUE)) 
+```
+
+### tidyMCMC
+
+```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3$fit |>
+    tidyMCMC(estimate.method = 'median',
+             conf.int = TRUE,  conf.method = 'HPDinterval',
+             rhat = TRUE, ess = TRUE)
+```
+```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+tobacco.tidy <- tidyMCMC(tobacco.brm3$fit, estimate.method='median',
+                         conf.int=TRUE,  conf.method='HPDinterval',
+                         rhat=TRUE, ess=TRUE)
+```
+
+**Conclusions:**
+
+see above
+
+### gather_draws
+
+```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |> get_variables()
+tobacco.draw <- tobacco.brm3 |>
+    gather_draws(`b.Intercept.*|b_TREAT.*|sd_.*|sigma`,  regex=TRUE)
+tobacco.draw
+```
+
+We can then summarise this
+
+```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.draw |> median_hdci()
+```
+
+```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
+tobacco.gather <- tobacco.brm3 |>
+    gather_draws(`b_Intercept.*|b_TREAT.*|sd_.*|sigma`,  regex=TRUE) |>
+  median_hdci()
+```
+
+### slab
+
+```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+tobacco.brm3 |>
+    gather_draws(`b_Intercept.*|b_TREAT.*`, regex=TRUE) |> 
+    ggplot() +
+    geom_vline(xintercept=0, linetype='dashed') +
+    stat_slab(aes(x = .value, y = .variable,
+                  fill = stat(ggdist::cut_cdf_qi(cdf,
+                           .width = c(0.5, 0.8, 0.95), 
+                           labels = scales::percent_format())
+                           )), color='black') + 
+    scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
+
+tobacco.brm3 |> 
+  gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
+  ggplot() + 
+  stat_halfeye(aes(x=.value,  y=.variable)) +
+  facet_wrap(~.variable, scales='free')
+
+tobacco.brm3 |> 
+  gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
+  ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    theme_classic()
+```
+ 
+### bayesplot
+
+```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3$fit |> plot(type='intervals') 
+```
+
+### half-eye (ggdist)
+
+```{r summariseModel2ka, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+tobacco.brm3 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    facet_wrap(~.variable, scales='free')
+
+tobacco.brm3 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    stat_halfeye(aes(x=.value,  y=.variable)) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+```
+
+### density ridges (ggridges)
+
+```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
+tobacco.brm3 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() +  
+    geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
+    geom_vline(xintercept = 0, linetype = 'dashed')
+##Or in colour 
+tobacco.brm3 |> 
+    gather_draws(`^b_.*`, regex=TRUE) |> 
+    filter(.variable != 'b_Intercept') |>
+    ggplot() + 
+    geom_density_ridges_gradient(aes(x=exp(.value),
+                                     y = .variable,
+                                     fill = stat(x)),
+                                 alpha=0.4, colour = 'white',
+                                 quantile_lines = TRUE,
+                                 quantiles = c(0.025, 0.975)) +
+    geom_vline(xintercept = 1, linetype = 'dashed') +
+    scale_x_continuous(trans = scales::log2_trans()) +
+    scale_fill_viridis_c(option = "C") 
+```
+ 
+### tidy_draws
+
+```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |> tidy_draws()
+```
+
+### spread_draws
+
+```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |> spread_draws(`.*Intercept.*|.*TREAT.*`,  regex=TRUE)
+```
+
+### posterior_samples
+```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |> posterior_samples() |> as_tibble()
+```
+
+### $R^2$
+
+```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |>
+    bayes_R2(re.form = NA, summary=FALSE) |>
+    median_hdci()
+tobacco.brm3 |>
+    bayes_R2(re.form = ~(1|LEAF), summary=FALSE) |>
+    median_hdci()
+tobacco.brm3 |>
+     bayes_R2(re.form = ~(TREATMENT|LEAF), summary=FALSE) |>
+     median_hdci()
+```
+
+
+### ROPE
+
+Region of Practical Equivalence
+
+```{r summariseModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+0.1 * sd(tobacco$NUMBER)
+tobacco.brm3 |> rope(range = c(-0.65, 0.65))
+rope(tobacco.brm3, range = c(-0.65, 0.65)) |> plot()
+
+## Or based on fractional scale
+tobacco.brm3 |> emmeans(~TREATMENT) |>
+    gather_emmeans_draws() |>
+    group_by(.draw) |>
+    arrange(desc(TREATMENT)) |>
+    summarise(Diff = 100*(exp(diff(log(.value))) -1)) |>
+    rope(range = c(-10,10))
+
+```
+
+### Modelsummary
+```{r}
+#| label: modelsummary
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+tobacco.brm3 |> modelsummary(
+  statistic = c("conf.low", "conf.high"),
+  shape = term ~ statistic,
+  exponentiate = TRUE
+)
+```
+
+```{r}
+#| label: modelsummary_plot
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+tobacco.brm3 |> modelplot(exponentiate = TRUE)
+```
+::::
+:::
+<!-- END_PRIVATE-->
+# Further investigations
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+## brms 
+:::: {.panel-tabset}
+Express effect as a percentage rather than absolute
+
+### Via emmeans
+
+```{r predictions2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+tobacco.brm3 |> emmeans(~TREATMENT) |>
+    gather_emmeans_draws() |>
+    group_by(.draw) |>
+    arrange(desc(TREATMENT)) |>
+    summarise(Diff = 100*(exp(diff(log(.value))) -1)) |>
+    summarise_draws(
+        median,
+        ~ HDInterval::hdi(.x),
+        rhat,
+        ess_bulk,
+        ess_tail
+        )
+
+## Or via gather and pivot
+newdata <- tobacco.brm3 |>
+    emmeans(~TREATMENT) |>
+    gather_emmeans_draws() |>
+    pivot_wider(names_from=TREATMENT,values_from=.value) |>
+    mutate(Eff = Strong - Weak,
+           PEff = 100*Eff/Weak)
+newdata |> median_hdci(PEff)
+newdata |> summarise(P = mean(PEff>0))
+newdata |> summarise(P = mean(PEff>20))
+newdata |>
+    dplyr::select(-.chain, -.iteration) |>
+    hypothesis('PEff>20')
+
+newdata <- tobacco.brm3 |> emmeans(~TREATMENT) |> as.data.frame()
+head(newdata)
+ggplot(newdata, aes(y=emmean, x=TREATMENT)) +
+    geom_pointrange(aes(ymin=lower.HPD, ymax=upper.HPD)) +
+    theme_bw()
+
+tobacco.brm3 |>
+    emmeans(~TREATMENT) |>
+    gather_emmeans_draws() |>
+    ggplot() +
+    geom_density_ridges(aes(x = .value, y = TREATMENT), alpha = 0.5, fill = 'orange') +
+    scale_x_continuous("Average number of lesions") + 
+    theme_bw()
+
+```
+
+### Via posterior_epred
+
+```{r predictions2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+newdat <- tobacco |> tidyr::expand(TREATMENT)
+newdata <- tobacco.brm3 |>
+    brms::posterior_epred(newdat, re_formula = NA) |>
+    as.data.frame() |>
+    rename_with(~as.character(newdat$TREATMENT)) |> 
+    mutate(Eff = Strong - Weak,
+           PEff = 100*Eff/Weak)
+head(newdata)
+newdata |> median_hdci(PEff)
+newdata |> summarise(P = mean(PEff>0))
+newdata |> summarise(P = mean(PEff>20))
+```
+
+### Via emmeans and pairs
+
+```{r predictions2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+newdata <- tobacco.brm3 |>
+    emmeans(~TREATMENT) |>
+    pairs() |>
+    gather_emmeans_draws()
+newdata |> median_hdci()
+
+## OR on percentage scale
+newdata <- tobacco.brm3 |>
+    emmeans(~TREATMENT) |>
+    regrid(trans = 'log') |>
+    pairs() |>
+    regrid() |> 
+    gather_emmeans_draws() |>
+    mutate(.value = (.value - 1) * 100)
+newdata |> median_hdci()
+newdata |> summarise(P = mean(.value>0))
+newdata |> summarise(P = mean(.value>20))
+```
+
+::::
+:::
+<!-- END_PRIVATE-->
+
+# References
