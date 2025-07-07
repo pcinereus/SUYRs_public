@@ -48,7 +48,9 @@ bibliography: ../resources/references.bib
 
 ## Bayesian
 
-- [Simple Bayesian GLM example](bglm_example1.html)
-- [Logistic Bayesian GLM example](bglm_example2.html)
-- [Bayesian GLM example](bglm_example3.html)
-- [Multiple regression Bayesian GLM example](bglm_example4.html)
+- [Simple Bayesian GLM](bglm_example1.html)
+- [Logistic Bayesian GLM](bglm_example2.html)
+- [Bayesian GLM](bglm_example3.html)
+- [Multiple regression Bayesian GLM](bglm_example4.html)
+- [Bayesian GLM single categorical predictor](bglm_example5.html)
+- [Bayesian GLM two categorical predictors](bglm_example5.html)

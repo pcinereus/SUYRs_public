@@ -75,7 +75,6 @@ Load the necessary libraries
 #| cache: false
 
 library(tidyverse)     #for data wrangling etc
-library(rstanarm)      #for fitting models in STAN
 library(cmdstanr)      #for cmdstan
 library(brms)          #for fitting models in STAN
 library(standist)      #for exploring distributions
@@ -83,7 +82,6 @@ library(HDInterval)    #for HPD intervals
 library(posterior)     #for posterior draws
 library(coda)          #for diagnostics
 library(bayesplot)     #for diagnostics
-library(ggmcmc)        #for MCMC diagnostics
 library(DHARMa)        #for residual diagnostics
 library(rstan)         #for interfacing with STAN
 library(emmeans)       #for marginal means etc
@@ -93,11 +91,9 @@ library(ggeffects)     #for partial plots
 library(broom.mixed)   #for summarising models
 library(ggeffects)     #for partial effects plots
 library(bayestestR)    #for ROPE
-library(see)           #for some plots
 library(easystats)     #for the easystats ecosystem
 library(ggridges)      #for ridge plots
 library(patchwork)     #for multiple plots
-library(modelsummary)  #for data and model summaries 
 theme_set(theme_grey()) #put the default ggplot theme back
 source("helperFunctions.R")
 ```
@@ -169,7 +165,7 @@ density and their interaction on mussel recruitment.
 
 ```{r dataprep, results='markdown', eval=TRUE}
 quinn <- quinn |>
-  mutate(SEASON = factor(SEASON,
+  mutate(fSEASON = factor(SEASON,
                          levels = c("Spring", "Summer", "Autumn", "Winter")),
                          DENSITY = factor(DENSITY))
 ```
