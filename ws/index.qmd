@@ -53,4 +53,6 @@ bibliography: ../resources/references.bib
 - [Bayesian GLM](bglm_example3.html)
 - [Multiple regression Bayesian GLM](bglm_example4.html)
 - [Bayesian GLM single categorical predictor](bglm_example5.html)
-- [Bayesian GLM two categorical predictors](bglm_example5.html)
+- [Bayesian GLM two categorical predictors](bglm_example6.html)
+- [Bayesian GLM with autocorrelation](bglm_example7.html)
+- [Causation and DAGs](bglm_example8.html)
