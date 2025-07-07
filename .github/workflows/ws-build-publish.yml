@@ -230,7 +230,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: tmp-code
-          key: html-cache-${{ hashFiles('.code/*.html') }}
+          key: html-cache-${{ hashFiles('tmp-code/*.html') }}
           restore-keys: |
             html-cache-
             
@@ -270,12 +270,12 @@ jobs:
           mkdir -p tmp-code
           cp -p .code/*.html tmp-code
 
-      - name: Save HTML cache if it was not previously restored
-        uses: actions/cache@v4
-        if: steps.html-cache.outputs.cache-hit != 'true'
-        with:
-          path: tmp-code
-          key: html-cache-${{ hashFiles('.code/*.html') }}
+      #- name: Save HTML cache if it was not previously restored
+      #  uses: actions/cache@v4
+      #  if: steps.html-cache.outputs.cache-hit != 'true'
+      #  with:
+      #    path: tmp-code
+      #    key: html-cache-${{ hashFiles('.code/*.html') }}
 
       ## Upload rendered HTML artifacts
       #- name: Upload rendered HTMLs
