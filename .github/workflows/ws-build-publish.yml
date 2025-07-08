@@ -132,6 +132,7 @@ jobs:
             any::geoR
             any::randomForest
             any::styler
+            any::reshape
             github::jmgirard/standist
 
       - name: Install other R packages
