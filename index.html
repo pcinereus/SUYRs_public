@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Murray Logan">
-<meta name="dcterms.date" content="2025-07-07">
+<meta name="dcterms.date" content="2025-07-08">
 
 <title>SUYRs worksheets</title>
 <style>
@@ -2207,7 +2207,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">July 7, 2025</p>
+      <p class="date">July 8, 2025</p>
     </div>
   </div>
   
@@ -2222,20 +2222,28 @@ vertical-align: -.125em;
 <section id="bayesian-glm" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="bayesian-glm"><span class="header-section-number">1</span> Bayesian GLM</h2>
 <ul>
-<li><a href="bglm_example1.html">Simple Bayesian GLM (bglm_example1.html)</a></li>
-<li><a href="bglm_example2.html">Logistic Bayesian GLM (bglm_example2.html)</a></li>
-<li><a href="bglm_example3.html">Bayesian GLM (bglm_example3.html)</a></li>
-<li><a href="bglm_example4.html">Multiple regression Bayesian GLM (bglm_example4.html)</a></li>
-<li><a href="bglm_example5.html">Bayesian GLM single categorical predictor (bglm_example5.html)</a></li>
-<li><a href="bglm_example6.html">Bayesian GLM two categorical predictors (bglm_example6.html)</a></li>
-<li><a href="bglm_example7.html">Bayesian GLM with autocorrelation (bglm_example7.html)</a></li>
+<li><a href="bglm_example1.html">Simple GLM (bglm_example1.html)</a></li>
+<li><a href="bglm_example2.html">Logistic GLM (bglm_example2.html)</a></li>
+<li><a href="bglm_example3.html">GLM (bglm_example3.html)</a></li>
+<li><a href="bglm_example4.html">Multiple regression GLM (bglm_example4.html)</a></li>
+<li><a href="bglm_example5.html">Poisson GLM single categorical predictor (bglm_example5.html)</a></li>
+<li><a href="bglm_example6.html">Negative binomial GLM two categorical predictors (bglm_example6.html)</a></li>
+<li><a href="bglm_example7.html">Gamma GLM with autocorrelation (bglm_example7.html)</a></li>
 <li><a href="bglm_example8.html">Causation and DAGs (bglm_example8.html)</a></li>
 </ul>
 </section>
 <section id="hierarchical-bayesian-glm" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="hierarchical-bayesian-glm"><span class="header-section-number">2</span> Hierarchical Bayesian GLM</h2>
 <ul>
-<li><a href="bglm_example8.html">Simple Hierarchical Bayesian GLM (bglmm_example1.html)</a></li>
+<li><a href="bglmm_example1.html">Simple Hierarchical GLM (bglmm_example1.html)</a></li>
+<li><a href="bglmm_example2.html">Hierarchical GLM (bglmm_example2.html)</a></li>
+<li><a href="bglmm_example3.html">Hierarchical GLM (bglmm_example3.html)</a></li>
+<li><a href="bglmm_example4.html">Hierarchical logistic GLM (bglmm_example4.html)</a></li>
+<li><a href="bglmm_example5.html">Hierarchical zero-inflated poisson GLM (bglmm_example5.html)</a></li>
+<li><a href="bglmm_example6.html">Hierarchical Poisson GLM with offset for density (bglmm_example6.html)</a></li>
+<li><a href="bglmm_example7.html">Hierarchical Gamma GLM with polynomials (bglmm_example7.html)</a></li>
+<li><a href="bglmm_example9.html">Hierarchical Ordinal GLM (bglmm_example9.html)</a></li>
+<li><a href="bglmm_example10.html">Hierarchical Binomial GLM (bglmm_example10.html)</a></li>
 </ul>
 <!-- -->
 
@@ -2742,19 +2750,27 @@ vertical-align: -.125em;
 <span id="cb1-47"><a href="#cb1-47"></a></span>
 <span id="cb1-48"><a href="#cb1-48"></a><span class="fu">## Bayesian GLM</span></span>
 <span id="cb1-49"><a href="#cb1-49"></a></span>
-<span id="cb1-50"><a href="#cb1-50"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Simple Bayesian GLM (bglm_example1.html)</span><span class="co">](bglm_example1.html)</span></span>
-<span id="cb1-51"><a href="#cb1-51"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Logistic Bayesian GLM (bglm_example2.html)</span><span class="co">](bglm_example2.html)</span></span>
-<span id="cb1-52"><a href="#cb1-52"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Bayesian GLM (bglm_example3.html)</span><span class="co">](bglm_example3.html)</span></span>
-<span id="cb1-53"><a href="#cb1-53"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Multiple regression Bayesian GLM (bglm_example4.html)</span><span class="co">](bglm_example4.html)</span></span>
-<span id="cb1-54"><a href="#cb1-54"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Bayesian GLM single categorical predictor (bglm_example5.html)</span><span class="co">](bglm_example5.html)</span></span>
-<span id="cb1-55"><a href="#cb1-55"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Bayesian GLM two categorical predictors (bglm_example6.html)</span><span class="co">](bglm_example6.html)</span></span>
-<span id="cb1-56"><a href="#cb1-56"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Bayesian GLM with autocorrelation (bglm_example7.html)</span><span class="co">](bglm_example7.html)</span></span>
+<span id="cb1-50"><a href="#cb1-50"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Simple GLM (bglm_example1.html)</span><span class="co">](bglm_example1.html)</span></span>
+<span id="cb1-51"><a href="#cb1-51"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Logistic GLM (bglm_example2.html)</span><span class="co">](bglm_example2.html)</span></span>
+<span id="cb1-52"><a href="#cb1-52"></a><span class="ss">- </span><span class="co">[</span><span class="ot">GLM (bglm_example3.html)</span><span class="co">](bglm_example3.html)</span></span>
+<span id="cb1-53"><a href="#cb1-53"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Multiple regression  GLM (bglm_example4.html)</span><span class="co">](bglm_example4.html)</span></span>
+<span id="cb1-54"><a href="#cb1-54"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Poisson GLM single categorical predictor (bglm_example5.html)</span><span class="co">](bglm_example5.html)</span></span>
+<span id="cb1-55"><a href="#cb1-55"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Negative binomial GLM two categorical predictors (bglm_example6.html)</span><span class="co">](bglm_example6.html)</span></span>
+<span id="cb1-56"><a href="#cb1-56"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Gamma GLM with autocorrelation (bglm_example7.html)</span><span class="co">](bglm_example7.html)</span></span>
 <span id="cb1-57"><a href="#cb1-57"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Causation and DAGs (bglm_example8.html)</span><span class="co">](bglm_example8.html)</span></span>
 <span id="cb1-58"><a href="#cb1-58"></a></span>
 <span id="cb1-59"><a href="#cb1-59"></a></span>
 <span id="cb1-60"><a href="#cb1-60"></a><span class="fu">## Hierarchical Bayesian GLM</span></span>
 <span id="cb1-61"><a href="#cb1-61"></a></span>
-<span id="cb1-62"><a href="#cb1-62"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Simple Hierarchical Bayesian GLM (bglmm_example1.html)</span><span class="co">](bglm_example8.html)</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></pre></div>
+<span id="cb1-62"><a href="#cb1-62"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Simple Hierarchical GLM (bglmm_example1.html)</span><span class="co">](bglmm_example1.html)</span></span>
+<span id="cb1-63"><a href="#cb1-63"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical GLM (bglmm_example2.html)</span><span class="co">](bglmm_example2.html)</span></span>
+<span id="cb1-64"><a href="#cb1-64"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical GLM (bglmm_example3.html)</span><span class="co">](bglmm_example3.html)</span></span>
+<span id="cb1-65"><a href="#cb1-65"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical logistic GLM (bglmm_example4.html)</span><span class="co">](bglmm_example4.html)</span></span>
+<span id="cb1-66"><a href="#cb1-66"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical zero-inflated poisson GLM (bglmm_example5.html)</span><span class="co">](bglmm_example5.html)</span></span>
+<span id="cb1-67"><a href="#cb1-67"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical Poisson GLM with offset for density (bglmm_example6.html)</span><span class="co">](bglmm_example6.html)</span></span>
+<span id="cb1-68"><a href="#cb1-68"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical Gamma GLM with polynomials (bglmm_example7.html)</span><span class="co">](bglmm_example7.html)</span></span>
+<span id="cb1-69"><a href="#cb1-69"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical Ordinal GLM (bglmm_example9.html)</span><span class="co">](bglmm_example9.html)</span></span>
+<span id="cb1-70"><a href="#cb1-70"></a><span class="ss">- </span><span class="co">[</span><span class="ot">Hierarchical Binomial GLM (bglmm_example10.html)</span><span class="co">](bglmm_example10.html)</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 
