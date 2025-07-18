@@ -86,7 +86,6 @@ library(broom.mixed)
 library(tidybayes)
 library(bayesplot)
 library(standist)   #for visualizing distributions
-library(rstanarm)
 library(cmdstanr)   #for cmdstan
 library(ggeffects)
 library(rstan)
@@ -94,7 +93,6 @@ library(DHARMa)
 library(ggridges)
 library(easystats)     #framework for stats, modelling and visualisation
 library(patchwork)
-library(modelsummary)
 source('helperFunctions.R')
 ```
 

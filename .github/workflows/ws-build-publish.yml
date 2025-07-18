@@ -201,6 +201,10 @@ jobs:
           #unzip -d ubuntu/ resources/Ubuntu.zip
           #mv ubuntu /usr/share/fonts/
           mv resources/xkcd.ttf /usr/share/fonts/
+          mv resources/Hannahs_Messy_Handwriting.ttf /usr/share/fonts/
+          mv resources/CabinSketch-Bold.ttf /usr/share/fonts/
+          mv "resources/Complete in Him.ttf" /usr/share/fonts/
+          mv "resources/veteran_typewriter.ttf" /usr/share/fonts/
 
           fc-cache -fv
           fc-list
