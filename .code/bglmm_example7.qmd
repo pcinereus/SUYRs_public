@@ -581,18 +581,18 @@ mullens.brm3 |>
 
   
 # Or via Derivatives
-mullens.brm3 |> estimate_slopes(trend =  "O2LEVEL",
-  at = c("BREATH='lung'","O2LEVEL"))
+## mullens.brm3 |> estimate_slopes(trend =  "O2LEVEL",
+##   at = c("BREATH='lung'","O2LEVEL"))
 
-mullens.brm2 |>
-  emtrends(~O2LEVEL|BREATH, var = "O2LEVEL",
-    cov.red = \(x) seq(min(x), max(x), length = 10)
-  ) |>
-  summary() |>
-  ggplot(aes(y = O2LEVEL.trend, x = O2LEVEL, colour =  BREATH)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD, fill = BREATH), alpha = 0.2) +
-  geom_line()
+## mullens.brm2 |>
+##   emtrends(~O2LEVEL|BREATH, var = "O2LEVEL",
+##     cov.red = \(x) seq(min(x), max(x), length = 10)
+##   ) |>
+##   summary() |>
+##   ggplot(aes(y = O2LEVEL.trend, x = O2LEVEL, colour =  BREATH)) +
+##   geom_hline(yintercept = 0, linetype = "dashed") +
+##   geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD, fill = BREATH), alpha = 0.2) +
+##   geom_line()
 ```
 
 

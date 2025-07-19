@@ -426,8 +426,8 @@ hughes.brm3 <- update(hughes.brm2,
                        sample_prior = 'yes',
                        control = list(adapt_delta = 0.99),
                        refresh = 100)
-
-load(file = '../ws/testing/hughes.brm3')
+## 
+## load(file = '../ws/testing/hughes.brm3')
 ```
 
 ```{r partialPlot2h1b, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
