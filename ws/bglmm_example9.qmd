@@ -90,7 +90,6 @@ library(bayesplot)
 library(broom.mixed)
 library(rstan)
 library(patchwork)
-library(modelsummary)
 library(DHARMa)
 source('helperFunctions.R')
 ```

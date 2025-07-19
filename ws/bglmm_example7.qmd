@@ -92,7 +92,6 @@ library(cmdstanr)
 library(patchwork)
 library(DHARMa)
 library(easystats)
-library(modelsummary)
 source("helperFunctions.R")
 ```
 
