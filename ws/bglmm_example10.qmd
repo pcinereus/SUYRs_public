@@ -88,7 +88,6 @@ library(bayesplot)
 library(broom.mixed)
 library(rstan)
 library(patchwork)
-library(modelsummary)
 library(DHARMa)
 source('helperFunctions.R')
 ```
@@ -172,3 +171,54 @@ glimpse(ltmp)
 :::
 
 
+```{r}
+#| label: as a gam
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+ltmp.form <- bf(
+    n.points | trials(total.points) ~ s(REPORT_YEAR) +
+        (1 | REEF_SITE) + (1 | REEF_SITE_TRANSECT),
+    family = binomial(link = "log")
+)
+get_prior(ltmp.form, data = ltmp_sub)
+ltmp_sub |> 
+    summarise(
+        Median = median(qlogis(HC/100)),
+        MAD = mad(qlogis(HC/100)),
+        N = mean(total.points)
+    )
+priors <- prior(normal(-1.1, 0.8), class = "Intercept") +
+    prior(normal(0, 1), class = 'b') +
+    prior(student_t(3, 0, 1), class = 'sd') +
+    prior(student_t(3, 0, 10), class = 'sds')
+ltmp_sub.brm4 <- brm(ltmp.form, 
+                  data = ltmp_sub,
+                  prior = priors,
+                  sample_prior = 'yes',
+                  iter = 5000,
+                  warmup = 2000,
+                  chains = 3, cores = 3,
+                  thin = 10,
+                  refresh = 100,
+                  control = list(adapt_delta = 0.99, max_treedepth = 20),
+                  backend = "cmdstanr"
+                  )
+## save(ltmp_sub.brm4, file = '../ws/testing/ltmp_sub.brm4')
+ltmp_sub.brm4 |>
+  conditional_effects(conditions = data.frame(total.points = 200)) |>
+  plot(points = TRUE)
+
+
+
+data.frame(mgcv::smoothCon(s(REPORT_YEAR), data = ltmp_sub)[[1]]$X) |>
+    head()
+## data.frame(mgcv::smoothCon(s(REPORT_YEAR, k=3),  data=ltmp_sub)[[1]]$REPORT_YEAR) |> 
+##   bind_cols(ltmp_sub)
+
+gratia::basis(s(REPORT_YEAR),  data = ltmp_sub) |> gratia::draw()
+gratia::basis(s(REPORT_YEAR, bs='cr'),  data = ltmp_sub) |> gratia::draw()
+gratia::basis(s(REPORT_YEAR, bs='cr', k = 3),  data = ltmp_sub) |> gratia::draw()
+
+```
