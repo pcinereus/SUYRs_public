@@ -1,5 +1,5 @@
 ---
-title: "Bayesian GLMM Part1"
+title: "Bayesian GLMM Part3"
 author: "Murray Logan"
 date: today
 date-format: "DD/MM/YYYY"
@@ -56,12 +56,12 @@ bibliography: ../resources/references.bib
 ```{r}
 #| label: setup
 #| include: false
+#| cache: false
 
 knitr::opts_chunk$set(cache.lazy = FALSE,
                       tidy = "styler")
 options(tinytex.engine = "xelatex")
 ```
-
 
 # Preparations
 
@@ -84,91 +84,70 @@ library(posterior)  #for posterior draws
 library(coda)       #for diagnostics
 library(bayesplot)  #for diagnostics
 library(rstan)      #for interfacing with STAN
-library(DHARMa)     #for residual diagnostics
 library(emmeans)    #for marginal means etc
 library(broom)      #for tidying outputs
-library(broom.mixed) #for tidying MCMC outputs
+library(DHARMa)     #for residual diagnostics
 library(tidybayes)  #for more tidying outputs
 library(ggeffects)  #for partial plots
-library(patchwork)  #for multiple figures
-library(bayestestR) #for ROPE
+library(broom.mixed)#for tidying MCMC outputs
+library(patchwork)  #for multiple plots
 library(ggridges)   #for ridge plots
+library(bayestestR) #for ROPE
 library(easystats)     #framework for stats, modelling and visualisation
 source('helperFunctions.R')
 ```
 
 # Scenario
 
-A plant pathologist wanted to examine the effects of two different
-strengths of tobacco virus on the number of lesions on tobacco leaves.
-She knew from pilot studies that leaves were inherently very variable
-in response to the virus. In an attempt to account for this leaf to
-leaf variability, both treatments were applied to each leaf. Eight
-individual leaves were divided in half, with half of each leaf
-inoculated with weak strength virus and the other half inoculated with
-strong virus. So the leaves were blocks and each treatment was
-represented once in each block. A completely randomised design would
-have had 16 leaves, with 8 whole leaves randomly allocated to each
-treatment.
+![Starlings](../resources/starlings.jpg){#fig-starlings width="200" height="274"}
 
-![Tobacco plant](../resources/TobaccoPlant.jpg){#fig-tobacco height="300"}
 
-:::: {.columns}
+SITUATION   MONTH   MASS   BIRD
+----------- ------- ------ -----------
+tree        Nov     78     tree1
+..          ..      ..     ..
+nest-box    Nov     78     nest-box1
+..          ..      ..     ..
+inside      Nov     79     inside1
+..          ..      ..     ..
+other       Nov     77     other1
+..          ..      ..     ..
+tree        Jan     85     tree1
+..          ..      ..     ..
 
-::: {.column width="50%"}
+: Format of starling_full.csv data file {#tbl-starling .table-condensed}
 
-LEAF   TREAT    NUMBER
------- -------- --------
-1      Strong   35.898
-1      Week     25.02
-2      Strong   34.118
-2      Week     23.167
-3      Strong   35.702
-3      Week     24.122
-\...   \...     \...
+--------------- ------------------------------------------------------------------------------
+**SITUATION**   Categorical listing of roosting situations (tree, nest-box, inside or other)
+**MONTH**       Categorical listing of the month of sampling.
+**MASS**        Mass (g) of starlings.
+**BIRD**        Categorical listing of individual bird repeatedly sampled.
+--------------- ------------------------------------------------------------------------------
 
-: Format of tobacco.csv data files {#tbl-tobacco .table-condensed}
-
-:::
-
-::: {.column width="50%"}
-
------------- ----------------------------------------------------------------------------------------------------
-**LEAF**     The blocking factor - Factor B
-**TREAT**    Categorical representation of the strength of the tobacco virus - main factor of interest Factor A
-**NUMBER**   Number of lesions on that part of the tobacco leaf - response variable
------------- ----------------------------------------------------------------------------------------------------
-
-: Description of the variables in the tobacco data file {#tbl-tobacco1 .table-condensed}
-
-:::
-::::
-
+: Description of the variables in the starling_full data file {#tbl-starling1 .table-condensed}
 
 # Read in the data
 
-```{r}
-#| label: readData
-tobacco <- read_csv("../data/tobacco.csv", trim_ws = TRUE)
+```{r readData, results='markdown', eval=TRUE}
+starling <- read_csv('../data/starling_full.csv', trim_ws = TRUE)
 ```
-
 
 
 # Exploratory data analysis
 
 ::: {.columns}
 :::: {.column width="50%"}
-
 Random intercepts model formula:
 $$
 \begin{align}
-y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
-\mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
-\beta_0 &\sim{} \mathcal{N}(35, 3)\\
-\beta_1 &\sim{} \mathcal{N}(0, 10)\\
-\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \sigma^2_l)\\
-\sigma^2_l &\sim{} t(3, 0, 5)\\
-\sigma^2 &\sim{} t(3, 0, 5)\
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+\mu_i &= \beta_0 + \boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\boldsymbol{\gamma} &= \gamma_0\\
+\beta_0 &\sim{} \mathcal{N}(80, 2.5)\\
+\beta &\sim{} \mathcal{N}(0, 10)\\
+\gamma_0 &\sim{} \mathcal{N}(0, \sigma_1^2)\\
+\sigma &\sim{} \mathcal{t}(3, 0, 6)\\
+\sigma_1 &\sim{} \mathcal{t}(3, 0, 6)\\
 \end{align}
 $$
 ::::
@@ -179,30 +158,27 @@ $$
 \begin{align}
 y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
 \mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
-\beta_0 &\sim{} \mathcal{N}(35, 3)\\
+\beta_0 &\sim{} \mathcal{N}(80, 2)\\
 \beta_1 &\sim{} \mathcal{N}(0, 10)\\
 \boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
 \boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l^2})\\
 \boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
-\sigma_l^2 &\sim{} \mathcal{t}(3,0,5)\\
-\sigma^2 &\sim{} \mathcal{t}(3, 0, 5)\
+\sigma_l^2 &\sim{} \mathcal{t}(3,0,3)\\
+\sigma^2 &\sim{} \mathcal{t}(3, 0, 3)\
 \end{align}
 $$
 ::::
 :::
 
 
-where:
-
-- $\bf{X}$ is the model matrix representing the overall intercept and
-  effects of the treatment on the number of lesions.
+- $\bf{X}$ is the model matrix representing the effects of the situation and month on the mass of birds.
 - $\boldsymbol{\beta}$ is a vector of the population-level effects
   parameters to be estimated.
 - $\boldsymbol{\gamma}$ is a vector of the group-level effect parameters
 - $\bf{Z}$ represents a cell means model matrix for the random intercepts (and
-  possibly random slopes) associated with leaves.
+  possibly random slopes) associated with indivual birds.
 - the population-level intercept ($\beta_0$) has a gaussian prior with location
-  of 31 and scale of 10
+  of 80 and scale of 2.5
 - the population-level effect ($\beta_1$) has a gaussian prior with location of
   0 and scale of 10
 - the group-level effects are assumed to sum-to-zero and be drawn from a
@@ -225,17 +201,45 @@ $$
 
 where $\Sigma$ is a covariance matrix.
 
+
+
 # Fit the model
 
+::: {.panel-tabset}
+
+:::
 
 # MCMC sampling diagnostics
+
+::: {.panel-tabset}
+
+
+:::
+
+
+# Model validation
+
+::: {.panel-tabset}
+
+:::
+
+
 
 
 # Partial effects plots
 
+::: {.panel-tabset}
+
+:::
+
 
 # Model investigation
 
+::: {.panel-tabset}
+
+:::
+
 # Further investigations
 
-# References
+::: {.panel-tabset}
+
