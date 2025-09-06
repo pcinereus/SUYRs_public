@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 #  pull_request:
   push:
-    branches: ['AIMS@JCU2025']
+    branches: ['CSE2025']
 
 jobs:
   render-tutorials:
@@ -13,19 +13,19 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
     name: ${{ matrix.config.r }}
-    
+
     strategy:
       fail-fast: false
       matrix:
         config:
         - { r: '4.3.3' }
-        
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with: 
+        with:
           fetch-depth: 0  # ensure that more than the last commit is checked out so that we can get time stamps
-      # Restore the timestamps - I am going to try to use these to work out what is new and what is not    
+      # Restore the timestamps - I am going to try to use these to work out what is new and what is not
       - name: Restore Timestamps
         uses: chetan/git-restore-mtime-action@v1
 
@@ -34,7 +34,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev make
-          
+
       # install graphviz
       - name: Install Graphviz
         run: sudo apt-get install graphviz
@@ -51,7 +51,7 @@ jobs:
           make
           sudo make install
           sudo ldconfig /usr/local/lib
-          
+
       # install R
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -61,7 +61,7 @@ jobs:
         run: |
           cat("\noptions(repos=c(stan='https://mc-stan.org/r-packages/',CRAN ='https://cloud.r-project.org'))\n", file = "~/.Rprofile", append = TRUE)
         shell: Rscript {0}
-        
+
       ## Install R packages
       - name: install R packages
         uses: r-lib/actions/setup-r-dependencies@v2
@@ -239,7 +239,7 @@ jobs:
           key: qmd-cache-${{ hashFiles('.code/*.qmd') }}
           restore-keys: |
             qmd-cache-
-            
+
       - name: Restore HTML files to .code directory
         run: |
           echo "Contents of the .code directory before copy"
