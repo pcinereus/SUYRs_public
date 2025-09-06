@@ -198,7 +198,7 @@ $$
 \begin{align}
 y_i &\sim{} \mathcal{Pois}(\lambda_i)\\
 ln(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
-\beta_0 &\sim{} \mathcal{N}(3.1, 1)\\
+\beta_0 &\sim{} \mathcal{N}(3.1, 0.3)\\
 \beta_{1,2,3} &\sim{} \mathcal{N}(0,1)\\
 \end{align}
 $$
@@ -244,14 +244,14 @@ are chosen to provide moderate regularisation (to help prevent over-fitting) and
 help stabilise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
-day.rstanarm = stan_glm(BARNACLE ~ TREAT, data=day,
+day_rstanarm = stan_glm(BARNACLE ~ TREAT, data=day,
                         family=poisson(link='log'), 
                          iter = 5000, warmup = 1000,
                          chains = 3, thin = 5, refresh = 0)
 ```
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
-prior_summary(day.rstanarm)
+prior_summary(day_rstanarm)
 ```
 
 This tells us:
@@ -292,15 +292,15 @@ refitting the model in this way, we can plot the predictions to gain insights
 into the range of predictions supported by the priors alone.
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE}
-day.rstanarm1 <- update(day.rstanarm,  prior_PD=TRUE)
+day_rstanarm1 <- update(day_rstanarm,  prior_PD=TRUE)
 ```
 
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE}
-day.rstanarm1 |>
+day_rstanarm1 |>
     ggpredict() |>
     plot(show_data = TRUE)
 
-ggpredict(day.rstanarm1) |>
+ggpredict(day_rstanarm1) |>
     plot(show_data=TRUE) |>
     wrap_plots() &
     scale_y_log10()
@@ -353,7 +353,7 @@ sd(log(day$BARNACLE))/apply(model.matrix(~TREAT, data = day), 2, sd)
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE}
-day.rstanarm2 <- stan_glm(BARNACLE ~ TREAT, data=day,
+day_rstanarm2 <- stan_glm(BARNACLE ~ TREAT, data=day,
                         family=poisson(link='log'), 
                          prior_intercept = normal(3, 1, autoscale=FALSE),
                          prior = normal(0, 1, autoscale=FALSE),
@@ -364,7 +364,7 @@ day.rstanarm2 <- stan_glm(BARNACLE ~ TREAT, data=day,
 ```
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE}
-ggpredict(day.rstanarm2) |>
+ggpredict(day_rstanarm2) |>
   plot(show_data=TRUE) +
   scale_y_log10()
 ```
@@ -372,13 +372,13 @@ ggpredict(day.rstanarm2) |>
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE}
-day.rstanarm3= update(day.rstanarm2,  prior_PD=FALSE) 
+day_rstanarm3= update(day_rstanarm2,  prior_PD=FALSE) 
 ```
 
 ### Plotting prior and posterior
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-posterior_vs_prior(day.rstanarm3, color_by='vs', group_by=TRUE,
+posterior_vs_prior(day_rstanarm3, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
@@ -388,7 +388,7 @@ posterior_vs_prior(day.rstanarm3, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggpredict(day.rstanarm3) |> plot(show_data=TRUE)
+ggpredict(day_rstanarm3) |> plot(show_data=TRUE)
 ```
 ::::
 ## brms 
@@ -404,9 +404,9 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
-day.form <- bf(BARNACLE ~ TREAT,
+day_form <- bf(BARNACLE ~ TREAT,
                family = poisson(link = 'log'))
-day.brm <- brm(day.form, 
+day_brm <- brm(day_form, 
                data = day,
                iter = 5000,
                warmup = 2500,
@@ -418,7 +418,7 @@ day.brm <- brm(day.form,
 
 ```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=2}
 options(width=100)
-day.brm |> prior_summary()
+day_brm |> prior_summary()
 options(width=80)
 ```
 
@@ -464,8 +464,15 @@ model.matrix(~TREAT, data = day)
 apply(model.matrix(~TREAT, data = day), 2, sd)
 sd(log(day$BARNACLE))/apply(model.matrix(~TREAT, data = day), 2, sd)
 
+day_form <- bf(BARNACLE ~ TREAT,
+               family = poisson(link = 'log'))
+day |> 
+    group_by(TREAT) |>
+    summarise(median(log(BARNACLE)),
+              mad(log(BARNACLE)))
+
 priors <- prior(normal(0, 1),  class = 'b')
-day.brm1 <- brm(day.form,
+day_brm1 <- brm(day_form,
                data = day,
                prior = priors, 
                sample_prior = 'only', 
@@ -481,19 +488,18 @@ day.brm1 <- brm(day.form,
 #### ggpredict
 
 ```{r fitModel2e, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm1 |> ggpredict() |> plot(show_data=TRUE)
-day.brm1 |>
+day_brm1 |> ggpredict() |> plot(show_data=TRUE)
+day_brm1 |>
     ggpredict() |>
     plot(show_data=TRUE) |>
     wrap_plots() &
     scale_y_log10()
-## day.brm1 |> ggpredict() |> plot(show_data=TRUE) |> `[[`(1) + scale_y_log10()
 ```
 
 #### ggemmeans
 
 ```{r fitModel2e2, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm1 |>
+day_brm1 |>
     ggemmeans(~TREAT) |>
     plot(show_data=TRUE) +
     scale_y_log10()
@@ -503,10 +509,10 @@ day.brm1 |>
 
 
 ```{r fitModel2e3, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm1 |> 
+day_brm1 |> 
     conditional_effects() |>
     plot(points=TRUE)
-day.brm1 |>
+day_brm1 |>
     conditional_effects() |>
     plot(points=TRUE) |>
     wrap_plots() &
@@ -530,20 +536,20 @@ If we wanted to define our own priors that were less vague, yet still not likely
 to bias the outcomes, we could try the following priors (mainly plucked out of
 thin air):
 
-- $\beta_0$: normal centred at 3 with a standard deviation of 10
-  - mean of 3: since `mean(log(day$BARNACLE))`
-  - sd of 1: since `sd(log(day$BARNACLE))`
+- $\beta_0$: normal centred at 3 with a standard deviation of 0.3
+  - mean of 3: since `median(log(day$BARNACLE[day$TREAT == "ALG1"]))`
+  - sd of 0.3: since `mad(log(day$BARNACLE[day$TREAT == "ALG1"]))`
 - $\beta_1$: normal centred at 0 with a standard deviation of 6
-  - sd of 1: since: `sd(log(day$BARNACLE))/apply(model.matrix(~TREAT, data = day), 2, sd)`
+  - sd of 1: since: `tapply(log(day$BARNACLE), day$TREAT, mad)`
 ```{r, echo = FALSE, eval = FALSE}
 day |>
     group_by(TREAT) |>
-    summarise(mean(log(BARNACLE)),
-              sd(log(BARNACLE)))
+    summarise(median(log(BARNACLE)),
+              mad(log(BARNACLE)))
 
-model.matrix(~TREAT, data = day)
-apply(model.matrix(~TREAT, data = day), 2, sd)
-sd(log(day$BARNACLE))/apply(model.matrix(~TREAT, data = day), 2, sd)
+## model.matrix(~TREAT, data = day)
+## apply(model.matrix(~TREAT, data = day), 2, sd)
+## sd(log(day$BARNACLE))/apply(model.matrix(~TREAT, data = day), 2, sd)
 
 ## day |>
 ##     group_by(TREAT) |>
@@ -560,11 +566,11 @@ sd(log(day$BARNACLE))/apply(model.matrix(~TREAT, data = day), 2, sd)
 I will also overlay the raw data for comparison.
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE}
-priors <- prior(normal(3.1, 2.2),  class = 'Intercept') +
-    prior(normal(0, 2.4), class = 'b')
-day.form <- bf(BARNACLE ~ TREAT,
+priors <- prior(normal(3.1, 0.3),  class = 'Intercept') +
+    prior(normal(0, 1), class = 'b')
+day_form <- bf(BARNACLE ~ TREAT,
                    family = poisson(link = 'log'))
-day.brm2 <- brm(day.form, 
+day_brm2 <- brm(day_form, 
                 data = day,
                 prior = priors, 
                 sample_prior = 'only', 
@@ -580,8 +586,8 @@ day.brm2 <- brm(day.form,
 #### ggpredict
 
 ```{r fitModel2i, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm2 |> ggpredict() |> plot(show_data=TRUE)
-day.brm2 |>
+day_brm2 |> ggpredict() |> plot(show_data=TRUE)
+day_brm2 |>
     ggpredict() |>
     plot(show_data=TRUE) |>
     wrap_plots() &
@@ -591,8 +597,8 @@ day.brm2 |>
 #### ggemmeans
 
 ```{r fitModel2i2, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm2 |> ggemmeans(~TREAT) |> plot(show_data=TRUE)
-day.brm2 |>
+day_brm2 |> ggemmeans(~TREAT) |> plot(show_data=TRUE)
+day_brm2 |>
     ggemmeans(~TREAT) |>
     plot(show_data=TRUE) |>
     wrap_plots() &
@@ -602,8 +608,8 @@ day.brm2 |>
 #### conditional_effects
 
 ```{r fitModel2i3, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm2 |> conditional_effects() |>  plot(points=TRUE)
-day.brm2 |>
+day_brm2 |> conditional_effects() |>  plot(points=TRUE)
+day_brm2 |>
     conditional_effects() |>
     plot(points=TRUE) |>
     wrap_plots() &
@@ -613,24 +619,24 @@ day.brm2 |>
 :::::
 
 ```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm3 <- day.brm2 |> update(sample_prior = 'yes', refresh = 0) 
+day_brm3 <- day_brm2 |> update(sample_prior = 'yes', refresh = 0) 
 ```
 
 ### Plotting prior and posterior
 
 ```{r fitModel2k, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm3 |> get_variables()
-day.brm3 |> hypothesis('TREATALG2<0') |> plot()
-day.brm3 |> hypothesis('TREATNB<0') |> plot()
-day.brm3 |> hypothesis('TREATS<0') |> plot()
-day.brm3 |> SUYR_prior_and_posterior()
+day_brm3 |> get_variables()
+day_brm3 |> hypothesis('TREATALG2<0') |> plot()
+day_brm3 |> hypothesis('TREATNB<0') |> plot()
+day_brm3 |> hypothesis('TREATS<0') |> plot()
+day_brm3 |> SUYR_prior_and_posterior()
 ```
 
 ### Exploring the stan code
 
 ```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE}
-day.brm3 |> standata()
-day.brm3 |> stancode()
+day_brm3 |> standata()
+day_brm3 |> stancode()
 ```
 
 ::::
@@ -676,7 +682,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(day.rstanarm3, plotfun='mcmc_trace')
+plot(day_rstanarm3, plotfun='mcmc_trace')
 ```
   
    The chains appear well mixed and very similar
@@ -685,7 +691,7 @@ plot(day.rstanarm3, plotfun='mcmc_trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(day.rstanarm3, 'acf_bar')
+plot(day_rstanarm3, 'acf_bar')
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -696,7 +702,7 @@ plot(day.rstanarm3, 'acf_bar')
   parameter estimated.
 
 ```{r modelValidation1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(day.rstanarm3, 'rhat_hist')
+plot(day_rstanarm3, 'rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -711,15 +717,15 @@ plot(day.rstanarm3, 'rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(day.rstanarm3, 'neff_hist')
+plot(day_rstanarm3, 'neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r Validation1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(day.rstanarm3, 'combo')
-plot(day.rstanarm3, 'violin')
+plot(day_rstanarm3, 'combo')
+plot(day_rstanarm3, 'violin')
 ```
 </details>
 
@@ -739,7 +745,7 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_trace(day.rstanarm3)
+stan_trace(day_rstanarm3)
 ```
 
    The chains appear well mixed and very similar
@@ -748,7 +754,7 @@ stan_trace(day.rstanarm3)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ac(day.rstanarm3) 
+stan_ac(day_rstanarm3) 
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -759,7 +765,7 @@ stan_ac(day.rstanarm3)
   parameter estimated.
 
 ```{r modelValidation1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_rhat(day.rstanarm3) 
+stan_rhat(day_rstanarm3) 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -774,13 +780,13 @@ stan_rhat(day.rstanarm3)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ess(day.rstanarm3)
+stan_ess(day_rstanarm3)
 ```
 
   Ratios all very high.
 
 ```{r modelValidation1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_dens(day.rstanarm3, separate_chains = TRUE)
+stan_dens(day_rstanarm3, separate_chains = TRUE)
 ```
 
 
@@ -799,8 +805,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=12}
-day.ggs <- ggs(day.rstanarm3)
-ggs_traceplot(day.ggs)
+day_ggs <- ggs(day_rstanarm3)
+ggs_traceplot(day_ggs)
 ```
 
    The chains appear well mixed and very similar
@@ -809,7 +815,7 @@ ggs_traceplot(day.ggs)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=12}
-ggs_autocorrelation(day.ggs)
+ggs_autocorrelation(day_ggs)
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -820,7 +826,7 @@ ggs_autocorrelation(day.ggs)
   parameter estimated.
 
 ```{r modelValidation1n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_Rhat(day.ggs)
+ggs_Rhat(day_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -835,18 +841,18 @@ ggs_Rhat(day.ggs)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_effective(day.ggs)
+ggs_effective(day_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation1p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_crosscorrelation(day.ggs)
+ggs_crosscorrelation(day_ggs)
 ```
 
 ```{r modelValidation1q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_grb(day.ggs)
+ggs_grb(day_ggs)
 ```
 </details>
 
@@ -868,8 +874,8 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3$fit |> stan_trace()
-day.brm3$fit |> stan_trace(inc_warmup=TRUE)
+day_brm3$fit |> stan_trace()
+day_brm3$fit |> stan_trace(inc_warmup=TRUE)
 ```
 
    The chains appear well mixed and very similar
@@ -878,7 +884,7 @@ day.brm3$fit |> stan_trace(inc_warmup=TRUE)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3$fit |> stan_ac() 
+day_brm3$fit |> stan_ac() 
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -889,7 +895,7 @@ day.brm3$fit |> stan_ac()
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3$fit |> stan_rhat() 
+day_brm3$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -904,13 +910,13 @@ day.brm3$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3$fit |> stan_ess()
+day_brm3$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3$fit |> stan_dens(separate_chains = TRUE)
+day_brm3$fit |> stan_dens(separate_chains = TRUE)
 ```
 :::
 <!-- END_PRIVATE-->
@@ -942,7 +948,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(day.rstanarm3,  plotfun='dens_overlay')
+pp_check(day_rstanarm3,  plotfun='dens_overlay')
 ```
 
 The model draws appear deviate from the observed data.
@@ -952,7 +958,7 @@ The model draws appear deviate from the observed data.
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation3c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(day.rstanarm3, plotfun='error_scatter_avg')
+pp_check(day_rstanarm3, plotfun='error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -963,7 +969,7 @@ poorest at higher mussel clump areas.
   should be interpreted as such.  Again, this is not interpretable for binary data.
 
 ```{r modelValidation3d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(day.rstanarm3, x=as.numeric(day$TREAT), plotfun='error_scatter_avg_vs_x')
+pp_check(day_rstanarm3, x=as.numeric(day$TREAT), plotfun='error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed on top of posterior predictions
@@ -972,7 +978,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(day.rstanarm3, x=as.numeric(day$TREAT), plotfun='intervals')
+pp_check(day_rstanarm3, x=as.numeric(day$TREAT), plotfun='intervals')
 ```
 
 The modelled predictions seem to underestimate the uncertainty with increasing
@@ -983,7 +989,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation3g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(day.rstanarm3)
+#launch_shinystan(day_rstanarm3)
 ```
 
 ### DHARMa residuals
@@ -1000,12 +1006,12 @@ We need to supply:
 - fitted (predicted) responses (averaged) associated with each observation
 
 ```{r modelValidation4a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- posterior_predict(day.rstanarm3,  ndraws=250,  summary=FALSE)
-day.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(day_rstanarm3,  ndraws=250,  summary=FALSE)
+day_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = day$BARNACLE,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(day.resids)
+plot(day_resids)
 ```
 
 **Conclusions:**
@@ -1034,7 +1040,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3 |> pp_check(type = 'dens_overlay', ndraws=200)
+day_brm3 |> pp_check(type = 'dens_overlay', ndraws=200)
 ```
 
 The model draws appear deviate from the observed data.
@@ -1044,7 +1050,7 @@ The model draws appear deviate from the observed data.
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3 |> pp_check(type = 'error_scatter_avg')
+day_brm3 |> pp_check(type = 'error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -1056,7 +1062,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-day.brm3 |> pp_check(group='TREAT', type='intervals')
+day_brm3 |> pp_check(group='TREAT', type='intervals')
 ```
 
 The modelled predictions seem to underestimate the uncertainty with increasing
@@ -1067,7 +1073,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(day.brm3)
+#launch_shinystan(day_brm3)
 ```
 
 ### DHARMa residuals
@@ -1084,19 +1090,19 @@ We need to supply:
 - fitted (predicted) responses (averaged) associated with each observation
 
 ```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- day.brm3 |> posterior_predict(ndraws = 250,  summary = FALSE)
-day.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- day_brm3 |> posterior_predict(ndraws = 250,  summary = FALSE)
+day_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = day$BARNACLE,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-day.resids |> plot()
+day_resids |> plot()
 ```
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-day.resids <- make_brms_dharma_res(day.brm3, integerResponse = TRUE)
-wrap_elements(~testUniformity(day.resids)) +
-               wrap_elements(~plotResiduals(day.resids, form = factor(rep(1, nrow(day))))) +
-               wrap_elements(~plotResiduals(day.resids, quantreg = TRUE)) +
-               wrap_elements(~testDispersion(day.resids))
+day_resids <- make_brms_dharma_res(day_brm3, integerResponse = TRUE)
+wrap_elements(~testUniformity(day_resids)) +
+               wrap_elements(~plotResiduals(day_resids, form = factor(rep(1, nrow(day))))) +
+               wrap_elements(~plotResiduals(day_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(day_resids))
 
 ```
 
@@ -1119,19 +1125,19 @@ wrap_elements(~testUniformity(day.resids)) +
 ### ggpredict
 
 ```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> ggpredict() |> plot(show_data=TRUE)
+day_rstanarm3 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 ### ggemmeans
 
 ```{r partialPlot1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> ggemmeans(~TREAT,  type='fixed') |> plot(show_data=TRUE)
+day_rstanarm3 |> ggemmeans(~TREAT,  type='fixed') |> plot(show_data=TRUE)
 ```
 
 ### epred_draws
 
 ```{r partialPlot1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |>
+day_rstanarm3 |>
     epred_draws(newdata=day) |>
   median_hdci() |>
   ggplot(aes(x=TREAT, y=.epred)) +
@@ -1146,26 +1152,26 @@ day.rstanarm3 |>
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> conditional_effects() |> plot(points = TRUE)
+day_brm3 |> conditional_effects() |> plot(points = TRUE)
 ```
 
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> ggpredict() |> plot(show_data = TRUE)
+day_brm3 |> ggpredict() |> plot(show_data = TRUE)
 ```
 
 
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> ggemmeans(~TREAT) |> plot(show_data = TRUE)
+day_brm3 |> ggemmeans(~TREAT) |> plot(show_data = TRUE)
 ```
 
 ### epred_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |>
+day_brm3 |>
     epred_draws(newdata = day) |>
     median_hdci() |>
     ggplot(aes(x = TREAT, y = .epred)) +
@@ -1197,33 +1203,33 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-summary(day.rstanarm3)
+summary(day_rstanarm3)
 ```
 
 ```{r summariseModel1a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-day.sum <- summary(day.rstanarm3)
+day_sum <- summary(day_rstanarm3)
 ```
 
 **Conclusions:**
 
 - in the Model Info, we are informed that the total MCMC posterior sample size
-  is `r nrow(as.matrix(day.rstanarm3))` and that there were 20 raw observations.
+  is `r nrow(as.matrix(day_rstanarm3))` and that there were 20 raw observations.
 - the estimated mean (expected number of newly recruited barnacles) on the ALG1
-  surface is `r round(day.sum[1,1],2)`.  This is the mean of the posterior distribution
+  surface is `r round(day_sum[1,1],2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(day.sum[1, 1]),2)`.
-- the estimated effect of ALG2 vs ALG1 is `r round(day.sum[2,1],2)` (mean) or 
-  `r round(day.sum[2,4],2)` (median) with a standard deviation of `r round(day.sum[2,2],2)`.
+  becomes `r round(exp(day_sum[1, 1]),2)`.
+- the estimated effect of ALG2 vs ALG1 is `r round(day_sum[2,1],2)` (mean) or 
+  `r round(day_sum[2,4],2)` (median) with a standard deviation of `r round(day_sum[2,2],2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(day.sum[2,1],2)` and `r round(day.sum[2,5],2)` - e.g. there is a
+  `r round(day_sum[2,1],2)` and `r round(day_sum[2,5],2)` - e.g. there is a
   significant positive effect.  When back-transformed onto the response scale, we see
-  that barnacle recruitment on ALG2 is `r round(exp(day.sum[2,1]),2)` times
+  that barnacle recruitment on ALG2 is `r round(exp(day_sum[2,1]),2)` times
   higher than that on ALG1.
-  This represents a `r round(100*(exp(day.sum[2, 1])-1), 0)`% increase in
+  This represents a `r round(100*(exp(day_sum[2, 1])-1), 0)`% increase in
   barnacle recruitment.
-- the estimated effect of NB and S are `r round(day.sum[3, 1], 2)` and 
-  `r round(day.sum[4, 1], 2)` respectively, which equate to 
-  `r round(1/exp(day.sum[3,1]),2)` and  `r round(1/exp(day.sum[4,1]),2)` fold
+- the estimated effect of NB and S are `r round(day_sum[3, 1], 2)` and 
+  `r round(day_sum[4, 1], 2)` respectively, which equate to 
+  `r round(1/exp(day_sum[3,1]),2)` and  `r round(1/exp(day_sum[4,1]),2)` fold
   declines respectively.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1232,31 +1238,31 @@ day.sum <- summary(day.rstanarm3)
 ### tidyMCMC
 
 ```{r summariseModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tidyMCMC(day.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+tidyMCMC(day_rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 ```{r summariseModel1b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-day.tidy <- tidyMCMC(day.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+day_tidy <- tidyMCMC(day_rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
 
 
 - the estimated mean (expected number of newly recruited barnacles) on the ALG1
-  surface is `r round(as.numeric(day.tidy[1,2]),2)`.  This is the mean of the posterior distribution
+  surface is `r round(as.numeric(day_tidy[1,2]),2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(day.tidy[1, 2])),2)`.
-- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day.tidy[2,2]),2)`
-(median) with a standard error of `r round(as.numeric(day.tidy[2,3]),2)`.
+  becomes `r round(exp(as.numeric(day_tidy[1, 2])),2)`.
+- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day_tidy[2,2]),2)`
+(median) with a standard error of `r round(as.numeric(day_tidy[2,3]),2)`.
   The 95% credibility intervals indicate that we are 95% confident that the effect is between 
-  `r round(as.numeric(day.tidy[2,4]),2)` and `r round(as.numeric(day.tidy[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(day_tidy[2,4]),2)` and `r round(as.numeric(day_tidy[2,5]),2)` - e.g. there is a
   significant positive effect.  When back-transformed onto the response scale, we see
-  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day.tidy[2,2])),2)` times
+  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day_tidy[2,2])),2)` times
   higher than that on ALG1.
-  This represents a `r round(100*(exp(as.numeric(day.tidy[2, 2]))-1), 0)`% increase in
+  This represents a `r round(100*(exp(as.numeric(day_tidy[2, 2]))-1), 0)`% increase in
   barnacle recruitment.
- - the estimated effect of NB and S are `r round(as.numeric(day.tidy[3, 2]), 2)` and 
-  `r round(as.numeric(day.tidy[4, 2]), 2)` respectively, which equate to 
-  `r round(1/exp(as.numeric(day.tidy[3,2])),2)` and  `r round(1/exp(as.numeric(day.tidy[4,2])),2)` fold
+ - the estimated effect of NB and S are `r round(as.numeric(day_tidy[3, 2]), 2)` and 
+  `r round(as.numeric(day_tidy[4, 2]), 2)` respectively, which equate to 
+  `r round(1/exp(as.numeric(day_tidy[3,2])),2)` and  `r round(1/exp(as.numeric(day_tidy[4,2])),2)` fold
   declines respectively. 
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1265,7 +1271,7 @@ day.tidy <- tidyMCMC(day.rstanarm3$stanfit, estimate.method='median',  conf.int=
 ### summarise_draws (posterior)
 
 ```{r summariseModel1dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3$stanfit |>
+day_rstanarm3$stanfit |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
@@ -1274,7 +1280,7 @@ day.rstanarm3$stanfit |>
 We can also alter the CI level.
 
 ```{r summariseModel1d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3$stanfit |>
+day_rstanarm3$stanfit |>
     summarise_draws(median,
                     ~HDInterval::hdi(.x, credMass = 0.9),
                     rhat, length, ess_bulk, ess_tail)
@@ -1283,7 +1289,7 @@ day.rstanarm3$stanfit |>
 Arguably, it would be better to back-transform to the ratio scale
 
 ```{r summariseModel1d3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3$stanfit |>
+day_rstanarm3$stanfit |>
     summarise_draws(
         ~ median(exp(.x)),
         ~HDInterval::hdi(exp(.x)),
@@ -1293,8 +1299,8 @@ day.rstanarm3$stanfit |>
 ### as_draws_df (posteriors)
 
 ```{r summariseModel1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3$stanfit |> as_draws_df()
-day.rstanarm3$stanfit |>
+day_rstanarm3$stanfit |> as_draws_df()
+day_rstanarm3$stanfit |>
   as_draws_df() |>
   summarise_draws(
     median,
@@ -1304,7 +1310,7 @@ day.rstanarm3$stanfit |>
     ess_bulk, ess_tail
   )
 
-day.rstanarm3$stanfit |>
+day_rstanarm3$stanfit |>
     as_draws_df() |>
     exp() |>
     summarise_draws(
@@ -1321,13 +1327,13 @@ day.rstanarm3$stanfit |>
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> get_variables()
-day.draw <- day.rstanarm3 |> gather_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE)
-day.draw
+day_rstanarm3 |> get_variables()
+day_draw <- day_rstanarm3 |> gather_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE)
+day_draw
 
 exceedP <- function(x, Val = 0) mean(x>Val)
 
-day.rstanarm3 |>
+day_rstanarm3 |>
     gather_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE) |>
     mutate(.value = exp(.value)) |>
     summarise_draws(median,
@@ -1342,36 +1348,36 @@ day.rstanarm3 |>
 We can then summarise this
 
 ```{r summariseModel1c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.draw |> median_hdci(.value)
+day_draw |> median_hdci(.value)
 ```
 We could alternatively express the parameters on the response scale.
 ```{r summariseModel1c8, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.draw |> median_hdci(exp(.value))
+day_draw |> median_hdci(exp(.value))
 ```
 
 ```{r summariseModel1c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-day.gather <- day.rstanarm3 |> gather_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE) |>
+day_gather <- day_rstanarm3 |> gather_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE) |>
   median_hdci()
 ```
 
 **Conclusions:**
 
 - the estimated mean (expected number of newly recruited barnacles) on the ALG1
-  surface is `r round(as.numeric(day.gather[1,2]),2)`.  This is the mean of the posterior distribution
+  surface is `r round(as.numeric(day_gather[1,2]),2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(day.gather[1, 2])),2)`.
-- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day.gather[2,2]),2)`
-(median) with a standard error of `r round(as.numeric(day.gather[2,3]),2)`.
+  becomes `r round(exp(as.numeric(day_gather[1, 2])),2)`.
+- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day_gather[2,2]),2)`
+(median) with a standard error of `r round(as.numeric(day_gather[2,3]),2)`.
   The 95% credibility intervals indicate that we are 95% confident that the effect is between 
-  `r round(as.numeric(day.gather[2,4]),2)` and `r round(as.numeric(day.gather[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(day_gather[2,4]),2)` and `r round(as.numeric(day_gather[2,5]),2)` - e.g. there is a
   significant positive effect.  When back-transformed onto the response scale, we see
-  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day.gather[2,2])),2)` times
+  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day_gather[2,2])),2)` times
   higher than that on ALG1.
-  This represents a `r round(100*(exp(as.numeric(day.gather[2, 2]))-1), 0)`% increase in
+  This represents a `r round(100*(exp(as.numeric(day_gather[2, 2]))-1), 0)`% increase in
   barnacle recruitment.
- - the estimated effect of NB and S are `r round(as.numeric(day.gather[3, 2]), 2)` and 
-  `r round(as.numeric(day.gather[4, 2]), 2)` respectively, which equate to 
-  `r round(1/exp(as.numeric(day.gather[3,2])),2)` and  `r round(1/exp(as.numeric(day.gather[4,2])),2)` fold
+ - the estimated effect of NB and S are `r round(as.numeric(day_gather[3, 2]), 2)` and 
+  `r round(as.numeric(day_gather[4, 2]), 2)` respectively, which equate to 
+  `r round(1/exp(as.numeric(day_gather[3,2])),2)` and  `r round(1/exp(as.numeric(day_gather[4,2])),2)` fold
   declines respectively. 
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1380,25 +1386,25 @@ day.gather <- day.rstanarm3 |> gather_draws(`.Intercept.*|.*TREAT.*`,  regex=TRU
 ### bayesplot
 
 ```{r summariseModel1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> plot(plotfun='mcmc_intervals') 
+day_rstanarm3 |> plot(plotfun='mcmc_intervals') 
 ```
 
 ### half-eye (ggdist)
 
 ```{r summariseModel1c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-day.rstanarm3 |> 
+day_rstanarm3 |> 
   gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
   facet_wrap(~.variable, scales='free')
 
-day.rstanarm3 |> 
+day_rstanarm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 
-day.rstanarm3 |> 
+day_rstanarm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=exp(.value),  y=.variable)) +
@@ -1409,13 +1415,13 @@ day.rstanarm3 |>
 ### density ridges (ggridges)
 
 ```{r summariseModel1c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-day.rstanarm3 |> 
+day_rstanarm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or on a fractional scale
-day.rstanarm3 |> 
+day_rstanarm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges_gradient(aes(x=exp(.value),
@@ -1435,18 +1441,18 @@ day.rstanarm3 |>
 This is purely a graphical depiction on the posteriors.
 
 ```{r summariseModel1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> tidy_draws()
+day_rstanarm3 |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> spread_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE)
+day_rstanarm3 |> spread_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE)
 ```
 
 ### posterior_samples
 ```{r summariseModel1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> posterior_samples() |> as_tibble()
+day_rstanarm3 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
@@ -1455,7 +1461,7 @@ Unfortunately, $R^2$ calculations for models other than Gaussian and Binomial
 have not yet been implemented for `rstanarm` models yet.
 
 ```{r summariseModel1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-#day.rstanarm3 |> bayes_R2() |> median_hdci
+#day_rstanarm3 |> bayes_R2() |> median_hdci
 ```
 ::::
 
@@ -1473,33 +1479,33 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> summary()
+day_brm3 |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-day.sum <- summary(day.brm3)
+day_sum <- summary(day_brm3)
 ```
 
 **Conclusions:**
 
 - in the Model Info, we are informed that the total MCMC posterior sample size
-  is `r nrow(as.matrix(day.rstanarm3))` and that there were 20 raw observations.
+  is `r nrow(as.matrix(day_rstanarm3))` and that there were 20 raw observations.
 - the estimated mean (expected number of newly recruited barnacles) on the ALG1
-  surface is `r round(day.sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
+  surface is `r round(day_sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(day.sum$fixed[1, 1]),2)`.
-- the estimated effect of ALG2 vs ALG1 is `r round(day.sum$fixed[2,1],2)` (mean) or 
-  `r round(day.sum$fixed[2,4],2)` (median) with a standard deviation of `r round(day.sum$fixed[2,2],2)`.
+  becomes `r round(exp(day_sum$fixed[1, 1]),2)`.
+- the estimated effect of ALG2 vs ALG1 is `r round(day_sum$fixed[2,1],2)` (mean) or 
+  `r round(day_sum$fixed[2,4],2)` (median) with a standard deviation of `r round(day_sum$fixed[2,2],2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(day.sum$fixed[2,1],2)` and `r round(day.sum$fixed[2,5],2)` - e.g. there is a
+  `r round(day_sum$fixed[2,1],2)` and `r round(day_sum$fixed[2,5],2)` - e.g. there is a
   significant positive effect.  When back-transformed onto the response scale, we see
-  that barnacle recruitment on ALG2 is `r round(exp(day.sum$fixed[2,1]),2)` times
+  that barnacle recruitment on ALG2 is `r round(exp(day_sum$fixed[2,1]),2)` times
   higher than that on ALG1.
-  This represents a `r round(100*(exp(day.sum$fixed[2, 1])-1), 0)`% increase in
+  This represents a `r round(100*(exp(day_sum$fixed[2, 1])-1), 0)`% increase in
   barnacle recruitment.
-- the estimated effect of NB and S are `r round(day.sum$fixed[3, 1], 2)` and 
-  `r round(day.sum$fixed[4, 1], 2)` respectively, which equate to 
-  `r round(1/exp(day.sum$fixed[3,1]),2)` and  `r round(1/exp(day.sum$fixed[4,1]),2)` fold
+- the estimated effect of NB and S are `r round(day_sum$fixed[3, 1], 2)` and 
+  `r round(day_sum$fixed[4, 1], 2)` respectively, which equate to 
+  `r round(1/exp(day_sum$fixed[3,1]),2)` and  `r round(1/exp(day_sum$fixed[4,1]),2)` fold
   decline respectively.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1507,35 +1513,35 @@ day.sum <- summary(day.brm3)
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3$fit |> tidyMCMC(estimate.method = 'median',
+day_brm3$fit |> tidyMCMC(estimate.method = 'median',
                           conf.int = TRUE,
                           conf.method = 'HPDinterval',
                           rhat = TRUE,
                           ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-day.tidy <- tidyMCMC(day.brm3$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+day_tidy <- tidyMCMC(day_brm3$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
 
 
 - the estimated mean (expected number of newly recruited barnacles) on the ALG1
-  surface is `r round(as.numeric(day.tidy[1,2]),2)`.  This is the mean of the posterior distribution
+  surface is `r round(as.numeric(day_tidy[1,2]),2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(day.tidy[1, 2])),2)`.
-- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day.tidy[2,2]),2)`
-(median) with a standard error of `r round(as.numeric(day.tidy[2,3]),2)`.
+  becomes `r round(exp(as.numeric(day_tidy[1, 2])),2)`.
+- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day_tidy[2,2]),2)`
+(median) with a standard error of `r round(as.numeric(day_tidy[2,3]),2)`.
   The 95% credibility intervals indicate that we are 95% confident that the effect is between 
-  `r round(as.numeric(day.tidy[2,4]),2)` and `r round(as.numeric(day.tidy[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(day_tidy[2,4]),2)` and `r round(as.numeric(day_tidy[2,5]),2)` - e.g. there is a
   significant positive effect.  When back-transformed onto the response scale, we see
-  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day.tidy[2,2])),2)` times
+  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day_tidy[2,2])),2)` times
   higher than that on ALG1.
-  This represents a `r round(100*(exp(as.numeric(day.tidy[2, 2]))-1), 0)`% increase in
+  This represents a `r round(100*(exp(as.numeric(day_tidy[2, 2]))-1), 0)`% increase in
   barnacle recruitment.
- - the estimated effect of NB and S are `r round(as.numeric(day.tidy[3, 2]), 2)` and 
-  `r round(as.numeric(day.tidy[4, 2]), 2)` respectively, which equate to 
-  `r round(1/exp(as.numeric(day.tidy[3,2])),2)` and  `r round(1/exp(as.numeric(day.tidy[4,2])),2)` fold
+ - the estimated effect of NB and S are `r round(as.numeric(day_tidy[3, 2]), 2)` and 
+  `r round(as.numeric(day_tidy[4, 2]), 2)` respectively, which equate to 
+  `r round(1/exp(as.numeric(day_tidy[3,2])),2)` and  `r round(1/exp(as.numeric(day_tidy[4,2])),2)` fold
   declines respectively. 
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1543,8 +1549,8 @@ day.tidy <- tidyMCMC(day.brm3$fit, estimate.method='median',  conf.int=TRUE,  co
 ### as_draws_df (posteriors)
 
 ```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> as_draws_df()
-day.brm3 |>
+day_brm3 |> as_draws_df()
+day_brm3 |>
   as_draws_df() |>
   summarise_draws(
     median,
@@ -1554,7 +1560,7 @@ day.brm3 |>
     ess_bulk, ess_tail
   )
 
-day.brm3 |>
+day_brm3 |>
   as_draws_df() |>
     exp() |>
   summarise_draws(
@@ -1572,12 +1578,12 @@ day.brm3 |>
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> get_variables()
-day.draw <- day.brm3 |>
+day_brm3 |> get_variables()
+day_draw <- day_brm3 |>
     gather_draws(`.Intercept.*|.*TREAT.*`,  regex = TRUE)
-day.draw
+day_draw
 
-day.brm3 |>
+day_brm3 |>
     gather_draws(`.Intercept.*|.*TREAT.*`,  regex = TRUE) |>
     mutate(.value = exp(.value)) |>
     summarise_draws(median,
@@ -1588,7 +1594,7 @@ day.brm3 |>
     
 
 exceedP <- function(x, Val = 0) mean(x>Val)
-day.brm3 |>
+day_brm3 |>
     tidy_draws() |>
     exp() |>
     dplyr::select(starts_with("b_")) |>
@@ -1602,24 +1608,24 @@ day.brm3 |>
 We can then summarise this
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.draw |> median_hdci(.value)
+day_draw |> median_hdci(.value)
 ```
 
 We could alternatively express the parameters on the response scale.
 
 ```{r summariseModel2c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-day.draw |> 
+day_draw |> 
   median_hdci(exp(.value))
 ```
 
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-day.gather <- day.brm3 |> gather_draws(`.Intercept.*|.*TREAT.*`,  regex = TRUE) |>
+day_gather <- day_brm3 |> gather_draws(`.Intercept.*|.*TREAT.*`,  regex = TRUE) |>
   median_hdci()
 ```
 
 ```{r summariseModel2c4a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-day.brm3 |> 
+day_brm3 |> 
   gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
@@ -1629,21 +1635,21 @@ day.brm3 |>
 **Conclusions:**
 
 - the estimated mean (expected number of newly recruited barnacles) on the ALG1
-  surface is `r round(as.numeric(day.gather[1,2]),2)`.  This is the mean of the posterior distribution
+  surface is `r round(as.numeric(day_gather[1,2]),2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(day.gather[1, 2])),2)`.
-- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day.gather[2,2]),2)`
-(median) with a standard error of `r round(as.numeric(day.gather[2,3]),2)`.
+  becomes `r round(exp(as.numeric(day_gather[1, 2])),2)`.
+- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(day_gather[2,2]),2)`
+(median) with a standard error of `r round(as.numeric(day_gather[2,3]),2)`.
   The 95% credibility intervals indicate that we are 95% confident that the effect is between 
-  `r round(as.numeric(day.gather[2,4]),2)` and `r round(as.numeric(day.gather[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(day_gather[2,4]),2)` and `r round(as.numeric(day_gather[2,5]),2)` - e.g. there is a
   significant positive effect.  When back-transformed onto the response scale, we see
-  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day.gather[2,2])),2)` times
+  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(day_gather[2,2])),2)` times
   higher than that on ALG1.
-  This represents a `r round(100*(exp(as.numeric(day.gather[2, 2]))-1), 0)`% increase in
+  This represents a `r round(100*(exp(as.numeric(day_gather[2, 2]))-1), 0)`% increase in
   barnacle recruitment.
- - the estimated effect of NB and S are `r round(as.numeric(day.gather[3, 2]), 2)` and 
-  `r round(as.numeric(day.gather[4, 2]), 2)` respectively, which equate to 
-  `r round(1/exp(as.numeric(day.gather[3,2])),2)` and  `r round(1/exp(as.numeric(day.gather[4,2])),2)` fold
+ - the estimated effect of NB and S are `r round(as.numeric(day_gather[3, 2]), 2)` and 
+  `r round(as.numeric(day_gather[4, 2]), 2)` respectively, which equate to 
+  `r round(1/exp(as.numeric(day_gather[3,2])),2)` and  `r round(1/exp(as.numeric(day_gather[4,2])),2)` fold
   declines respectively. 
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1651,14 +1657,14 @@ day.brm3 |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3$fit |> plot(type='intervals') 
+day_brm3$fit |> plot(type='intervals') 
 ```
 
 ### slab (ggdist)
 
 ```{r summariseModel2d5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
 ## Link scale
-day.brm3 |>
+day_brm3 |>
     gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
     ggplot() +
     stat_slab(aes(x = .value, y = .variable,
@@ -1669,7 +1675,7 @@ day.brm3 |>
     geom_vline(xintercept=0, linetype='dashed') +
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 ## Fractional scale
-day.brm3 |>
+day_brm3 |>
     gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |>
     mutate(.value=exp(.value)) |>
     ggplot() +
@@ -1686,19 +1692,19 @@ day.brm3 |>
 ### half-eye (ggdist)
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-day.brm3 |> 
+day_brm3 |> 
   gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
   facet_wrap(~.variable, scales='free')
 
-day.brm3 |> 
+day_brm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 
-day.brm3 |> 
+day_brm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=exp(.value),  y=.variable)) +
@@ -1709,13 +1715,13 @@ day.brm3 |>
 ### ggridges
 
 ```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-day.brm3 |> 
+day_brm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or on a fractional scale
-day.brm3 |> 
+day_brm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges_gradient(aes(x=exp(.value),
@@ -1735,24 +1741,24 @@ day.brm3 |>
 This is purely a graphical depiction on the posteriors.
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> tidy_draws()
+day_brm3 |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> spread_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE)
+day_brm3 |> spread_draws(`.Intercept.*|.*TREAT.*`,  regex=TRUE)
 ```
 
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> posterior_samples() |> as_tibble()
+day_brm3 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> bayes_R2(summary=FALSE) |> median_hdci()
+day_brm3 |> bayes_R2(summary=FALSE) |> median_hdci()
 ```
 
 ### ROPE
@@ -1761,25 +1767,25 @@ Region of Practical Equivalence
 
 ```{r summariseModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 0.1 * sd(log(day$BARNACLE))
-day.brm3 |> rope(range = c(-0.04, 0.04))
-rope(day.brm3, range = c(-0.04, 0.04)) |> plot()
+day_brm3 |> rope(range = c(-0.04, 0.04))
+rope(day_brm3, range = c(-0.04, 0.04)) |> plot()
 
 ## Or based on fractional scale
-day.brm3 |>
+day_brm3 |>
     as_draws_df('^b_TREAT.*', regex = TRUE) |>
     exp() |> 
     ## equivalence_test(range = c(0.9, 1.1))
     rope(range = c(0.9, 1.1))
-day.mcmc <-
-    day.brm3 |> as_draws_df('^b_TREAT.*', regex = TRUE) |>
+day_mcmc <-
+    day_brm3 |> as_draws_df('^b_TREAT.*', regex = TRUE) |>
     exp()
-day.mcmc |>
+day_mcmc |>
     rope(range = c(0.9, 1.1))
-day.mcmc |>
+day_mcmc |>
     rope(range = c(0.9, 1.1)) |>
-    plot(day.mcmc)
+    plot(day_mcmc)
 
-day.mcmc |>
+day_mcmc |>
     equivalence_test(range = c(0.9, 1.1)) 
 ```
 
@@ -1826,8 +1832,8 @@ We will now only peruse the Poisson model.
 #### effects
 
 ```{r Probability1a, results='markdown', echo=1,eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.rstanarm3 |> emmeans(pairwise ~TREAT, type='response')
-day.pairwise <- (day.rstanarm3 |>
+day_rstanarm3 |> emmeans(pairwise ~TREAT, type='response')
+day_pairwise <- (day_rstanarm3 |>
   emmeans(pairwise ~TREAT, type='response') |>
   confint())$contrasts |>
   as.data.frame()
@@ -1836,17 +1842,17 @@ day.pairwise <- (day.rstanarm3 |>
 **Conclusions:**
 
 - the contrasts section of the output indicates that there is evidence of:
-- ALG1 has `r round(day.pairwise[2, 2], 2)` fold
-  (`r 100*(round(day.pairwise[2, 2], 2)-1)`%) more newly recruited barnacles
+- ALG1 has `r round(day_pairwise[2, 2], 2)` fold
+  (`r 100*(round(day_pairwise[2, 2], 2)-1)`%) more newly recruited barnacles
   than the NB substrate
-- ALG1 has `r round(day.pairwise[3, 2], 2)` fold
-  (`r 100*(round(day.pairwise[3, 2], 2)-1)`%) more newly recruited barnacles
+- ALG1 has `r round(day_pairwise[3, 2], 2)` fold
+  (`r 100*(round(day_pairwise[3, 2], 2)-1)`%) more newly recruited barnacles
   than the S substrate
-- ALG2 has `r round(day.pairwise[4, 2], 2)` fold
-  (`r 100*(round(day.pairwise[4, 2], 2)-1)`%) more newly recruited barnacles
+- ALG2 has `r round(day_pairwise[4, 2], 2)` fold
+  (`r 100*(round(day_pairwise[4, 2], 2)-1)`%) more newly recruited barnacles
   than the NB substrate
-- ALG2 has `r round(day.pairwise[5, 2], 2)` fold
-  (`r 100*(round(day.pairwise[5, 2], 2)-1)`%) more newly recruited barnacles
+- ALG2 has `r round(day_pairwise[5, 2], 2)` fold
+  (`r 100*(round(day_pairwise[5, 2], 2)-1)`%) more newly recruited barnacles
   than the S substrate
 - ALG1 was not found to be different to ALG2 and NB was not found to be
   different to S  
@@ -1854,16 +1860,16 @@ day.pairwise <- (day.rstanarm3 |>
 #### Probabilities
 
 ```{r Probability1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.em = emmeans(day.rstanarm3, pairwise~TREAT, type='link')$contrasts |>
+day_em = emmeans(day_rstanarm3, pairwise~TREAT, type='link')$contrasts |>
     gather_emmeans_draws() |>
     mutate(Fit=exp(.value))
-day.em |> head()
-day.em |> group_by(contrast) |>
+day_em |> head()
+day_em |> group_by(contrast) |>
     ggplot(aes(x=Fit)) +
     geom_histogram() +
     geom_vline(xintercept=1, color='red') + 
     facet_wrap(~contrast, scales='free')
-day.em |> group_by(contrast) |>
+day_em |> group_by(contrast) |>
     ggplot(aes(x=Fit)) +
     geom_density_ridges_gradient(aes(y = contrast, fill = stat(x)),
                                  alpha = 0.4, color = 'white',
@@ -1873,7 +1879,7 @@ day.em |> group_by(contrast) |>
     scale_fill_viridis_c(option = "C") +
     scale_x_continuous(trans = scales::log2_trans())
 
-day.em |> 
+day_em |> 
   ggplot(aes(x = Fit)) + 
     geom_density_ridges_gradient(aes(y = contrast,
                                      fill = factor(stat(x>0))),
@@ -1884,12 +1890,12 @@ day.em |>
     scale_x_continuous(trans = scales::log2_trans()) +
     scale_fill_viridis_d()
 
-day.em |> group_by(contrast) |> median_hdi()
+day_em |> group_by(contrast) |> median_hdi()
 # Probability of effect
-day.em |> group_by(contrast) |> summarize(P=mean(Fit>1))
-day.em |> group_by(contrast) |> summarize(P=mean(Fit<1))
+day_em |> group_by(contrast) |> summarize(P=mean(Fit>1))
+day_em |> group_by(contrast) |> summarize(P=mean(Fit<1))
 ##Probability of effect greater than 10%
-day.em |> group_by(contrast) |> summarize(P=mean(Fit>1.1))
+day_em |> group_by(contrast) |> summarize(P=mean(Fit>1.1))
 ```
 :::::
 ### brms 
@@ -1898,23 +1904,23 @@ day.em |> group_by(contrast) |> summarize(P=mean(Fit>1.1))
 #### effects
 
 ```{r Probability2a, results='markdown', echo=TRUE,eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |>
+day_brm3 |>
     emmeans(~TREAT, type = 'response') |>
     pairs()
 #OR
-day.pairwise <- day.brm3 |>
+day_pairwise <- day_brm3 |>
     emmeans(~TREAT, type = 'response') |>
     pairs() |>
     as.data.frame()
 ##OR
-day.brm3 |>
+day_brm3 |>
     emmeans(~TREAT) |>
     pairs() |>
     tidy_draws() |>
     exp() |>
     summarise_draws(median)
 ##OR
-day.brm3 |>
+day_brm3 |>
     emmeans(~TREAT) |>
     pairs() |>
     gather_emmeans_draws() |>
@@ -1922,35 +1928,36 @@ day.brm3 |>
     ## median_hdci(.ratio)
     summarise(
         median_hdci(.ratio),
-        P = mean(.ratio>1),
+        Pl = mean(.ratio < 1),
+        Pg = mean(.ratio > 1),
         ROPE = rope(.ratio, range = c(0.9, 1.1))$ROPE_Percentage)
     ## summarise(across(c(.value, .ratio), c(median, HDInterval::hdi)))
     ## summarise(across(c(.value, .ratio), c(median_hdci)))
 
-day.mcmc <-
-    day.brm3 |>
+day_mcmc <-
+    day_brm3 |>
     emmeans(~TREAT) |>
     pairs() |>
     tidy_draws() |>
     dplyr::select(-.chain, -.iteration, -.draw) |>
     exp() 
-rope(day.mcmc, range = c(0.9, 1.1)) |> plot()
+rope(day_mcmc, range = c(0.9, 1.1)) |> plot()
 ```
 
 **Conclusions:**
 
 - the contrasts section of the output indicates that there is evidence of:
-- ALG1 has `r round(day.pairwise[2, 2], 2)` fold
-  (`r 100*(round(day.pairwise[2, 2], 2)-1)`%) more newly recruited barnacles
+- ALG1 has `r round(day_pairwise[2, 2], 2)` fold
+  (`r 100*(round(day_pairwise[2, 2], 2)-1)`%) more newly recruited barnacles
   than the NB substrate
-- ALG1 has `r round(day.pairwise[3, 2], 2)` fold
-  (`r 100*(round(day.pairwise[3, 2], 2)-1)`%) more newly recruited barnacles
+- ALG1 has `r round(day_pairwise[3, 2], 2)` fold
+  (`r 100*(round(day_pairwise[3, 2], 2)-1)`%) more newly recruited barnacles
   than the S substrate
-- ALG2 has `r round(day.pairwise[4, 2], 2)` fold
-  (`r 100*(round(day.pairwise[4, 2], 2)-1)`%) more newly recruited barnacles
+- ALG2 has `r round(day_pairwise[4, 2], 2)` fold
+  (`r 100*(round(day_pairwise[4, 2], 2)-1)`%) more newly recruited barnacles
   than the NB substrate
-- ALG2 has `r round(day.pairwise[5, 2], 2)` fold
-  (`r 100*(round(day.pairwise[5, 2], 2)-1)`%) more newly recruited barnacles
+- ALG2 has `r round(day_pairwise[5, 2], 2)` fold
+  (`r 100*(round(day_pairwise[5, 2], 2)-1)`%) more newly recruited barnacles
   than the S substrate
 - ALG1 was not found to be different to ALG2 and NB was not found to be
   different to S  
@@ -1958,14 +1965,29 @@ rope(day.mcmc, range = c(0.9, 1.1)) |> plot()
 #### Probabilities
 
 ```{r Probability2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-day.brm3 |> emmeans(~TREAT, type = 'response') |>
+day_brm3 |> emmeans(~TREAT, type = 'response') |>
     pairs()
-day.em <- day.brm3 |>
+day_em <- day_brm3 |>
     emmeans(~TREAT, type = 'link') |>
     pairs() |>
     gather_emmeans_draws() |>
     mutate(Fit = exp(.value))
-day.em |> group_by(contrast) |>
+
+day_em |> 
+  ggplot(aes(x = Fit)) + 
+  geom_density_ridges_gradient(aes(y = contrast,
+                                   fill = factor(stat(x < 1.1 & x > 0.9))),
+                               alpha=0.4, colour = 'white',
+                               quantile_lines = TRUE,
+                               quantiles = c(0.025, 0.975),
+                               show.legend = FALSE) +
+  geom_vline(xintercept = 1, linetype = 'dashed') +
+  scale_x_continuous("Effect size (fold scale)", trans = scales::log2_trans()) +
+  scale_y_discrete("") +
+  scale_fill_viridis_d() +
+  theme_classic()
+
+day_em |> group_by(contrast) |>
     ggplot(aes(x=Fit)) +
     geom_density_ridges_gradient(aes(y = contrast, fill = stat(x)),
                                  alpha = 0.4, color = 'white',
@@ -1975,7 +1997,7 @@ day.em |> group_by(contrast) |>
     scale_fill_viridis_c(option = "C") +
     scale_x_continuous(trans = scales::log2_trans())
 
-day.em |> 
+day_em |> 
   ggplot(aes(x = Fit)) + 
     geom_density_ridges_gradient(aes(y = contrast,
                                      fill = factor(stat(x>0))),
@@ -1987,31 +2009,31 @@ day.em |>
     scale_fill_viridis_d() +
     scale_x_continuous(trans = scales::log2_trans())
 
-day.em |> head()
-day.em |>
+day_em |> head()
+day_em |>
     group_by(contrast) |>
     ggplot(aes(x = Fit)) +
     ## geom_histogram() +
     geom_halfeyeh() +
     geom_vline(xintercept = 1, color = 'red') + 
     facet_wrap(~contrast, scales = 'free')
-day.em |>
+day_em |>
     group_by(contrast) |>
     median_hdi()
 # Probability of effect
-day.em |> group_by(contrast) |> summarize(P = mean(Fit>1))
+day_em |> group_by(contrast) |> summarize(P = mean(Fit>1))
 ##Probability of effect greater than 10%
-day.em |> group_by(contrast) |> summarize(P = mean(Fit>1.1))
+day_em |> group_by(contrast) |> summarize(P = mean(Fit>1.1))
 
 ## Effect size on absolute scale
-day.em <- day.brm3 |>
+day_em <- day_brm3 |>
     emmeans(~TREAT, type = 'link') |>
     regrid() |>
     pairs() |>
     gather_emmeans_draws() |>
     median_hdci(.value)
 
-day.brm3 |>
+day_brm3 |>
     emmeans(~TREAT, type = 'link') |>
     regrid() |>
     pairs() |>
@@ -2023,7 +2045,7 @@ day.brm3 |>
     facet_wrap(~contrast, scales = 'free')
 
 
-day.brm3 |>
+day_brm3 |>
     emmeans(~TREAT, type = 'response') |>
     pairs() |>
     gather_emmeans_draws() |>
@@ -2071,31 +2093,31 @@ cmat<-cbind('Alg2_Alg1'=c(-1,1,0,0),
              'Alg_Bare'=c(0.5,0.5,-0.5,-0.5),
              'Alg_NB'=c(0.5,0.5,-1,0))
 # On the link scale
-emmeans(day.rstanarm3, ~TREAT, contr=list(TREAT=cmat), type='link')
+emmeans(day_rstanarm3, ~TREAT, contr=list(TREAT=cmat), type='link')
 # On the response scale
-emmeans(day.rstanarm3, ~TREAT, contr=list(TREAT=cmat), type='response')
+emmeans(day_rstanarm3, ~TREAT, contr=list(TREAT=cmat), type='response')
 
-day.em = emmeans(day.rstanarm3, ~TREAT, contr=list(TREAT=cmat), type='link')$contrasts |>
+day_em = emmeans(day_rstanarm3, ~TREAT, contr=list(TREAT=cmat), type='link')$contrasts |>
       gather_emmeans_draws() |> mutate(Fit=exp(.value)) 
-day.em |> group_by(contrast) |> mean_hdi()
+day_em |> group_by(contrast) |> mean_hdi()
 # Probability of effect
-day.em |> group_by(contrast) |> summarize(P=mean(Fit>1))
+day_em |> group_by(contrast) |> summarize(P=mean(Fit>1))
 ##Probability of effect greater than 10%
-day.em |> group_by(contrast) |> summarize(P=mean(Fit>1.5))
+day_em |> group_by(contrast) |> summarize(P=mean(Fit>1.5))
 
 
-day.sum <- day.em |>
+day_sum <- day_em |>
   group_by(contrast) |>
   median_hdci(.width=c(0.8, 0.95))
-day.sum
-ggplot(day.sum) +
+day_sum
+ggplot(day_sum) +
   geom_hline(yintercept=1, linetype='dashed') +
   geom_pointrange(aes(x=contrast, y=Fit, ymin=Fit.lower, ymax=Fit.upper, size=factor(.width)),
                   show.legend = FALSE) +
   scale_size_manual(values=c(1, 0.5)) +
   coord_flip()
 
-g1 <- ggplot(day.sum) +
+g1 <- ggplot(day_sum) +
   geom_hline(yintercept=1) +
   geom_pointrange(aes(x=contrast, y=Fit, ymin=Fit.lower, ymax=Fit.upper, size=factor(.width)), show.legend = FALSE) +
   scale_size_manual(values=c(1, 0.5)) +
@@ -2114,40 +2136,40 @@ cmat<-cbind('Alg2_Alg1' = c(-1,1,0,0),
             'Alg_Bare' = c(0.5,0.5,-0.5,-0.5),
             'Alg_NB' = c(0.5,0.5,-1,0))
 # On the link scale
-day.brm3 |> emmeans(~TREAT, type = 'link') |>
+day_brm3 |> emmeans(~TREAT, type = 'link') |>
     contrast(method = list(TREAT = cmat))
 # On the response scale
-day.brm3 |>
+day_brm3 |>
     emmeans(~TREAT, type = 'response') |>
     contrast(method = list(TREAT = cmat))
 
-day.em <- day.brm3 |>
+day_em <- day_brm3 |>
     emmeans(~TREAT, type = 'link') |>
     contrast(method = list(TREAT = cmat)) |>
     gather_emmeans_draws() |>
     mutate(Fit = exp(.value)) 
-day.em |> median_hdi(Fit)
+day_em |> median_hdi(Fit)
 # Probability of effect
-day.em |> summarize(P = mean(Fit>1))
+day_em |> summarize(P = mean(Fit>1))
 ##Probability of effect greater than 50%
-day.em |> summarize(P = mean(Fit>1.5))
+day_em |> summarize(P = mean(Fit>1.5))
 
-day.sum <- day.em |>
+day_sum <- day_em |>
   group_by(contrast) |>
   median_hdci(.value, .width = c(0.8, 0.95))
-day.sum
-g1 <- ggplot(day.sum) +
+day_sum
+g1 <- ggplot(day_sum) +
   geom_vline(xintercept = 0, linetype = 'dashed') +
   geom_pointrange(aes(y = contrast, x = .value, xmin = .lower, xmax = .upper,
                       size = factor(.width)),
                   show.legend  =  FALSE) +
   scale_size_manual(values = c(1, 0.5)) 
 
-day.sum <- day.em |>
+day_sum <- day_em |>
   group_by(contrast) |>
   median_hdci(Fit, .width = c(0.8, 0.95))
-day.sum
-g1 <- ggplot(day.sum) +
+day_sum
+g1 <- ggplot(day_sum) +
   geom_vline(xintercept = 1, linetype='dashed') +
   geom_pointrange(aes(y = contrast, x = Fit, xmin = .lower, xmax = .upper, size = factor(.width)), show.legend = FALSE) +
   scale_size_manual(values = c(1, 0.5)) +
@@ -2156,7 +2178,7 @@ g1 <- ggplot(day.sum) +
 g1   
 
 g1a <- 
-    day.em |>
+    day_em |>
     ggplot() +
     geom_vline(xintercept = 1, linetype = 'dashed') +
     #geom_vline(xintercept = 1.5, alpha=0.3, linetype = 'dashed') +
@@ -2174,11 +2196,11 @@ g1a <-
 g1 + g1a
 
 library(ggridges)
-day.em |>
+day_em |>
   ggplot() + 
     geom_density_ridges(aes(x=Fit, y = contrast), alpha=0.4) +
     geom_vline(xintercept = 1, linetype = 'dashed')
-day.em |>
+day_em |>
   ggplot() + 
     geom_density_ridges_gradient(aes(x=Fit,
                                      y = contrast,
@@ -2189,7 +2211,7 @@ day.em |>
     geom_vline(xintercept = 1, linetype = 'dashed') +
     scale_x_continuous(trans = scales::log2_trans()) +
     scale_fill_viridis_c(option = "C")
-day.em |>
+day_em |>
   ggplot() + 
     geom_density_ridges_gradient(aes(x=100*(Fit-1),
                                      y = contrast,
@@ -2201,7 +2223,7 @@ day.em |>
     scale_x_continuous('Percentage change') +
     scale_fill_viridis_c(option = "C")
 ##Or on a fractional scale
-day.brm3 |> 
+day_brm3 |> 
   gather_draws(`.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges_gradient(aes(x=exp(.value),
@@ -2214,8 +2236,28 @@ day.brm3 |>
     scale_x_continuous(trans = scales::log2_trans()) +
     scale_fill_viridis_c(option = "C")
 
-```
+## Perhaps nicer
+g1b <- 
+  day_brm3 |> 
+    emmeans(~TREAT, type = 'link') |>
+    contrast(method = list(TREAT = cmat)) |>
+    gather_emmeans_draws() |>
+    mutate(Fit = exp(.value)) |> 
+  ggplot() + 
+  geom_density_ridges_gradient(aes(x=Fit,
+    y = contrast,
+    fill = factor(stat(x < 1.1 & x > 0.9))),
+    alpha=0.4, colour = 'white',
+    quantile_lines = TRUE,
+    quantiles = c(0.025, 0.975)) +
+  geom_vline(xintercept = 1, linetype = 'dashed') +
+  scale_x_continuous("Effect size (fold scale)", trans = scales::log2_trans()) +
+  scale_fill_viridis_d("Inside ROPE") +
+  theme_classic()
 
+g1 + g1b
+```
+ 
 ::::
 :::
 <!-- END_PRIVATE-->
@@ -2228,7 +2270,7 @@ day.brm3 |>
 ## rstanarm 
 
 ```{r summaryFig1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=3}
-newdata = emmeans(day.rstanarm3, ~TREAT, type='response') |>
+newdata = emmeans(day_rstanarm3, ~TREAT, type='response') |>
     as.data.frame()
 newdata
 ## A quick version
@@ -2242,7 +2284,7 @@ g2 + g1
 ## brms 
 
 ```{r summaryFig2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=3}
-newdata <- day.brm3 |>
+newdata <- day_brm3 |>
     emmeans(~TREAT, type='response') |>
     as.data.frame()
 newdata
@@ -2255,7 +2297,11 @@ g2 <- ggplot(newdata, aes(y=rate, x=TREAT)) +
     theme_classic()
     
 g2 + g1    
+```
+
+```{r summaryFig2a2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=3}
 (g2 + ggtitle('a)')) + (g1a + ggtitle('b)'))    
+(g2 + ggtitle('a)')) + (g1b + ggtitle('b)')) 
 ```
 
 :::

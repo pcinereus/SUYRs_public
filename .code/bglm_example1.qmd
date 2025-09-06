@@ -52,7 +52,7 @@ monofont: DejaVu Sans Mono
 classoption: a4paper
 bibliography: ../resources/references.bib
 ---
-
+ 
 ```{r}
 #| label: setup
 #| include: false
@@ -243,15 +243,9 @@ $$
 \begin{align}
 y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
 \mu_i &= \beta_0 + \beta_1 x_i\\
-\beta_0 &\sim{} \mathcal{N}(164,65)\\
-\beta_1 &\sim{} \mathcal{N}(0,1)\\
-\sigma &\sim{} \mathcal{t}(3,0,65)\\
-OR\\
-\sigma &\sim{} \mathcal{cauchy}(0,65)\\
-OR\\
-\sigma &\sim{} \mathcal{Exp}(0.016)\\
-OR\\
-\sigma &\sim{} \mathcal{gamma}(2,0.05)\\
+\beta_0 &\sim{} \mathcal{N}(164, 90)\\
+\beta_1 &\sim{} \mathcal{N}(0, 90)\\
+\sigma &\sim{} \mathcal{t}(3,0,90)\\
 \end{align}
 $$
 
@@ -366,8 +360,8 @@ ggplot(fert, aes(x = YIELD)) +
 # Fit the model 
 
 Note, for routines that take more than a couple of seconds to perform
-(such as most Bayesian models), it is a good idea to cache the
-Rmarkdown chunks in which the routine is performed. That way, the
+(such as most Bayesian models), it is a good idea to cache the quarto
+or Rmarkdown chunks in which the routine is performed. That way, the
 routine will only be run the first time and any objects generated will
 be stored for future use. Thereafter, provided the code has not
 changed, the routine will not be re-run. Rather, `knitr` will just
@@ -430,13 +424,13 @@ summarising some approaches in a table.
   allowing all reasonable estimates).
 - for effects parameters on scaled data, an argument could be made for
   a normal distribution with a standard deviation of 1
-  (e.g. `normal(0,1)`), although klsome prefer a t distribution with 3
+  (e.g. `normal(0,1)`), although some prefer a t distribution with 3
   degrees of freedom and standard deviation of 1
   (e.g. `student_t(3,0,1)`) - apparently a flatter t is a more robust
   prior than a normal as an uninformative prior...
 - for unscaled data, the above priors can be scaled by using the
   standard deviation of the data as the prior standard deviation
-  (e.g. `student_t(3,0,sd(y))`, or `sudent_t(3,0,sd(y)/sd(x))`)
+  (e.g. `student_t(3,0,sd(y))`, or `student_t(3,0,sd(y)/sd(x))`)
 - for priors of hierachical standard deviations, priors should
   encourage shrinkage towards 0 (particularly if the number of groups
   is small, since otherwise, the sampler will tend to be more
@@ -497,6 +491,8 @@ summary(fert.lm <- lm(YIELD ~ FERTILIZER, data = fert))
 sigma(fert.lm) 
 summary(fert.lm <- lm(YIELD ~ center(FERTILIZER), data = fert))
 sigma(fert.lm)
+summary(fert.lm <- lm(YIELD ~ scale(FERTILIZER), data = fert))
+sigma(fert.lm)
 ```
 
 ## rstanarm 
@@ -508,7 +504,7 @@ are chosen to provide moderate regularisation (to help prevent over-fitting) and
 help stabilise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-fert.rstanarm <- stan_glm(YIELD ~ FERTILIZER,
+fert.rstanarm <- stan_glm(YIELD ~ scale(FERTILIZER),
                           data=fert,
                           iter = 5000,
                           warmup = 1000,
@@ -600,6 +596,7 @@ standard deviation of the response to the standard deviation of the predictor
 
 ```{r fitModel1d, results='markdown', eval=TRUE, mhidden=TRUE}
 2.5*sd(fert$YIELD)/sd(fert$FERTILIZER)
+2.5*sd(fert$YIELD)/1
 ```
 
 -  the auxiliary prior represents whatever additional prior is required for the
@@ -661,14 +658,14 @@ to bias the outcomes, we could try the following priors (mainly plucked out of
 thin air):
 
 - $\beta_0$: normal centred at 164 with a standard deviation of 65
-- $\beta_1$: normal centred at 0 with a standard deviation of 2
+- $\beta_1$: normal centred at 0 with a standard deviation of 65
 - $\sigma$: half-t (df = 3) centred at 0 with a standard deviation of 65
 
 We can visualise each of the above as:
 
 ```{r fitModel1h1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 5, fig.height = 3}
 standist::visualize("normal(164, 65)", xlim = c(0, 300)) +
-standist::visualize("normal(0, 2)", xlim = c(-10, 10))
+standist::visualize("normal(0, 65)", xlim = c(-10, 10))
 standist::visualize("student_t(3, 0, 65)",
                     "gamma(2,1)",
                     "exponential(0.016)",
@@ -682,15 +679,16 @@ standist::visualize("student_t(3, 0, 65)",
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-fert.rstanarm2= stan_glm(YIELD ~ FERTILIZER, data=fert,
-                         prior_intercept = normal(164, 65, autoscale=FALSE),
-                         prior = normal(0, 2, autoscale=FALSE),
-                         prior_aux = student_t(3, 0, 65, autoscale=FALSE),
-                         prior_PD=TRUE, 
-                         iter = 5000, warmup = 1000,
-                         chains = 3, cores = 3,
-                         thin = 5, refresh = 0
-                         )
+fert.rstanarm2 <- stan_glm(YIELD ~ scale(FERTILIZER),
+                           data=fert,
+                           prior_intercept = normal(164, 65, autoscale=FALSE),
+                           prior = normal(0, 65, autoscale=FALSE),
+                           prior_aux = student_t(3, 0, 65, autoscale=FALSE),
+                           prior_PD=TRUE, 
+                           iter = 5000, warmup = 1000,
+                           chains = 3, cores = 3,
+                           thin = 5, refresh = 0
+                           )
 ```
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE}
@@ -737,7 +735,8 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-fert.brm <- brm(bf(YIELD ~ FERTILIZER),
+fert_form <- bf(YIELD ~ scale(FERTILIZER))
+fert_brm <- brm(fert_form,
                data = fert,
                iter = 5000,
                warmup = 1000,
@@ -773,39 +772,42 @@ In the above:
   those far apart).  The rate of thinning necessary will depend on the degree
   of auto-correlation.  For stan models, a thinning rate of 5 is a good starting
   point.
-- refresh: indicates how often the terminal display should be updated.  When
-  running a large model, this can be useful as it provides a form of progress.
-  However, when the routine is within an Rmarkdown document, it just results in
-  the output including each line of progress and a lot of space is taken up unnecessarily
+- refresh: indicates how often the terminal display should be updated.
+  When running a large model, this can be useful as it provides a form
+  of progress. However, when the routine is within an Rmarkdown
+  document, it just results in the output including each line of
+  progress and a lot of space is taken up unnecessarily
 
-The returned object (a list) contains a range of objects.  The output
+The returned object (a list) contains a range of objects. The output
 from `rstan` is contained in the `fit` list item.
 
 ```{r fitModel2a2, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm |> names()
+fert_brm |> names()
 ```
 
-Having allowed `brms` to formulate its own weakly informative priors, it is
-a good idea to explore what they are.  Firstly, out of curiosity, it might be
-interesting to see what it has chosen.  However, more importantly, we need to be
-able to document what the priors were and the `brms` development team make
-it very clear that there is no guarantee that the default priors will remain the
-same into the future. 
+Having allowed `brms` to formulate its own weakly informative priors,
+it is a good idea to explore what they are. Firstly, out of curiosity,
+it might be interesting to see what it has chosen. However, more
+importantly, we need to be able to document what the priors were and
+the `brms` development team make it very clear that there is no
+guarantee that the default priors will remain the same into the
+future.
 
 ```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=2}
 options(width=100)
-prior_summary(fert.brm)
+prior_summary(fert_brm)
 options(width=80)
 ```
 
 This tells us:
 
-- for the intercept, it is using a student t (flatter normal) prior with a mean of 161.5 and a
-  standard deviation of 90.4.  These mean and standard deviation values are
-  based on the median and median absolute deviation of the
-  response variable (rounded).
+- for the intercept, it is using a student t (flatter normal) prior
+  with a mean of 161.5 and a standard deviation of 90.4. These mean
+  and standard deviation values are based on the median and median
+  absolute deviation of the response variable (rounded).
 
-**Note, all priors are on the link scale and on centered predictiors**
+**Note, all priors are on the link scale and on scaled (e.g.
+standardized to a mean of 0 and standard deviation of 1) predictiors**
 
 ```{r fitModel2c, results='markdown', eval=TRUE, mhidden=TRUE}
 median(fert$YIELD)
@@ -816,7 +818,7 @@ mad(fert$YIELD)
 is to `mean`.
 
 ```{r student_t_dist, results='markdown', eval=TRUE}
-standist::visualize("student_t(3,161.5,90.4)", xlim=c(-100,1000))
+standist::visualize("student_t(3, 161.5, 90.4)", xlim=c(-100, 1000))
 ```
 
 - for the beta coefficients (in this case, just the slope), the
@@ -830,10 +832,10 @@ standist::visualize("student_t(3,161.5,90.4)", xlim=c(-100,1000))
   deviation of 90.4.
 	  
 ```{r student_t_dist1, results='markdown', eval=TRUE}
-standist::visualize("student_t(3,0,90.4)", xlim=c(-10,500))
+standist::visualize("student_t(3, 0, 90.4)", xlim=c(-10,500))
 ```
 	
-### Assessing priors 
+### Assessing default priors 
 
 One way to assess the priors is to have the MCMC sampler sample purely
 from the prior predictive distribution without conditioning on the
@@ -871,18 +873,23 @@ standardised, we can instead standardise the priors by multiplying the
 
 We could adopt similar logic here, but rather than use standard
 deviation, we could use median absolute deviation to be consistent
-with other prior specifications in `brms`.  In this case, the prior
-standard deviation would be `2.5 * mad(fert$YIELD)/mad(fert$FERTILIZER)` = `2.44` 
-(which I will round to 2.5).
+with other prior specifications in `brms`. In this case, the prior
+standard deviation would be `2.5 *
+mad(fert$YIELD)/mad(fert$FERTILIZER)` = `2.44` (which I will round to
+2.5). However, if we scale the predictor (which we should), then we
+are essentially dividing the `mad` or `sd` of the response by 1 (since
+the standard deviation of a scaled vector is 1). Hence, we the
+standard devation for the prior could just be `mad(fert$YIELD)`.
 
 ```{r normal_prior, results='markdown', eval=TRUE}
-standist::visualize("normal(0, 2.5)", "student_t(3, 0, 2.5)", xlim = c(-50,50))
+standist::visualize("normal(0, 90.4)", "student_t(3, 0, 90.4)", xlim = c(-400, 400))
 ```
 
 ```{r fitModel2d, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-fert.brm1 <- brm(bf(YIELD ~ FERTILIZER),
+fert_form <- bf(YIELD ~ scale(FERTILIZER))
+fert_brm1 <- brm(fert_form,
                  data = fert,
-                 prior = prior(student_t(3, 0, 2.5), class = 'b'), 
+                 prior = prior(student_t(3, 0, 90.4), class = 'b'), 
                  sample_prior = 'only', 
                  iter = 5000,
                  warmup = 1000,
@@ -896,19 +903,19 @@ fert.brm1 <- brm(bf(YIELD ~ FERTILIZER),
 #### ggpredict
 
 ```{r fitModel2e1, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm1 |> ggpredict() |> plot(show_data=TRUE)
+fert_brm1 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 #### ggemmeans
 
 ```{r fitModel2e2, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm1 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
+fert_brm1 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
 ```
 
 #### conditional_effects
 
 ```{r fitModel2e3, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm1 |> conditional_effects() |>  plot(points=TRUE)
+fert_brm1 |> conditional_effects() |>  plot(points=TRUE)
 ```
 
 **Conclusions:**
@@ -933,26 +940,24 @@ If we wanted to define our own priors that were less vague, yet still
 not likely to bias the outcomes, we could try the following priors
 (which I have mainly plucked out of thin air):
 
-- $\beta_0$: normal centred at 164 with a standard deviation of 65
+- $\beta_0$: normal centred at 164 with a standard deviation of 90
   - mean of 164: since `median(fert$YIELD)`
-  - sd pf 65: since `mad(fert$YIELD)`
-- $\beta_1$: normal centred at 0 with a standard deviation of 2.5
-  - sd of 2: since `2.5*(mad(fert$YIELD)/mad(fert$FERTILIZER))`
-- $\sigma$: half-t centred at 0 with a standard deviation of 65 OR
-  - sd pf 65: since `mad(fert$YIELD)`
-- $\sigma$: gamma with shape parameters of 2 and 1
- 
+  - sd of 90: since `mad(fert$YIELD)`
+- $\beta_1$: normal centred at 0 with a standard deviation of 90
+  - sd of 90: since `mad(fert$YIELD)/1`
+- $\sigma$: half-t centred at 0 with a standard deviation of 90 OR
+  - sd pf 90: since `mad(fert$YIELD)`
+- $\sigma$: gamma with shape parameters of 2 and 0.1 
 
 ```{r priors, results='markdown', eval=TRUE}
-standist::visualize("normal(164, 65)", xlim = c(-100, 300))
+standist::visualize("normal(164, 90)", xlim = c(-100, 500))
 
-standist::visualize("normal(0, 90)", xlim = c(-10, 10))
+standist::visualize("normal(0, 90)", xlim = c(-400, 400))
 
-standist::visualize("student_t(3, 0, 65)",
-                    "normal(0, 65)",
-                    "gamma(2,0.05)",
-                    xlim = c(0, 100))
-   
+standist::visualize("student_t(3, 0, 90)",
+                    "normal(0, 90)",
+                    "gamma(2, 0.1)",
+                    xlim = c(0, 400))
 ```
 
 ::::: {.panel-tabset}
@@ -962,11 +967,11 @@ standist::visualize("student_t(3, 0, 65)",
 I will also overlay the raw data for comparison.
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-form <- bf(YIELD ~ scale(FERTILIZER, scale = FALSE)) 
+fert_form <- bf(YIELD ~ scale(FERTILIZER)) 
 priors <- prior(normal(162, 90.4),  class='Intercept') +
-    prior(normal(0, 2), class='b') +
+    prior(normal(0, 90), class='b') +
     prior(student_t(3, 0, 90.4),  class='sigma')
-fert.brm2 <- brm(form,
+fert_brm2 <- brm(fert_form,
                 data=fert,
                 prior=priors,
                 sample_prior = 'only', 
@@ -984,7 +989,7 @@ fert.brm2 <- brm(form,
 ##### ggpredict
 
 ```{r fitModel2i1, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm2 |>
+fert_brm2 |>
     ggpredict() |>
     plot(show_data=TRUE) 
 ```
@@ -992,7 +997,7 @@ fert.brm2 |>
 ##### ggemmeans
 
 ```{r fitModel2i2, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm2 |>
+fert_brm2 |>
     ggemmeans(~FERTILIZER) |>
     plot(show_data = TRUE) 
 ```
@@ -1000,7 +1005,7 @@ fert.brm2 |>
 ##### conditional_effects
 
 ```{r fitModel2i3, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm2 |>
+fert_brm2 |>
     conditional_effects() |>
     plot(points = TRUE) 
 ```
@@ -1010,9 +1015,9 @@ fert.brm2 |>
 #### Sample prior and posterior
 
 ```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-fert.brm3 <- update(fert.brm2, sample_prior = 'yes', refresh = 0)
-#OR  
-fert.brm3 = brm(bf(YIELD ~ scale(FERTILIZER, scale = FALSE)),
+fert_brm3 <- update(fert_brm2, sample_prior = 'yes', refresh = 0)
+#OR   
+fert_brm3 <- brm(fert_form,
                 data=fert,
                 prior=priors,
                 sample_prior = 'yes', 
@@ -1034,15 +1039,15 @@ fert.brm3 = brm(bf(YIELD ~ scale(FERTILIZER, scale = FALSE)),
 ##### ggpredict
 
 ```{r fitModel2k1, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm3 |>
+fert_brm3 |>
     ggpredict() |>
-    plot(show_data=TRUE) 
+    plot(show_data = TRUE) 
 ```
 
 ##### ggemmeans
 
 ```{r fitModel2k2, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm3 |>
+fert_brm3 |>
     ggemmeans(~FERTILIZER) |>
     plot(show_data = TRUE) 
 ```
@@ -1050,7 +1055,7 @@ fert.brm3 |>
 ##### conditional_effects
 
 ```{r fitModel2k3, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm3 |>
+fert_brm3 |>
     conditional_effects() |>
     plot(points = TRUE) 
 ```
@@ -1072,11 +1077,11 @@ prior.  If this is not the case, it might suggest that the posteriors
 are being too strongly driven by the priors.
 
 ```{r posterior2, results='markdown', eval=TRUE}
-fert.brm3 |> get_variables()
-## fert.brm3 |> hypothesis('Intercept=0', class='b') |> plot
-fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE = 0') |> plot()
-## fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE=0') |> plot
-fert.brm3 |> hypothesis('sigma = 0', class = '') |> plot() 
+fert_brm3 |> get_variables()
+## fert_brm3 |> hypothesis('Intercept=0', class='b') |> plot
+fert_brm3 |> hypothesis('scaleFERTILIZER = 0') |> plot()
+## fert_brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE=0') |> plot
+fert_brm3 |> hypothesis('sigma = 0', class = '') |> plot() 
 ```
 
 Unfortunately, it is not possible to do this comparison sensibly for
@@ -1087,15 +1092,15 @@ Since we did not centre the predictor, the intercept returned is as if
 uncentred.  Hence, the prior and posterior are on different scales.
  
 ```{r fitModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4}
-fert.brm3 |> get_variables()
-fert.brm3 |> SUYR_prior_and_posterior()
+fert_brm3 |> get_variables()
+fert_brm3 |> SUYR_prior_and_posterior()
 ```
 
 ### Exploring the stan code
 
 ```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE}
-fert.brm3 |> standata()
-fert.brm3 |> stancode()
+fert_brm3 |> standata()
+fert_brm3 |> stancode()
 ```
 
 ::::
@@ -1698,12 +1703,12 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> mcmc_plot(type = 'combo')
-fert.brm3 |> mcmc_plot(type = 'trace')
-fert.brm3 |> mcmc_plot(type = 'dens_overlay')
-fert.brm3 |> mcmc_plot(type = 'nuts_treedepth')
-fert.brm3 |> mcmc_plot(type = 'nuts_divergence')
-fert.brm3 |> mcmc_plot(type = 'nuts_stepsize')
+fert_brm3 |> mcmc_plot(type = 'combo')
+fert_brm3 |> mcmc_plot(type = 'trace')
+fert_brm3 |> mcmc_plot(type = 'dens_overlay')
+fert_brm3 |> mcmc_plot(type = 'nuts_treedepth')
+fert_brm3 |> mcmc_plot(type = 'nuts_divergence')
+fert_brm3 |> mcmc_plot(type = 'nuts_stepsize')
 ```
 
   The chains appear well mixed and very similar
@@ -1713,7 +1718,7 @@ fert.brm3 |> mcmc_plot(type = 'nuts_stepsize')
   chain
   
 ```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> mcmc_plot(type = 'acf_bar')
+fert_brm3 |> mcmc_plot(type = 'acf_bar')
 ```
 
 There is no evidence of autocorrelation in the MCMC samples
@@ -1725,7 +1730,7 @@ There is no evidence of autocorrelation in the MCMC samples
   estimated.
 
 ```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> mcmc_plot(type = 'rhat_hist')
+fert_brm3 |> mcmc_plot(type = 'rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -1741,15 +1746,15 @@ fert.brm3 |> mcmc_plot(type = 'rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> mcmc_plot(type = 'neff_hist')
+fert_brm3 |> mcmc_plot(type = 'neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> mcmc_plot(type = 'combo')
-fert.brm3 |> mcmc_plot(type = 'violin')
+fert_brm3 |> mcmc_plot(type = 'combo')
+fert_brm3 |> mcmc_plot(type = 'violin')
 ```
 </details>
 
@@ -1769,9 +1774,9 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_trace(fert.brm3$fit)
-fert.brm3$fit |> stan_trace()
-fert.brm3$fit |> stan_trace(inc_warmup = TRUE)
+stan_trace(fert_brm3$fit)
+fert_brm3$fit |> stan_trace()
+fert_brm3$fit |> stan_trace(inc_warmup = TRUE)
 ```
 
    The chains appear well mixed and very similar
@@ -1780,7 +1785,7 @@ fert.brm3$fit |> stan_trace(inc_warmup = TRUE)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3$fit |> stan_ac() 
+fert_brm3$fit |> stan_ac() 
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -1791,7 +1796,7 @@ fert.brm3$fit |> stan_ac()
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3$fit |> stan_rhat() 
+fert_brm3$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -1806,13 +1811,13 @@ fert.brm3$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3$fit |> stan_ess()
+fert_brm3$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3$fit |> stan_dens(separate_chains = TRUE)
+fert_brm3$fit |> stan_dens(separate_chains = TRUE)
 ```
 
 ### ggmcmc
@@ -1830,9 +1835,9 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-fert.ggs <- fert.brm3$fit |> ggs(inc_warmup = TRUE, burnin = TRUE)  # does not seem to ignore burnin?
+fert.ggs <- fert_brm3$fit |> ggs(inc_warmup = TRUE, burnin = TRUE)  # does not seem to ignore burnin?
 fert.ggs |> ggs_traceplot()
-fert.ggs <- fert.brm3$fit |> ggs(inc_warmup = FALSE, burnin = TRUE)  # does not seem to ignore burnin?
+fert.ggs <- fert_brm3$fit |> ggs(inc_warmup = FALSE, burnin = TRUE)  # does not seem to ignore burnin?
 fert.ggs |> ggs_traceplot()
 ```
 
@@ -2051,7 +2056,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> pp_check( type='dens_overlay', ndraws=100)
+fert_brm3 |> pp_check( type='dens_overlay', ndraws=100)
 ```
 The model draws appear to be consistent with the observed data.
 
@@ -2060,7 +2065,7 @@ The model draws appear to be consistent with the observed data.
   this plot
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> pp_check(type='error_scatter_avg')
+fert_brm3 |> pp_check(type='error_scatter_avg')
 ```
 
 There is no obvious pattern in the residuals.
@@ -2069,7 +2074,7 @@ There is no obvious pattern in the residuals.
   should be interpreted as such.
 
 ```{r modelValidation5d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> pp_check(x='FERTILIZER', type='error_scatter_avg_vs_x')
+fert_brm3 |> pp_check(x='FERTILIZER', type='error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed on top of posterior predictions
@@ -2078,13 +2083,13 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-fert.brm3 |> pp_check(x='FERTILIZER', type='intervals')
+fert_brm3 |> pp_check(x='FERTILIZER', type='intervals')
 ```
 
 - ribbon: this is just an alternative way of expressing the above plot.
 
 ```{r modelValidation5f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(fert.brm3, x='FERTILIZER',type='ribbon')
+pp_check(fert_brm3, x='FERTILIZER',type='ribbon')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -2092,7 +2097,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(fert.brm3)
+#launch_shinystan(fert_brm3)
 ```
 
 ### DHARMa residuals
@@ -2108,18 +2113,9 @@ We need to supply:
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
 
-```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- fert.brm3 |> posterior_predict(ndraws=250,  summary=FALSE)
-fert.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = fert$YIELD,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = FALSE)
-fert.resids |> plot()
-```
-
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
 
-fert.resids <- make_brms_dharma_res(fert.brm3, integerResponse = FALSE)
+fert.resids <- make_brms_dharma_res(fert_brm3, integerResponse = FALSE)
 wrap_elements(~testUniformity(fert.resids)) +
                wrap_elements(~plotResiduals(fert.resids, form = factor(rep(1, nrow(fert))))) +
                wrap_elements(~plotResiduals(fert.resids)) +
@@ -2135,6 +2131,18 @@ in for Poisson, Negative Binomial and Binomial models.
 
 - the simulated residuals do not suggest any issues with the residuals
 - there is no evidence of a lack of fit.
+
+The following is the old and (now incorrect) way.
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- fert_brm3 |> posterior_predict(ndraws=250,  summary=FALSE)
+fert.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = fert$YIELD,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = FALSE)
+fert.resids |> plot()
+```
+
 
 ::::
 
@@ -2328,9 +2336,9 @@ fert.rstanarm3 |> epred_draws(newdata=fert) |>
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> conditional_effects() 
-fert.brm3 |> conditional_effects() |> plot(points = TRUE)
-fert.brm3 |>
+fert_brm3 |> conditional_effects() 
+fert_brm3 |> conditional_effects() |> plot(points = TRUE)
+fert_brm3 |>
     conditional_effects(spaghetti = TRUE, ndraws = 200) |>
     plot(points = TRUE) 
 ```
@@ -2338,19 +2346,19 @@ fert.brm3 |>
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> ggpredict() |> plot(show_data=TRUE)
+fert_brm3 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
+fert_brm3 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
 ```
 
 ### epred_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |>
+fert_brm3 |>
     epred_draws(newdata = fert) |>
     median_hdci() |>
     ggplot(aes(x = FERTILIZER, y=.epred)) +
@@ -2625,9 +2633,9 @@ fert.rstanarm3 |> tidy_draws()
 ### gather_draws
 
 ```{r summariseModel1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.draw <- fert.rstanarm3 |> gather_draws(`(Intercept)`, FERTILIZER, sigma)
+fert.draw <- fert.rstanarm3 |> gather_draws(`(Intercept)`, `scale(FERTILIZER)`, sigma)
 ## OR via regex
-fert.draw <- fert.rstanarm3 |> gather_draws(`.Intercept.*|FERT.*|sigma`,  regex=TRUE)
+fert.draw <- fert.rstanarm3 |> gather_draws(`.Intercept.*|.*FERT.*|sigma`,  regex=TRUE)
 fert.draw
 ```
 
@@ -2638,13 +2646,13 @@ fert.draw |> median_hdci()
 ```
 
 ```{r summariseModel1c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-fert.gather <- fert.rstanarm3 |> gather_draws(`(Intercept)`,FERTILIZER,sigma) |>
+fert.gather <- fert.rstanarm3 |> gather_draws(`(Intercept)`, `scale(FERTILIZER)`, sigma) |>
   median_hdci()
 ```
 
 ```{r summariseModel1c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
 fert.rstanarm3 |> 
-  gather_draws(`(Intercept)`, FERTILIZER, sigma) |> 
+  gather_draws(`(Intercept)`, `scale(FERTILIZER)`, sigma) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
   facet_wrap(~.variable, scales='free')
@@ -2670,9 +2678,9 @@ fert.rstanarm3 |> plot(plotfun='mcmc_intervals')
 ### spread_draws
 
 ```{r summariseModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.rstanarm3 |> spread_draws(`(Intercept)`, FERTILIZER, sigma)
+fert.rstanarm3 |> spread_draws(`(Intercept)`, `scale(FERTILIZER)`, sigma)
 # OR via regex
-fert.rstanarm3 |> spread_draws(`.Intercept.*|FERT.*|sigma`,  regex=TRUE)
+fert.rstanarm3 |> spread_draws(`.Intercept.*|.*FERT.*|sigma`,  regex=TRUE)
 ```
 
 ### posterior_samples
@@ -2719,7 +2727,7 @@ mcmcpvalue <- function(samp)
     
 }
 
-mcmcpvalue(as.matrix(fert.rstanarm3)[, c("FERTILIZER")])
+mcmcpvalue(as.matrix(fert.rstanarm3)[, c("scale(FERTILIZER)")])
 ```
 
 ::::
@@ -2739,11 +2747,11 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> summary()
+fert_brm3 |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-fert.sum <- summary(fert.brm3)
+fert.sum <- summary(fert_brm3)
 ```
  
 **Conclusions:**
@@ -2751,13 +2759,14 @@ fert.sum <- summary(fert.brm3)
 - in the initial block of information, we are reminded on the formula as well as
   chain fitting characteristics.  We are also informed that the total number of
   post-warmup MCMC samples is
-  is `r nrow(as.matrix(fert.brm3))`.
+  is `r nrow(as.matrix(fert_brm3))`.
 - the estimated intercept (expected yield when fertilizer concentration is 0) is
   `r round(fert.sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
-  for this parameter.
+  for this parameter.  Since we scaled the predictor, the intercept represents the expected
+  mean of the response for the average fertilizer concentration.
 - the estimated slope (rate at which yield changes per 1 unit change in
-  fertilizer concentration), is `r round(fert.sum$fixed[2,1],2)` (mean) with a 
-  standard error of `r round(fert.sum$fixed[2,2],2)`.
+  scaled fertilizer concentration), is `r round(fert.sum$fixed[2,1],2)` (mean) with a 
+  standard error of `r round(fert.sum$fixed[2,2],2)`.  So this is the expected change in yeild for a moderate (1 standard deviation) change in fertiliser concentration.
   The 95% credibility intervals indicate that we are 95% confident that the slope is between 
   `r round(fert.sum$fixed[2,3],2)` and `r round(fert.sum$fixed[2,4],2)` - e.g. there is a significant positive trend.
 - sigma is estimated to be `r round(fert.sum$spec_pars[1,1],2)`
@@ -2767,14 +2776,14 @@ fert.sum <- summary(fert.brm3)
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3$fit |>
+fert_brm3$fit |>
     tidyMCMC(estimate.method = 'median',
              conf.int = TRUE,
              conf.method = 'HPDinterval',
              rhat = TRUE, ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-fert.tidy <- tidyMCMC(fert.brm3$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+fert.tidy <- tidyMCMC(fert_brm3$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
@@ -2792,7 +2801,7 @@ fert.tidy <- tidyMCMC(fert.brm3$fit, estimate.method='median',  conf.int=TRUE,  
 ### summarise_draws (posterior)
 
 ```{r summariseModel2dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |>
+fert_brm3 |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
@@ -2801,7 +2810,7 @@ fert.brm3 |>
 We can also alter the CI level.
 
 ```{r summariseModel2d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |>
+fert_brm3 |>
     summarise_draws(median,
                     ~HDInterval::hdi(.x, credMass = 0.9),
                     rhat, length, ess_bulk, ess_tail)
@@ -2812,7 +2821,7 @@ To narrow down to just the parameters of interest, see the code under the **tidy
 ### as_draws_df (posterior)
 
 ```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> as_draws_df()
+fert_brm3 |> as_draws_df()
 ```
 
 ### tidy_draws
@@ -2820,29 +2829,34 @@ fert.brm3 |> as_draws_df()
 Return the draws (samples) for each parameter in wide format
 
 ```{r summariseModel2d1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> tidy_draws()
+fert_brm3 |> tidy_draws()
 
-fert.brm3 |> get_variables()
-fert.brm3$fit |>
+fert_brm3 |> get_variables()
+fert_brm3$fit |>
     tidy_draws() |>
     dplyr::select(matches('^b_.*|^sigma'))  |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
+```
+
+We can also express the slope as if we had not scaled the fertiliser predictor.
+
+```{r summariseModel2d2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 ## if we want to express the slope in terms of the original scale of the
 ## fertilizer concentration, we need to back scale the slope
-##fert.brm3$data
-##attr(fert.brm3$data[, 2], "scaled:scale")
-#fert_sigma <- attr(fert.brm3$data[, "scale(FERTILIZER)"], "scaled:scale")
-fert.brm3$fit |>
+##fert_brm3$data
+##attr(fert_brm3$data[, 2], "scaled:scale")
+fert_sigma <- attr(fert_brm3$data[, "scale(FERTILIZER)"], "scaled:scale")
+fert_brm3$fit |>
     tidy_draws() |>
     dplyr::select(matches('^b_.*|^sigma'))  |>
-    ## mutate(FERTILIZER =  b_scaleFERTILIZER / fert_sigma)  |>
+    mutate(FERTILIZER =  b_scaleFERTILIZER / fert_sigma)  |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
 ## for just the slope...
-## fert.brm3 |> emtrends(~ 0, var = "FERTILIZER")
+fert_brm3 |> emtrends(~ 1, var = "FERTILIZER")
 ```
 
 The above can be useful for exploring the full posteriors of all the
@@ -2850,7 +2864,7 @@ parameters of performing specific calculations using the posteriors,
 summarising the parameters takes a few more steps.
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |>
+fert_brm3 |>
     tidy_draws() |>
     gather_variables() |>
     median_hdci()
@@ -2865,30 +2879,30 @@ them in full or via regexp).
 ### gather_draws
 
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> get_variables()
-fert.brm3 |>
-    gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |>
+fert_brm3 |> get_variables()
+fert_brm3 |>
+    gather_draws(b_Intercept, b_scaleFERTILIZER, sigma) |>
     median_hdci()
 ## OR via regex
-fert.brm3 |>
+fert_brm3 |>
     gather_draws(`b_.*|sigma`,  regex=TRUE) |>
     median_hdci()
 ```
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-fert.gather <- fert.brm3 |>
-    gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |>
+fert.gather <- fert_brm3 |>
+    gather_draws(b_Intercept, b_scaleFERTILIZER, sigma) |>
     median_hdci()
 ```
 
 ```{r summariseModel2c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-fert.brm3 |> 
-  gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |> 
+fert_brm3 |> 
+  gather_draws(b_Intercept, b_scaleFERTILIZER, sigma) |> 
   ggplot() + 
   stat_halfeye(aes(x = .value,  y = .variable)) +
   facet_wrap(~.variable, scales = 'free')
 
-fert.brm3 |> 
-  gather_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma) |> 
+fert_brm3 |> 
+  gather_draws(b_Intercept, b_scaleFERTILIZER, sigma) |> 
   ggplot() + 
   stat_halfeye(aes(x = .value,  y = .variable)) 
 ```
@@ -2897,11 +2911,12 @@ fert.brm3 |>
 
 - the estimated intercept (expected yield when fertilizer concentration is 0) is
   `r round(as.numeric(fert.gather[1,2]),2)`.  This is the median of the posterior distribution
-  for this parameter.
+  for this parameter. Since we scaled the predictor, the intercept represents the expected
+  mean of the response for the average fertilizer concentration.
 - the estimated slope (rate at which yield changes per 1 unit change in
-  fertilizer concentration), is `r round(as.numeric(fert.gather[2,2]),2)` (mean) or (median).
+  scaled fertilizer concentration), is `r round(as.numeric(fert.gather[2,2]),2)` (mean) or (median).
   The 95% credibility intervals indicate that we are 95% confident that the slope is between 
-  `r round(as.numeric(fert.gather[2,3]),2)` and `r round(as.numeric(fert.gather[2,4]),2)` - e.g. there is a significant positive trend.
+  `r round(as.numeric(fert.gather[2,3]),2)` and `r round(as.numeric(fert.gather[2,4]),2)` - e.g. there is a significant positive trend. So this is the expected change in yeild for a moderate (1 standard deviation) change in fertiliser concentration.
 - sigma is estimated to be `r round(as.numeric(fert.gather[3,2]),2)`
 
  
@@ -2910,15 +2925,15 @@ fert.brm3 |>
 Select just the parameters of interest.
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> spread_draws(b_Intercept, b_scaleFERTILIZERscaleEQFALSE, sigma)
+fert_brm3 |> spread_draws(b_Intercept, b_scaleFERTILIZER, sigma)
 # OR via regex
-fert.brm3 |> spread_draws(`b_.*|sigma`,  regex=TRUE)
+fert_brm3 |> spread_draws(`b_.*|sigma`,  regex=TRUE)
 ```
 
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> mcmc_plot(type='intervals') 
+fert_brm3 |> mcmc_plot(type='intervals') 
 ```
 
 ### posterior_samples
@@ -2926,13 +2941,13 @@ fert.brm3 |> mcmc_plot(type='intervals')
 Note, this is now deprecated
  
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> posterior_samples() |> as_tibble()
+fert_brm3 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> bayes_R2(summary=FALSE) |> median_hdci()
+fert_brm3 |> bayes_R2(summary=FALSE) |> median_hdci()
 ```
 
 ### Empirical p-value
@@ -2965,7 +2980,7 @@ mcmcpvalue <- function(samp)
     
 }
 
-mcmcpvalue(as.matrix(fert.brm3)[, c("b_scaleFERTILIZERscaleEQFALSE")])
+mcmcpvalue(as.matrix(fert_brm3)[, c("b_scaleFERTILIZER")])
 ```
 
 ### Modelsummary
@@ -2975,7 +2990,7 @@ mcmcpvalue(as.matrix(fert.brm3)[, c("b_scaleFERTILIZERscaleEQFALSE")])
 #| eval: true
 #| echo: true
 #| cache: false
-fert.brm3 |> modelsummary(
+fert_brm3 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic
 )
@@ -2987,7 +3002,7 @@ fert.brm3 |> modelsummary(
 #| eval: true
 #| echo: true
 #| cache: false
-fert.brm3 |> modelplot()
+fert_brm3 |> modelplot()
 ```
 
 ::::
@@ -3276,21 +3291,21 @@ Xmat = model.matrix(~FERTILIZER, data=newdata)
 ### get the posterior draws for the linear predictor
 coefs <- fert.rstanarm3$stanfit |>
     as_draws_df() |>
-    dplyr::select(c('(Intercept)','FERTILIZER')) |>
+    dplyr::select(c('(Intercept)','scale(FERTILIZER)')) |>
     as.matrix()
 fit <- coefs %*% t(Xmat)
 fit |> median_hdci()
 ## or
 coefs <- fert.rstanarm3 |>
     tidy_draws() |> 
-    dplyr::select(c('(Intercept)','FERTILIZER')) |>
+    dplyr::select(c('(Intercept)','scale(FERTILIZER)')) |>
     as.matrix()
 fit <- coefs %*% t(Xmat)
 fit |> median_hdci()
 ## or
 coefs <- fert.rstanarm3$stanfit |>
     as_draws_matrix() |> 
-    subset_draws(c("(Intercept)", "FERTILIZER"))
+    subset_draws(c("(Intercept)", "scale(FERTILIZER)"))
 fit <- coefs %*% t(Xmat)
 fit |> median_hdci()
 ```
@@ -3305,14 +3320,14 @@ fit |> median_hdci()
 **This is the option we will focus on for most of the worksheets**
 
 ```{r predictions2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER, at = newdata)
 ## OR
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER, at = newdata) |>
     tidy_draws() |>
     median_hdci()
-fert.mcmc <- fert.brm3 |>
+fert.mcmc <- fert_brm3 |>
   emmeans(~FERTILIZER, at = newdata) |>
   tidy_draws()
 
@@ -3322,13 +3337,13 @@ What is the probability that if we apply a fertiliser concentration of 110 units
 
 ```{r predictions2ba1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER, at = newdata) |>
     tidy_draws() |>
     ggplot(aes(x = `FERTILIZER 110`)) +
     geom_vline(xintercept = 120) + 
     geom_density(fill = "orange", alpha = 0.3)
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER, at = newdata) |>
     tidy_draws() |>
     summarise_draws(
@@ -3341,11 +3356,11 @@ fert.brm3 |>
 ### predicted values
 
 ```{r predictions2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> tidybayes::predicted_draws(newdata) |> median_hdci()
+fert_brm3 |> tidybayes::predicted_draws(newdata) |> median_hdci()
 ## or
-newdata |> tidybayes::add_predicted_draws(fert.brm3) |> median_hdci()
+newdata |> tidybayes::add_predicted_draws(fert_brm3) |> median_hdci()
 ## or
-fert.brm3 |> posterior_predict(newdata=newdata) |>
+fert_brm3 |> posterior_predict(newdata=newdata) |>
     as.mcmc() |>
   tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
 ```
@@ -3353,11 +3368,11 @@ fert.brm3 |> posterior_predict(newdata=newdata) |>
 ### expected values
 
 ```{r predictions2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> epred_draws(newdata) |> median_hdci()
+fert_brm3 |> epred_draws(newdata) |> median_hdci()
 ## or
-newdata |> add_epred_draws(fert.brm3) |> median_hdci()
+newdata |> add_epred_draws(fert_brm3) |> median_hdci()
 ## or
-fert.brm3 |> posterior_epred(newdata=newdata) |>
+fert_brm3 |> posterior_epred(newdata=newdata) |>
     as.mcmc() |>
   tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
 ```
@@ -3365,11 +3380,11 @@ fert.brm3 |> posterior_epred(newdata=newdata) |>
 ### linear predictor
 
 ```{r predictions2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> linpred_draws(newdata) |> median_hdci()
+fert_brm3 |> linpred_draws(newdata) |> median_hdci()
 ## or
-newdata |> add_linpred_draws(fert.brm3) |> median_hdci()
+newdata |> add_linpred_draws(fert_brm3) |> median_hdci()
 ## or
-fert.brm3 |> posterior_linpred(newdata=newdata) |>
+fert_brm3 |> posterior_linpred(newdata=newdata) |>
     as.mcmc() |> 
   tidyMCMC(estimate.method='median', conf.int=TRUE, conf.method='HPDinterval')
 ```
@@ -3379,30 +3394,30 @@ fert.brm3 |> posterior_linpred(newdata=newdata) |>
 ## Establish an appropriate model matrix
 Xmat = model.matrix(~FERTILIZER, data=newdata)
 ### get the posterior draws for the linear predictor
-coefs <- fert.brm3 |>
+coefs <- fert_brm3 |>
     as_draws_df() |>
-    dplyr::select(c('b_Intercept','b_scaleFERTILIZERscaleEQFALSE')) |>
+    dplyr::select(c('b_Intercept','b_scaleFERTILIZER')) |>
     as.matrix()
 fit <- coefs %*% t(Xmat)
 fit |> median_hdci() |> bind_cols(newdata)
 ## or
-coefs <- fert.brm3 |>
+coefs <- fert_brm3 |>
     tidy_draws() |> 
-    dplyr::select(c('b_Intercept','b_scaleFERTILIZERscaleEQFALSE')) |>
+    dplyr::select(c('b_Intercept','b_scaleFERTILIZER')) |>
     as.matrix()
 fit <- coefs %*% t(Xmat)
 fit |> median_hdci() |> bind_cols(newdata)
 ## or
-coefs <- fert.brm3 |>
+coefs <- fert_brm3 |>
     as_draws_matrix() |> 
-    subset_draws(c("b_Intercept", "b_scaleFERTILIZERscaleEQFALSE"))
+    subset_draws(c("b_Intercept", "b_scaleFERTILIZER"))
 fit <- coefs %*% t(Xmat)
 fit |> median_hdci() |> bind_cols(newdata)
 ## or
 ## Establish an appropriate model matrix
 Xmat = model.matrix(~FERTILIZER, data=newdata)
 ### get the posterior draws for the linear predictor
-coefs <- fert.brm3 |> posterior_samples(pars=c('b_Intercept','b_scaleFERTILIZERscaleEQFALSE')) |> as.matrix()
+coefs <- fert_brm3 |> posterior_samples(pars=c('b_Intercept','b_scaleFERTILIZER')) |> as.matrix()
 fit <- coefs %*% t(Xmat)
 fit |> median_hdci() |> bind_cols(newdata)
 ```
@@ -3567,7 +3582,7 @@ For this exercise, we will explore the following:
 ### Prob. of effect
 
 ```{r Probability1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.rstanarm3 |> hypothesis('FERTILIZER>0')
+## fert.rstanarm3 |> hypothesis("scale(FERTILIZER)>0")
 ```
 
 **Conclusions:**
@@ -3582,7 +3597,7 @@ fert.rstanarm3 |> hypothesis('FERTILIZER>0')
 Alternatively...
 
 ```{r Probability1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
-fert.rstanarm3 |> tidy_draws() |> summarise(P=mean(FERTILIZER>0))
+fert.rstanarm3 |> tidy_draws() |> summarise(P=mean(`scale(FERTILIZER)`>0))
 ```
 
 **Conclusions:**
@@ -3612,12 +3627,13 @@ testing in a Bayesian framework.
 
 ```{r Probability1bb, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
 0.1 * sd(fert$YIELD)/sd(fert$FERTILIZER)
+0.1 * sd(fert$YIELD)/1
 ## Cannot pipe to rope if want to pipe rope to plot()
-bayestestR::rope(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI") 
-bayestestR::rope(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI") |> plot()
+bayestestR::rope(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-6.4, 6.4), ci_method = "HDI") 
+bayestestR::rope(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-6.4, 6.4), ci_method = "HDI") |> plot()
 
-bayestestR::equivalence_test(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI")  
-bayestestR::equivalence_test(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-0.08, 0.08), ci_method = "HDI") |> plot()
+bayestestR::equivalence_test(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-6.4, 6.4), ci_method = "HDI")  
+bayestestR::equivalence_test(fert.rstanarm3, parameters = 'FERTILIZER', range = c(-6.4, 6.4), ci_method = "HDI") |> plot()
 
 ```
 
@@ -3808,9 +3824,9 @@ fert.rstanarm3 |>
 ### Prob. of effect
 
 ```{r Probability2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0')
-fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0') |> plot (ignore_prior= TRUE)
-fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0') |> _[['samples']] |> median_hdci()
+fert_brm3 |> hypothesis('scaleFERTILIZER > 0')
+fert_brm3 |> hypothesis('scaleFERTILIZER > 0') |> plot (ignore_prior= TRUE)
+fert_brm3 |> hypothesis('scaleFERTILIZER > 0') |> _[['samples']] |> median_hdci()
 ```
 
 **Conclusions:**
@@ -3825,16 +3841,16 @@ fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0') |> _[['samples']] |> 
 Alternatively...
 
 ```{r Probability2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
-fert.brm3 |> get_variables()
-fert.brm3 |>
-    gather_draws(b_scaleFERTILIZERscaleEQFALSE) |>
+fert_brm3 |> get_variables()
+fert_brm3 |>
+    gather_draws(b_scaleFERTILIZER) |>
     summarise(P=mean(.value>0))
 # OR
-fert.brm3 |>
+fert_brm3 |>
     tidy_draws() |>
-    summarise(P = mean(b_scaleFERTILIZERscaleEQFALSE > 0))
+    summarise(P = mean(b_scaleFERTILIZER > 0))
 # OR
-fert.brm3 |>
+fert_brm3 |>
     tidy_draws() |>
     ## mutate(FERTILIZER = b_scaleFERTILIZER / fert_sigma) |>
     ## dplyr::select(matches("^FERT")) |>
@@ -3850,19 +3866,19 @@ fert.brm3 |>
   is, there is, we are 100% confident that there is an effect.
 
 ```{r Probability2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
-fert.brm3 |> hypothesis('scaleFERTILIZERscaleEQFALSE > 0.9')
-fert.brm3 |>
-    hypothesis('scaleFERTILIZERscaleEQFALSE > 0.9') |>
+fert_brm3 |> hypothesis('scaleFERTILIZER > 0.9')
+fert_brm3 |>
+    hypothesis('scaleFERTILIZER > 0.9') |>
     plot(ignore_prior = TRUE)
 # This returns a list
-fert.brm3 |>
-    hypothesis('scaleFERTILIZERscaleEQFALSE > 0.9') |>
+fert_brm3 |>
+    hypothesis('scaleFERTILIZER > 0.9') |>
     plot(ignore_prior = TRUE) |>
     _[[1]] +
     geom_vline(xintercept=0, linetype='dashed')
 
 # OR
-fert.brm3 |>
+fert_brm3 |>
     tidy_draws() |>
     ## mutate(FERTILIZER = b_scaleFERTILIZER / fert_sigma) |>
     ## dplyr::select(matches("^FERT")) |>
@@ -3870,10 +3886,10 @@ fert.brm3 |>
     summarise_draws(median,
         P = ~ mean(.x > 0.7)
     )
-fert.brm3 |>
+fert_brm3 |>
     tidy_draws() |>
     ## mutate(FERTILIZER = b_scaleFERTILIZER / fert_sigma) |>
-    mutate(FERTILIZER = b_scaleFERTILIZERscaleEQFALSE) |>
+    mutate(FERTILIZER = b_scaleFERTILIZER) |>
     ggplot(aes(x=FERTILIZER)) +
     geom_density(fill='orange') +
     geom_vline(xintercept=0.7, linetype='dashed')
@@ -3903,30 +3919,30 @@ testing in a Bayesian framework.
 0.1 * sd(fert$YIELD)/sd(fert$FERTILIZER)
 0.1 * sd(fert$YIELD)
 ## Cannot pipe to rope if want to pipe rope to plot()
-bayestestR::rope(fert.brm3,
+bayestestR::rope(fert_brm3,
                  parameters = "FERTILIZER",
-                 range = c(-0.08, 0.08),
-                 ## range = c(-6.4, 6.4),
+                 ## range = c(-0.08, 0.08),
+                 range = c(-6.4, 6.4),
                  ci_method = "HDI"
 )
-bayestestR::rope(fert.brm3,
+bayestestR::rope(fert_brm3,
     parameters = "FERTILIZER",
-    range = c(-0.08, 0.08),
-    ## range = c(-6.4, 6.4),
+    ## range = c(-0.08, 0.08),
+    range = c(-6.4, 6.4),
     ci_method = "HDI"
     ) |>
   plot()
 
-bayestestR::equivalence_test(fert.brm3,
+bayestestR::equivalence_test(fert_brm3,
                              parameters = "FERTILIZER",
-                             range = c(-0.08, 0.08),
-                             ## range = c(-6.4, 6.4),
+                             ## range = c(-0.08, 0.08),
+                             range = c(-6.4, 6.4),
                              ci_method = "HDI"
 )
-bayestestR::equivalence_test(fert.brm3,
+bayestestR::equivalence_test(fert_brm3,
     parameters = "FERTILIZER",
-    range = c(-0.08, 0.08),
-    ## range = c(-6.4, 6.4),
+    ## range = c(-0.08, 0.08),
+    range = c(-6.4, 6.4),
     ci_method = "HDI"
     ) |>
   plot()
@@ -3937,10 +3953,10 @@ bayestestR::equivalence_test(fert.brm3,
 
 ```{r Probability2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:2}
 newdata <- data.frame(FERTILIZER = c(200, 100)) 
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER,  at = newdata) |>
     pairs()
-fert.mcmc <- fert.brm3 |>
+fert.mcmc <- fert_brm3 |>
     emmeans(~FERTILIZER,  at = newdata) |>
     pairs() |>
     as.data.frame()
@@ -3955,13 +3971,13 @@ We can alternatively express this as a percentage change...
 
 ```{r Probability2c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:2}
 newdata <- list(FERTILIZER=c(200, 100)) 
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER,  at=newdata) |>
     regrid(transform = "log") |>
     pairs() |>
     regrid()
 
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER, at = newdata) |>
     regrid(transform = "log") |>
     pairs() |>
@@ -3982,7 +3998,7 @@ use `tidy_draws()` and then simple `tidyverse` spreadsheet operation.
 It is in combination with `emmeans()` that `tidy_draws()` really comes into its own.
 
 ```{r Probability2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |> emmeans(~FERTILIZER,  at=newdata) |>
+fert_brm3 |> emmeans(~FERTILIZER,  at=newdata) |>
     regrid(transform = "log") |>
     pairs() |>
     regrid() |>
@@ -3991,7 +4007,7 @@ fert.brm3 |> emmeans(~FERTILIZER,  at=newdata) |>
                     HDInterval::hdi,
                     P= ~ mean(.x>1.5))
 
-fert.mcmc <- fert.brm3 |>
+fert.mcmc <- fert_brm3 |>
     emmeans(~FERTILIZER,  at = newdata) |> 
     tidy_draws() |>
     rename_with(~str_replace(., 'FERTILIZER ', 'p')) |>
@@ -4054,7 +4070,7 @@ fert.mcmc |> hypothesis('PEff>50')
 
 ```{r Probability2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 newdata = list(FERTILIZER=c(200, 100)) 
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER,  at=newdata) |>
     pairs() |>
     tidy_draws() |>
@@ -4071,14 +4087,14 @@ We can also express this as a percentage change
 ```{r Probability2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 newdata = list(FERTILIZER=c(200, 100)) 
 ## Simple
-fert.brm3 |>
+fert_brm3 |>
     emmeans(~FERTILIZER,  at=newdata) |>
     regrid(transform = 'log') |>
     pairs() |>
     regrid() 
 
 ## More advanced (both P and percent change)
-fert.mcmc <- fert.brm3 |>
+fert.mcmc <- fert_brm3 |>
     emmeans(~FERTILIZER,  at=newdata) |>
     regrid(transform = 'log') |>
     pairs() |>
@@ -4099,7 +4115,7 @@ fert.mcmc |>
 ### Change 100 to 200 (Method 3)
 
 ```{r Probability2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-fert.brm3 |>
+fert_brm3 |>
     linpred_draws(newdata = as.data.frame(newdata)) |>
     ungroup() |>
     group_by(.draw) |>
@@ -4112,7 +4128,7 @@ fert.brm3 |>
     median_hdci()
 
 ##OR
-fert.brm3 |>
+fert_brm3 |>
     epred_draws(newdata = as.data.frame(newdata)) |>
     ungroup() |>
     group_by(.draw) |>
@@ -4125,7 +4141,7 @@ fert.brm3 |>
     median_hdci()
 
 ##OR for prediction of individual values
-fert.brm3 |>
+fert_brm3 |>
     predicted_draws(newdata = as.data.frame(newdata)) |>
     ungroup() |>
     group_by(.draw) |>
@@ -4215,7 +4231,7 @@ ggplot(newdata,  aes(y=.value,  x=FERTILIZER)) +
 fert.grid <- with(fert, list(FERTILIZER = modelr::seq_range(FERTILIZER, n = 100)))
 fert.grid <- with(fert, list(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len = 100)))
 
-newdata <- fert.brm3 |>
+newdata <- fert_brm3 |>
     emmeans(~FERTILIZER, at=fert.grid) |>
     as.data.frame()
 head(newdata)
@@ -4229,7 +4245,7 @@ ggplot(newdata, aes(y=emmean, x=FERTILIZER)) +
     theme_classic()
 
 ## spaghetti plot
-newdata = emmeans(fert.brm3, ~FERTILIZER, at = fert.grid) |>
+newdata = emmeans(fert_brm3, ~FERTILIZER, at = fert.grid) |>
     gather_emmeans_draws()
 newdata |> head()
 ggplot(newdata,  aes(y = .value,  x = FERTILIZER)) +
@@ -4243,7 +4259,7 @@ ggplot(newdata,  aes(y = .value,  x = FERTILIZER)) +
 
 ```{r summaryFig2b, results='markdown', eval=TRUE, mhidden=TRUE}
 fert.list = with(fert, list(FERTILIZER = seq(min(FERTILIZER), max(FERTILIZER), len=100)))
-newdata = emmeans(fert.brm3, ~FERTILIZER, at=fert.list) |> as.data.frame()
+newdata = emmeans(fert_brm3, ~FERTILIZER, at=fert.list) |> as.data.frame()
 head(newdata)
 
 ggplot(newdata, aes(y=emmean, x=FERTILIZER)) + 
@@ -4255,7 +4271,7 @@ ggplot(newdata, aes(y=emmean, x=FERTILIZER)) +
     theme_classic()
 
 ## spaghetti plot
-newdata = emmeans(fert.brm3, ~FERTILIZER, at=fert.list) |>
+newdata = emmeans(fert_brm3, ~FERTILIZER, at=fert.list) |>
     gather_emmeans_draws()
 newdata |> head()
 ggplot(newdata,  aes(y=.value,  x=FERTILIZER)) +
@@ -4303,7 +4319,7 @@ ggplot(newdata,  aes(y=.value,  x=FERTILIZER)) +
 #| eval: true
 #| echo: true
 #| cache: false
-fert.brm3 |> report()
+fert_brm3 |> report()
 ```
 
 <!-- END_PRIVATE-->

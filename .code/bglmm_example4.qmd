@@ -174,11 +174,39 @@ mckeon <- mckeon |>
 
 # Exploratory data analysis
 
-Model formula:
+::: {.columns}
+:::: {.column width="50%"}
+
+Random intercepts model formula:
 $$
-y_i \sim{} \mathcal{N}(n, p_i)\\
-ln\left(\frac{p_i}{1-p_1}\right) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\begin{align}
+y_i &\sim{} \mathcal{N}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_1}\right) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 &\sim{} \mathcal{N}(0, 2.5)\\
+\beta_1 &\sim{} \mathcal{N}(0, 3)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \sigma^2_b)\\
+\sigma^2_b &\sim{} t(3, 0, 1.5)\\
+\end{align}
 $$
+
+::::
+:::: {.column width="50%"}
+
+Random intercept/slope model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_1}\right) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 &\sim{} \mathcal{N}(0, 2)\\
+\beta_1 &\sim{} \mathcal{N}(0, 10)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_b^2})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_b^2})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_b^2 &\sim{} \mathcal{t}(3,0,1.5)\\
+\end{align}
+$$
+::::
+:::
 
 where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
 and $\bf{X}$ is the model matrix representing the overall intercept and effects of symbionts on the probability of the colony experiencing predation.
@@ -204,7 +232,7 @@ are chosen to provide moderate regularisation (to help prevent over-fitting) and
 help stabilise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-mckeon.rstanarm <- stan_glmer(PREDATION ~ SYMBIONT + (1|BLOCK),
+mckeon_rstanarm <- stan_glmer(PREDATION ~ SYMBIONT + (1|BLOCK),
                            data = mckeon,
                            family = binomial(link = 'logit'),
                            iter = 5000,
@@ -216,7 +244,7 @@ mckeon.rstanarm <- stan_glmer(PREDATION ~ SYMBIONT + (1|BLOCK),
 ```
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-mckeon.rstanarm %>% prior_summary()
+mckeon_rstanarm %>% prior_summary()
 ```
 This tells us:
 
@@ -244,11 +272,11 @@ Lets now run with priors only so that we can explore the range of values they
 allow in the posteriors.
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-mckeon.rstanarm1 <- update(mckeon.rstanarm,  prior_PD=TRUE)
+mckeon_rstanarm1 <- update(mckeon_rstanarm,  prior_PD=TRUE)
 ```
 
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-mckeon.rstanarm1 %>% ggpredict() %>% plot(show_data=TRUE, jitter=c(0.5,0))
+mckeon_rstanarm1 %>% ggpredict() %>% plot(show_data=TRUE, jitter=c(0.5,0))
 ```
 
 **Conclusions:**
@@ -272,13 +300,13 @@ asymptote towards 0 and 1.  Posterior intervals beyond -5 and 5 might
 be considered wide.
 
 ```{r fitModel1g2, results='markdown', eval=TRUE, mhidden=TRUE, cache = FALSE}
-mckeon.rstanarm1 %>% ggemmeans(~SYMBIONT) %>% plot(show_data=TRUE, jitter=c(0.5,0))
+mckeon_rstanarm1 %>% ggemmeans(~SYMBIONT) %>% plot(show_data=TRUE, jitter=c(0.5,0))
 ```
 
 Alternatively, we could create the plot ourselves...
 
 ```{r fitModel1g3, results='markdown', eval=TRUE, mhidden=TRUE, cache = FALSE}
-mckeon.rstanarm1 %>% emmeans(~SYMBIONT, type = 'link') %>%
+mckeon_rstanarm1 %>% emmeans(~SYMBIONT, type = 'link') %>%
     as.data.frame() %>%
     ggplot(aes(y = emmean, x = SYMBIONT)) +
     geom_hline(yintercept = c(5,-5), linetype = 'dashed') +
@@ -321,7 +349,7 @@ thin air):
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-mckeon.rstanarm2 <- stan_glmer(PREDATION ~ SYMBIONT + (1|BLOCK),
+mckeon_rstanarm2 <- stan_glmer(PREDATION ~ SYMBIONT + (1|BLOCK),
                                 data = mckeon,
                                 family = binomial(link='logit'), 
                                 prior_intercept = normal(0, 2.5, autoscale = FALSE),
@@ -337,22 +365,22 @@ mckeon.rstanarm2 <- stan_glmer(PREDATION ~ SYMBIONT + (1|BLOCK),
 ```
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-mckeon.rstanarm2 %>%
+mckeon_rstanarm2 %>%
     ggpredict(~SYMBIONT) %>%
     plot(show_data = TRUE, jitter = c(0.5, 0))
-mckeon.rstanarm2 %>% ggemmeans(~SYMBIONT) %>% plot(show_data=TRUE, jitter=c(0.5,0))
+mckeon_rstanarm2 %>% ggemmeans(~SYMBIONT) %>% plot(show_data=TRUE, jitter=c(0.5,0))
 ```
 
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
-mckeon.rstanarm3 <- update(mckeon.rstanarm2,  prior_PD=FALSE)
+mckeon_rstanarm3 <- update(mckeon_rstanarm2,  prior_PD=FALSE)
 ```
  
 ### Plotting prior and posterior
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-posterior_vs_prior(mckeon.rstanarm3, color_by='vs', group_by=TRUE,
+posterior_vs_prior(mckeon_rstanarm3, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
@@ -362,8 +390,8 @@ posterior_vs_prior(mckeon.rstanarm3, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggemmeans(mckeon.rstanarm3,  ~SYMBIONT) %>% plot(show_data=TRUE)
-ggpredict(mckeon.rstanarm3,  ~SYMBIONT) %>% plot(show_data=TRUE)
+ggemmeans(mckeon_rstanarm3,  ~SYMBIONT) %>% plot(show_data=TRUE)
+ggpredict(mckeon_rstanarm3,  ~SYMBIONT) %>% plot(show_data=TRUE)
 ```
 ::::
 ## brms 
@@ -378,13 +406,13 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80)}
-mckeon.form <- bf(PREDATION | trials(1) ~ SYMBIONT + (1|BLOCK),
+mckeon_form <- bf(PREDATION | trials(1) ~ SYMBIONT + (1|BLOCK),
                   family=binomial(link='logit'))
 #OR
-mckeon.form <- bf(PREDATION ~ SYMBIONT + (1|BLOCK),
+mckeon_form <- bf(PREDATION ~ SYMBIONT + (1|BLOCK),
                   family=bernoulli(link='logit'))
 options(width=150)
-mckeon.form |> get_prior(data = mckeon)
+mckeon_form |> get_prior(data = mckeon)
 options(width=80)
 ```
 
@@ -429,11 +457,20 @@ around zero.  Suitable candidates include:
 I will also overlay the raw data for comparison.
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+mckeon_form <- bf(PREDATION | trials(1) ~ SYMBIONT + (1|BLOCK),
+                  family=binomial(link='logit'))
+#OR
+mckeon_form <- bf(PREDATION ~ SYMBIONT + (1|BLOCK),
+                  family=bernoulli(link='logit'))
+options(width=150)
+mckeon_form |> get_prior(data = mckeon)
+options(width=80)
+
 mckeon |> group_by(SYMBIONT) |>
   summarise(Mean = logit(mean(PREDATION)),
     Median = logit(median(PREDATION)),
     sd = logit(abs(sd(PREDATION))))
-2.5/model.matrix(~SYMBIONT, data=mckeon) %>% apply(2,sd)
+2.5/model.matrix(~SYMBIONT, data=mckeon) |> apply(2,sd)
 
 
 mckeon |>
@@ -453,21 +490,29 @@ standist::visualize("student_t(3, 0, 3.5)",
                     "gamma(2,0.5)",
                     "cauchy(0,2)",
                     xlim=c(-10,25))
+standist::visualize("student_t(3, 0, 3.5)",
+                    "gamma(2,0.5)",
+                    "cauchy(0,2)",
+                    xlim=c(-10,25))
 ```
 
 ```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-mckeon.form <- bf(PREDATION | trials(1) ~ SYMBIONT + (1|BLOCK),
+mckeon_form <- bf(PREDATION | trials(1) ~ SYMBIONT + (1|BLOCK),
                   family=binomial(link='logit'))
 #OR
-mckeon.form <- bf(PREDATION ~ SYMBIONT + (1|BLOCK),
+mckeon_form <- bf(PREDATION ~ SYMBIONT + (1|BLOCK),
                   family=bernoulli(link='logit'))
-get_prior(mckeon.form, data = mckeon)
+get_prior(mckeon_form, data = mckeon)
 priors <-
     prior(normal(0, 2.5), class = 'Intercept') +
     prior(normal(0, 3), class = 'b') +
     prior(student_t(3, 0, 1.5), class = 'sd') 
+priors <-
+    prior(normal(0, 2), class = 'Intercept') +
+    prior(normal(0, 3), class = 'b') +
+    prior(student_t(3, 0, 1.5), class = 'sd') 
 
-mckeon.brm2 <- brm(mckeon.form, 
+mckeon_brm2 <- brm(mckeon_form, 
                   data = mckeon,
                   prior = priors,
                   sample_prior = 'only',
@@ -482,22 +527,22 @@ mckeon.brm2 <- brm(mckeon.form,
 ```
 
 ```{r fitModel10, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-mckeon.brm2 %>%
-    ggpredict(~SYMBIONT) %>%
-    plot(show_data = TRUE)
-
-mckeon.brm2 %>%
-    ggemmeans(~SYMBIONT) %>%
-    plot(show_data = TRUE)
-
-mckeon.brm2 |> 
+mckeon_brm2 |> 
     conditional_effects() |> 
     plot(points = TRUE)
+
+mckeon_brm2 |>
+    ggpredict(~SYMBIONT) |>
+    plot(show_data = TRUE)
+
+mckeon_brm2 |>
+    ggemmeans(~SYMBIONT) |>
+    plot(show_data = TRUE)
 ```
 
 ```{r fitModel1i2, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-mckeon.brm2 %>% emmeans(~SYMBIONT, type = 'link') %>%
-    as.data.frame() %>%
+mckeon_brm2 |> emmeans(~SYMBIONT, type = 'link') |>
+    as.data.frame() |>
     ggplot(aes(y = emmean, x = SYMBIONT)) +
     geom_hline(yintercept = c(5,-5), linetype = 'dashed') +
     geom_pointrange(aes(ymin = lower.HPD, ymax = upper.HPD)) +
@@ -509,7 +554,7 @@ mckeon.brm2 %>% emmeans(~SYMBIONT, type = 'link') %>%
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
-mckeon.brm3 <- update(mckeon.brm2,
+mckeon_brm3 <- update(mckeon_brm2,
                       sample_prior = 'yes',
                       cores = 3,
                       refresh = 0)
@@ -517,20 +562,20 @@ mckeon.brm3 <- update(mckeon.brm2,
 ```
  
 ```{r partialPlot2h1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm3 %>%
-    ggpredict(~SYMBIONT) %>%
-    plot(show_data = TRUE)
-
-mckeon.brm3 %>%
-    ggemmeans(~SYMBIONT) %>%
-    plot(show_data = TRUE)
-
-mckeon.brm3 |> 
+mckeon_brm3 |> 
     conditional_effects() |> 
     plot(points = TRUE)
 
-mckeon.brm3 %>% emmeans(~SYMBIONT, type = 'link') %>%
-    as.data.frame() %>%
+mckeon_brm3 |>
+    ggpredict(~SYMBIONT) |>
+    plot(show_data = TRUE)
+
+mckeon_brm3 |>
+    ggemmeans(~SYMBIONT) |>
+    plot(show_data = TRUE)
+
+mckeon_brm3 |> emmeans(~SYMBIONT, type = 'link') |>
+    as.data.frame() |>
     ggplot(aes(y = emmean, x = SYMBIONT)) +
     geom_hline(yintercept = c(5,-5), linetype = 'dashed') +
     geom_pointrange(aes(ymin = lower.HPD, ymax = upper.HPD)) +
@@ -543,13 +588,13 @@ mckeon.brm3 %>% emmeans(~SYMBIONT, type = 'link') %>%
 ### Plotting prior and posterior
 
 ```{r posterior2h2, results='markdown', eval=TRUE}
-mckeon.brm3 %>% get_variables()
-mckeon.brm3 %>% hypothesis('SYMBIONTcrabs=0') %>% plot
-mckeon.brm3 %>% hypothesis('SYMBIONTshrimp=0') %>% plot
+mckeon_brm3 |> get_variables()
+mckeon_brm3 |> hypothesis('SYMBIONTcrabs=0') |> plot()
+mckeon_brm3 |> hypothesis('SYMBIONTshrimp=0') |> plot()
 ```
 
 ```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-mckeon.brm3 |> SUYR_prior_and_posterior()
+mckeon_brm3 |> SUYR_prior_and_posterior()
 ```
 
 ### Random intercept/slope model
@@ -557,22 +602,22 @@ mckeon.brm3 |> SUYR_prior_and_posterior()
 While we are here, we might like to explore a random intercept/slope model
 
 ```{r fitModel2h3, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-mckeon.form <- bf(PREDATION | trials(1) ~ SYMBIONT + (SYMBIONT|BLOCK),
+mckeon_form <- bf(PREDATION | trials(1) ~ SYMBIONT + (SYMBIONT|BLOCK),
                   family=binomial(link='logit'))
 #OR
-mckeon.form <- bf(PREDATION ~ SYMBIONT + (SYMBIONT|BLOCK),
+mckeon_form <- bf(PREDATION ~ SYMBIONT + (SYMBIONT|BLOCK),
                   family=bernoulli(link='logit'))
-get_prior(mckeon.form, mckeon)
+get_prior(mckeon_form, mckeon)
 ## As there are not many observations, the following might be too ambitious without
 ## stronger priors
 priors <-
-    prior(normal(0, 2.5), class = 'Intercept') +
+    prior(normal(0, 2), class = 'Intercept') +
     prior(normal(0, 3), class = 'b') +
     ## prior(student_t(3,0,1.5), class = 'sd', coef =  "Intercept", group =  "BLOCK") +
     prior(student_t(3, 0, 1.5), class = 'sd') +
     prior(lkj_corr_cholesky(1), class = 'cor')
 
-mckeon.brm4 <- brm(mckeon.form, 
+mckeon_brm4 <- brm(mckeon_form, 
                   data = mckeon,
                   prior = priors,
                   sample_prior = 'yes',
@@ -589,29 +634,29 @@ mckeon.brm4 <- brm(mckeon.form,
 ```
 
 ```{r posterior2k, results='markdown', eval=TRUE}
-mckeon.brm4 %>% get_variables()
-mckeon.brm4 %>% hypothesis('SYMBIONTcrabs=0') %>% plot
-mckeon.brm4 %>% hypothesis('SYMBIONTshrimp=0') %>% plot
+mckeon_brm4 |> get_variables()
+mckeon_brm4 |> hypothesis('SYMBIONTcrabs=0') |> plot()
+mckeon_brm4 |> hypothesis('SYMBIONTshrimp=0') |> plot()
 ```
 
 ```{r posterior2k1, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-mckeon.brm4 |> SUYR_prior_and_posterior()
-mckeon.brm3 |> SUYR_prior_and_posterior()
-mckeon.brm4 |>
+mckeon_brm4 |> SUYR_prior_and_posterior()
+mckeon_brm3 |> SUYR_prior_and_posterior()
+mckeon_brm4 |>
     conditional_effects() |>
     plot(points = TRUE)
-mckeon.brm3 |>
+mckeon_brm3 |>
     conditional_effects() |>
     plot(points = TRUE)
-mckeon.brm4 |> summary()
+mckeon_brm4 |> summary()
 ```
 
 ```{r posterior2k2, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
-mckeon.brm4 %>%
-  posterior_samples %>%
-  dplyr::select(-`lp__`) %>%
-  pivot_longer(everything(), names_to = 'key') %>% 
-  filter(!str_detect(key, '^r')) %>%
+mckeon_brm4 |>
+  posterior_samples() |>
+  dplyr::select(-`lp__`) |>
+  pivot_longer(everything(), names_to = 'key') |> 
+  filter(!str_detect(key, '^r')) |>
   mutate(Type = ifelse(str_detect(key, 'prior'), 'Prior', 'Posterior'),
          ## Class = ifelse(str_detect(key, 'Intercept'),  'Intercept',
          ##         ifelse(str_detect(key, 'b'),  'b', 'sigma')),
@@ -623,7 +668,7 @@ mckeon.brm4 %>%
                str_detect(key, '^cor|prior_cor') ~ 'cor',
              str_detect(key, 'sigma') ~ 'sigma'
              ),
-         Par = str_replace(key, 'b_', '')) %>%
+         Par = str_replace(key, 'b_', '')) |>
   ggplot(aes(x = Type,  y = value, color = Par)) +
   stat_pointinterval(position = position_dodge())+
   facet_wrap(~Class,  scales = 'free')
@@ -634,8 +679,8 @@ mckeon.brm4 %>%
 We can compare the two models using LOO
 
 ```{r fitModel2h3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-(l.1 <- mckeon.brm3 |> loo())
-(l.2 <- mckeon.brm4 |> loo())
+(l.1 <- mckeon_brm3 |> loo())
+(l.2 <- mckeon_brm4 |> loo())
 loo_compare(l.1, l.2)
 ```
 
@@ -643,7 +688,7 @@ It appears that the random intercept/slope model is marginally better than the
 simpler random intercept model.
 
 ```{r posterior2k20, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
-mckeon.brm4 %>%
+mckeon_brm4 %>%
   posterior_samples %>%
   dplyr::select(-`lp__`) %>%
   pivot_longer(everything(), names_to = 'key') %>% 
@@ -704,13 +749,13 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pars <- mckeon.brm3 |> get_variables()
-pars <- pars %>% str_extract('^b.Intercept|^b_SYMBIONT.*|[sS]igma|^sd.*') %>%
+pars <- mckeon_brm4 |> get_variables()
+pars <- pars |> str_extract('^b.Intercept|^b_SYMBIONT.*|[sS]igma|^sd.*') |>
     na.omit()
 pars
-mckeon.brm3 %>% mcmc_plot(type='trace', variables = pars)
+mckeon_brm4 |> mcmc_plot(type='trace', variables = pars)
 #OR
-mckeon.brm3 %>% mcmc_plot(type='trace',
+mckeon_brm4 |> mcmc_plot(type='trace',
                           variable = '^b.Intercept|^b_SYMBIONT.*|[sS]igma|^sd.*',
                           regex = TRUE)
 
@@ -722,9 +767,9 @@ mckeon.brm3 %>% mcmc_plot(type='trace',
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm3 %>% mcmc_plot(type='acf_bar', variable = pars)
+mckeon_brm4 |> mcmc_plot(type='acf_bar', variable = pars)
 ##OR
-mckeon.brm3 %>% mcmc_plot(type='acf_bar',
+mckeon_brm4 |> mcmc_plot(type='acf_bar',
                           variable = '^b.Intercept|^b_SYMBIONT.*|[sS]igma|^sd.*',
                           regex = TRUE)
 
@@ -738,7 +783,7 @@ mckeon.brm3 %>% mcmc_plot(type='acf_bar',
   parameter estimated.
 
 ```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm3 %>% mcmc_plot(type='rhat_hist')
+mckeon_brm4 |> mcmc_plot(type='rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -753,15 +798,15 @@ mckeon.brm3 %>% mcmc_plot(type='rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm3 %>% mcmc_plot(type='neff_hist')
+mckeon_brm4 |> mcmc_plot(type='neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm3 %>% mcmc_plot(type='combo', variable = pars)
-mckeon.brm3 %>% mcmc_plot(type='violin', variable = pars)
+mckeon_brm4 |> mcmc_plot(type='combo', variable = pars)
+mckeon_brm4 |> mcmc_plot(type='violin', variable = pars)
 ```
 </details>
 
@@ -780,13 +825,13 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4 |> get_variables()
-pars <- mckeon.brm4 |> get_variables()
+mckeon_brm4 |> get_variables()
+pars <- mckeon_brm4 |> get_variables()
 pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
 
-mckeon.brm4$fit |>
+mckeon_brm4$fit |>
     stan_trace(pars = pars)
-## mckeon.brm3$fit |> stan_trace()
+## mckeon_brm3$fit |> stan_trace()
 ```
 
    The chains appear well mixed and very similar
@@ -795,9 +840,9 @@ mckeon.brm4$fit |>
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4$fit |>
+mckeon_brm4$fit |>
     stan_ac(pars = pars)
-## mckeon.brm3$fit |> stan_ac()
+## mckeon_brm3$fit |> stan_ac()
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -808,7 +853,7 @@ mckeon.brm4$fit |>
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4$fit |> stan_rhat() 
+mckeon_brm4$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -823,13 +868,13 @@ mckeon.brm4$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4$fit |> stan_ess()
+mckeon_brm4$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4$fit |>
+mckeon_brm4$fit |>
     stan_dens(separate_chains = TRUE, pars = pars)
 ```
 
@@ -848,8 +893,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-## mckeon.ggs <- mckeon.brm3 %>% ggs(burnin = FALSE, inc_warmup = FALSE)
-## mckeon.ggs %>% ggs_traceplot()
+## mckeon_ggs <- mckeon_brm3 %>% ggs(burnin = FALSE, inc_warmup = FALSE)
+## mckeon_ggs %>% ggs_traceplot()
 ``` 
 
    The chains appear well mixed and very similar
@@ -858,7 +903,7 @@ Of these, we will focus on:
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-## ggs_autocorrelation(mckeon.ggs)
+## ggs_autocorrelation(mckeon_ggs)
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -869,7 +914,7 @@ Of these, we will focus on:
   parameter estimated.
 
 ```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_Rhat(mckeon.ggs)
+## ggs_Rhat(mckeon_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -884,18 +929,18 @@ Of these, we will focus on:
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_effective(mckeon.ggs)
+## ggs_effective(mckeon_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_crosscorrelation(mckeon.ggs)
+## ggs_crosscorrelation(mckeon_ggs)
 ```
 
 ```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_grb(mckeon.ggs)
+## ggs_grb(mckeon_ggs)
 ```
 </details>
 
@@ -921,7 +966,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4 |> pp_check(type = 'dens_overlay', nsamples = 250)
+mckeon_brm4 |> pp_check(type = 'dens_overlay', nsamples = 250)
 ```
 The model draws appear to be consistent with the observed data.
 
@@ -931,7 +976,7 @@ The model draws appear to be consistent with the observed data.
   binomial response
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4 %>% pp_check(type = 'error_scatter_avg')
+mckeon_brm4 |> pp_check(type = 'error_scatter_avg')
 ```
 
 This is not really interpretable
@@ -942,7 +987,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mckeon.brm4 %>% pp_check(group = 'BLOCK', type = 'intervals')
+mckeon_brm4 |> pp_check(group = 'BLOCK', type = 'intervals')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -950,7 +995,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(mckeon.brm2)
+#launch_shinystan(mckeon_brm2)
 ```
 
 ### DHARMa residuals
@@ -966,21 +1011,12 @@ We need to supply:
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
 
-```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- mckeon.brm3 %>% posterior_predict(nsamples = 250,  summary = FALSE)
-mckeon.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = mckeon$PREDATION,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = TRUE)
-plot(mckeon.resids, quantreg = TRUE)
-```
-
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-mckeon.resids <- make_brms_dharma_res(mckeon.brm4, integerResponse = FALSE)
-wrap_elements(~testUniformity(mckeon.resids)) +
-               wrap_elements(~plotResiduals(mckeon.resids, form = factor(rep(1, nrow(mckeon))))) +
-               wrap_elements(~plotResiduals(mckeon.resids, quantreg = FALSE)) +
-               wrap_elements(~testDispersion(mckeon.resids))
+mckeon_resids <- make_brms_dharma_res(mckeon_brm4, integerResponse = FALSE)
+wrap_elements(~testUniformity(mckeon_resids)) +
+               wrap_elements(~plotResiduals(mckeon_resids, form = factor(rep(1, nrow(mckeon))))) +
+               wrap_elements(~plotResiduals(mckeon_resids, quantreg = FALSE)) +
+               wrap_elements(~testDispersion(mckeon_resids))
 
 ```
 **Conclusions:**
@@ -1000,7 +1036,7 @@ wrap_elements(~testUniformity(mckeon.resids)) +
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |> 
+mckeon_brm4 |> 
     conditional_effects() |> 
     plot(points = TRUE)
 ```
@@ -1008,7 +1044,7 @@ mckeon.brm4 |>
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |>
+mckeon_brm4 |>
     ggpredict() |>
     plot(show_data = TRUE, jitter=c(0.5,0))
 ```
@@ -1017,7 +1053,7 @@ mckeon.brm4 |>
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |>
+mckeon_brm4 |>
     ggemmeans(~SYMBIONT) |>
     plot(show_data = TRUE, jitter=c(0.5,0)) 
 ```
@@ -1027,12 +1063,12 @@ mckeon.brm4 |>
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 ## Partial residuals in binomial models are too confusing for the average viewer
 ## as they will yeild values that are not exactly 0 or 1 and this seems wrong.
-## Partial.obs <- mckeon.brm3$data %>%
-##     mutate(Pred = predict(mckeon.brm3, re.form=NA)[,'Estimate'],
-##            Resid = resid(mckeon.brm3)[,'Estimate'],
+## Partial.obs <- mckeon_brm3$data %>%
+##     mutate(Pred = predict(mckeon_brm3, re.form=NA)[,'Estimate'],
+##            Resid = resid(mckeon_brm3)[,'Estimate'],
 ##            Obs = Pred + Resid)
 
-mckeon.brm4 |>
+mckeon_brm4 |>
   epred_draws(newdata = mckeon, re_formula = NA) |>
   median_hdci() |>
   ggplot(aes(x = SYMBIONT, y = .epred)) +
@@ -1064,11 +1100,11 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |> summary()
+mckeon_brm4 |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-mckeon.sum <- summary(mckeon.brm4)
+mckeon_sum <- summary(mckeon_brm4)
 ```
 
 **Conclusions:**
@@ -1079,32 +1115,32 @@ mckeon.sum <- summary(mckeon.brm4)
 - if we exponentiate the coefficients ($log(\frac{\rho}{1-\rho})$ ->
   $\frac{\rho}{1-\rho}$), they will be presented on a odds ratio scale, and thus:
   - the intercept (none symbionts) will be 
-  `r as.numeric(round(exp(mckeon.sum$fixed[1,1]), 2))`.  That is, corals without a
-    symbiont are `r as.numeric(round(exp(mckeon.sum$fixed[1,1]), 2))` times more
+  `r as.numeric(round(exp(mckeon_sum$fixed[1,1]), 2))`.  That is, corals without a
+    symbiont are `r as.numeric(round(exp(mckeon_sum$fixed[1,1]), 2))` times more
     likely to be predated on than not predated on.  The odds of predation in
-    this the absence of symbionts is `r as.numeric(round(exp(mckeon.sum$fixed[1,1]), 2))`:1.
+    this the absence of symbionts is `r as.numeric(round(exp(mckeon_sum$fixed[1,1]), 2))`:1.
   - in the presence of a crab symbiont, the odds of being predated on are only 
-  `r as.numeric(round(exp(mckeon.sum$fixed[2, 1]), 2))` times that of the none
+  `r as.numeric(round(exp(mckeon_sum$fixed[2, 1]), 2))` times that of the none
     symbiont group.  That is, in the presence of a crab symbiont, the odds of
-    predation decline by `r 100*(1-as.numeric(round(exp(mckeon.sum$fixed[2,1]), 2)))`%.
+    predation decline by `r 100*(1-as.numeric(round(exp(mckeon_sum$fixed[2,1]), 2)))`%.
   - in the presence of a shrimp symbiont, the odds of being predated on are only 
-  `r as.numeric(round(exp(mckeon.sum$fixed[3, 1]), 2))` times that of the none
+  `r as.numeric(round(exp(mckeon_sum$fixed[3, 1]), 2))` times that of the none
     symbiont group.  That is, in the presence of a shrimp symbiont, the odds of
-    predation decline by `r 100*(1-as.numeric(round(exp(mckeon.sum$fixed[3, 1]), 2)))`%.
+    predation decline by `r 100*(1-as.numeric(round(exp(mckeon_sum$fixed[3, 1]), 2)))`%.
   - in the presence of both crab and shrimp symbionts, the odds of being predated on are only 
-  `r as.numeric(round(exp(mckeon.sum$fixed[4, 1]),2))` times that of the none
+  `r as.numeric(round(exp(mckeon_sum$fixed[4, 1]),2))` times that of the none
     symbiont group.  That is, in the presence of both crab and shrimp symbiont, the odds of
-    predation decline by `r 100*(1-as.numeric(round(exp(mckeon.sum$fixed[4, 1]),2)))`%.
+    predation decline by `r 100*(1-as.numeric(round(exp(mckeon_sum$fixed[4, 1]),2)))`%.
 - if we back-transform the intercept full to the response scale (probability
   scale), ($log(\frac{\rho}{1-\rho})$ -> $\rho$), the intercept is interpreted
   as the probability that corals will be predated in the absence of of symbionts
-  is `r round(plogis(as.numeric(mckeon.sum$fixed[1,1]),2))`
+  is `r round(plogis(as.numeric(mckeon_sum$fixed[1,1]),2))`
 
 ### as_draws_df (posteriors)
 
 ```{r summariseModel2bm, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-mckeon.brm4 |> as_draws_df()
-mckeon.brm4 |> 
+mckeon_brm4 |> as_draws_df()
+mckeon_brm4 |> 
   as_draws_df() |> 
   mutate(across(everything(), exp)) |> 
   summarise_draws(
@@ -1118,7 +1154,7 @@ mckeon.brm4 |>
   ) |>
   knitr::kable()
 
-mckeon.brm4 |>
+mckeon_brm4 |>
     as_draws_df() |>
     exp() |>
     dplyr::select(matches("^b_.*|^sd_.*")) |> 
@@ -1137,13 +1173,13 @@ mckeon.brm4 |>
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4$fit |>
+mckeon_brm4$fit |>
     tidyMCMC(estimate.method = 'median',
              conf.int = TRUE,  conf.method = 'HPDinterval',
              rhat = TRUE, ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-mckeon.tidy <- tidyMCMC(mckeon.brm4$fit, estimate.method='median',
+mckeon_tidy <- tidyMCMC(mckeon_brm4$fit, estimate.method='median',
                          conf.int=TRUE,  conf.method='HPDinterval',
                          rhat=TRUE, ess=TRUE)
 ```
@@ -1157,30 +1193,30 @@ see above
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |> get_variables()
-mckeon.draw <- mckeon.brm4 |>
+mckeon_brm4 |> get_variables()
+mckeon_draw <- mckeon_brm4 |>
     gather_draws(`b.Intercept.*|b_SYMBIONT.*`,  regex=TRUE)
-mckeon.draw
+mckeon_draw
 ```
 
 We can then summarise this
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.draw |> median_hdci()
+mckeon_draw |> median_hdci()
 ## On a odd ratio scale
-mckeon.draw |>
+mckeon_draw |>
     mutate(.value = exp(.value)) |>
     median_hdci()
 ```
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-mckeon.gather <- mckeon.brm4 |>
+mckeon_gather <- mckeon_brm4 |>
     gather_draws(`b_Intercept.*|b_SYMBIONT.*`, regex = TRUE) |>
     median_hdci()
 ```
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-mckeon.brm4 |>
+mckeon_brm4 |>
     gather_draws(`b_Intercept.*|b_SYMBIONT.*`, regex=TRUE) |> 
     ggplot() +
     geom_vline(xintercept=0, linetype='dashed') +
@@ -1191,7 +1227,7 @@ mckeon.brm4 |>
                               )), color='black') + 
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 
-mckeon.brm4 |> 
+mckeon_brm4 |> 
     gather_draws(`.Intercept.*|b_SYMBIONT.*`, regex=TRUE) |> 
     ggplot() + 
     geom_vline(xintercept = 0, linetype='dashed') +
@@ -1202,20 +1238,20 @@ mckeon.brm4 |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4$fit |> plot(type='intervals') 
+mckeon_brm4$fit |> plot(type='intervals') 
 ```
 
 ### half-eye (ggdist)
 
 ```{r summariseModel2ka, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-mckeon.brm4 |> 
+mckeon_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     facet_wrap(~.variable, scales='free')
 
-mckeon.brm4 |> 
+mckeon_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1226,14 +1262,14 @@ mckeon.brm4 |>
 ### density ridges (ggridges)
 
 ```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-mckeon.brm4 |> 
+mckeon_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() +  
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or in colour
-mckeon.brm4 |> 
+mckeon_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1248,7 +1284,7 @@ mckeon.brm4 |>
     scale_fill_viridis_c(option = "C") 
 
 ## Fractional scale
-mckeon.brm4 |> 
+mckeon_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1266,31 +1302,31 @@ mckeon.brm4 |>
 ### tidy_draws
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |> tidy_draws()
+mckeon_brm4 |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |> spread_draws(`.*Intercept.*|b_SYMBIONT.*`,  regex=TRUE)
+mckeon_brm4 |> spread_draws(`.*Intercept.*|b_SYMBIONT.*`,  regex=TRUE)
 ```
 	
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |> posterior_samples() |> as_tibble()
+mckeon_brm4 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-mckeon.brm4 |>
+mckeon_brm4 |>
     bayes_R2(re.form = NA, summary = FALSE) |>
     median_hdci()
-mckeon.brm4 |>
+mckeon_brm4 |>
     bayes_R2(re.form = ~ (1 | BLOCK), summary = FALSE) |>
     median_hdci()
 ## if we had random intercept/slope
-mckeon.brm4 |>
+mckeon_brm4 |>
     bayes_R2(re.form = ~ (SYMBIONT | BLOCK), summary = FALSE) |>
     median_hdci()
 ```
@@ -1302,7 +1338,7 @@ mckeon.brm4 |>
 #| eval: true
 #| echo: true
 #| cache: false
-mckeon.brm4 |> modelsummary(
+mckeon_brm4 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = FALSE
@@ -1315,7 +1351,7 @@ mckeon.brm4 |> modelsummary(
 #| eval: true
 #| echo: true
 #| cache: false
-mckeon.brm4 |> modelplot(exponentiate = FALSE)
+mckeon_brm4 |> modelplot(exponentiate = FALSE)
 ```
 
 ::::
@@ -1349,13 +1385,13 @@ These contrasts can be explored via specific contrasts.
 ### Pairwise comparisons
 
 ```{r posthoc1a, results='markdown', eval=TRUE, mhidden=TRUE}
-mckeon.brm4 |>
+mckeon_brm4 |>
     emmeans(~SYMBIONT, type='response') |>
     pairs()
 
 # via tidy_draws
-mckeon.em <-
-    mckeon.brm4 |>
+mckeon_em <-
+    mckeon_brm4 |>
     emmeans(~SYMBIONT, type = "link") |>
     pairs() |>
     tidy_draws() |>
@@ -1363,12 +1399,13 @@ mckeon.em <-
     summarise_draws(median,
                     HDInterval::hdi,
                     Pl = ~mean(.x < 1),
-                    Pg = ~mean(.x > 1)
+                    Pg = ~mean(.x > 1),
+                    ROPE = ~ mean(.x < 1.1 & .x > 0.9) 
                     )
-mckeon.em
+mckeon_em
 # or via gather_emmeans_draws()
-mckeon.em <-
-    mckeon.brm4 |>
+mckeon_em <-
+    mckeon_brm4 |>
     emmeans(~SYMBIONT, type = "link") |>
     pairs() |>
     gather_emmeans_draws() |>
@@ -1377,11 +1414,11 @@ mckeon.em <-
     Pl = mean(.value < 1),
     Pg = mean(.value > 1)
     )
-mckeon.em
+mckeon_em
 
 ## On a probability scale
-mckeon.em <-
-    mckeon.brm4 |>
+mckeon_em <-
+    mckeon_brm4 |>
     emmeans(~SYMBIONT, type = "link") |>
     regrid() |> 
     pairs() |>
@@ -1391,42 +1428,42 @@ mckeon.em <-
                     Pl = ~mean(.x < 0),
                     Pg = ~mean(.x > 0)
                     )
-mckeon.em
+mckeon_em
 
 # or via gather_emmeans_draws()
-## mckeon.em <- mckeon.brm4 |>
+## mckeon_em <- mckeon_brm4 |>
 ##     emmeans(~SYMBIONT, type='link') |>
 ##     pairs() |>
 ##     gather_emmeans_draws() |>
 ##     mutate(Eff=exp(.value),
 ##            PEff=100*(Eff-1))#,
 ##              # Prob = plogis(.value))
-## mckeon.em |> head()
-## mckeon.em |>
+## mckeon_em |> head()
+## mckeon_em |>
 ##     group_by(contrast) |>
 ##     dplyr::select(contrast, Eff) |>
 ##     median_hdi()
-## mckeon.em |>
+## mckeon_em |>
 ##   group_by(contrast) |>
 ##   summarize(Prob=sum(Eff>1)/n())
 
 ## On a probability scale
-mckeon.em <- mckeon.brm4 |>
+mckeon_em <- mckeon_brm4 |>
     emmeans(~SYMBIONT, type='link') |>
     regrid() |>
     pairs() |>
     gather_emmeans_draws() |>
     mutate(Eff=.value)#,
-mckeon.em |> head()
-mckeon.em |>
+mckeon_em |> head()
+mckeon_em |>
     group_by(contrast) |>
     dplyr::select(contrast, Eff) |>
     median_hdi()
 
 ## Cell means
-mckeon.em = emmeans(mckeon.brm4, ~SYMBIONT, type='link') |>
+mckeon_em = emmeans(mckeon_brm4, ~SYMBIONT, type='link') |>
       gather_emmeans_draws()
-mckeon.em |> mutate(P=plogis(.value)) |> median_hdci(P)
+mckeon_em |> mutate(P=plogis(.value)) |> median_hdci(P)
 ```
 
 ### Specific contrasts
@@ -1438,12 +1475,12 @@ cmat <- cbind(
     "Any vs None"=c(-1, 1/3, 1/3, 1/3)
 )
 
-mckeon.em <- mckeon.brm4 |> 
+mckeon_em <- mckeon_brm4 |> 
     emmeans(~SYMBIONT, type = 'response') |> 
     contrast(method = list(cmat)) 
 
-mckeon.em <-
-    mckeon.brm4 |>
+mckeon_em <-
+    mckeon_brm4 |>
     emmeans(~SYMBIONT, type = "link") |>
     contrast(method = list(cmat)) |> 
     tidy_draws() |>
@@ -1453,10 +1490,10 @@ mckeon.em <-
                     Pl = ~mean(.x < 1),
                     Pg = ~mean(.x > 1)
                     )
-mckeon.em
+mckeon_em
 ## or via gather_emmeans_draws
-mckeon.em <-
-  mckeon.brm4 |>
+mckeon_em <-
+  mckeon_brm4 |>
     emmeans(~SYMBIONT, type='link') |>
     contrast(method=list(cmat)) |>
     gather_emmeans_draws() |>
@@ -1465,9 +1502,9 @@ mckeon.em <-
     Pl =  mean(Fit < 0), 
     Pg =  mean(Fit > 0)
     )
-mckeon.em
+mckeon_em
 
-newdata <- emmeans(mckeon.brm4, ~SYMBIONT, type = "response") |> as.data.frame()
+newdata <- emmeans(mckeon_brm4, ~SYMBIONT, type = "response") |> as.data.frame()
 head(newdata)
 ggplot(newdata, aes(y=response, x=SYMBIONT)) +
     geom_pointrange(aes(ymin=lower.HPD, ymax=upper.HPD))
@@ -1476,11 +1513,11 @@ ggplot(newdata, aes(y=response, x=SYMBIONT)) +
 ### R^2 
 
 ```{r R21a, results='markdown', eval=TRUE, mhidden=TRUE}
-mckeon.brm4 |> bayes_R2(re.form=NA)
-mckeon.brm4 |> bayes_R2(re.form=NA, summary=FALSE) |> median_hdci()
-mckeon.brm4 |> bayes_R2(re.form=~(1|BLOCK), summary=FALSE) |> median_hdci()
+mckeon_brm4 |> bayes_R2(re.form=NA)
+mckeon_brm4 |> bayes_R2(re.form=NA, summary=FALSE) |> median_hdci()
+mckeon_brm4 |> bayes_R2(re.form=~(1|BLOCK), summary=FALSE) |> median_hdci()
 ## for random intercept/slope model
-mckeon.brm4 |> bayes_R2(re.form=~(SYMBIONT|BLOCK), summary=FALSE) |> median_hdci()
+mckeon_brm4 |> bayes_R2(re.form=~(SYMBIONT|BLOCK), summary=FALSE) |> median_hdci()
 ```
 
 ::::

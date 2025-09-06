@@ -121,6 +121,7 @@ this is known to influence metabolic parameters.
 
 ![Barramundi](../resources/barramundi.png){#fig-barramundi width="310"}
 
+<!-- START_PRIVATE-->
 ```{tikz}
 %| label: fig-norin_design
 %| engine: tikz
@@ -242,6 +243,7 @@ edge path={\noexpand\path[\forestoption{edge},-{latex}]
 
 ```
 
+<!-- END_PRIVATE-->
 
 FISHID   MASS    TRIAL             SMR\_contr   CHANGE
 -------- ------- ----------------- ------------ --------
@@ -335,8 +337,9 @@ Lets begin by declaring the categorical predictors and random effects
 as factors.
 
 ```{r eda1, results='markdown', eval=TRUE, mhidden=TRUE}
-norin <- norin |> mutate(FISHID = factor(FISHID),
-                         TRIAL = factor(TRIAL))
+norin <- norin |>
+  mutate(FISHID = factor(FISHID),
+         TRIAL = factor(TRIAL))
 ```
 
 ## Boxplots
@@ -451,7 +454,7 @@ are chosen to provide moderate regularlization (to help prevent overfitting) and
 help stabalise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-norin.rstanarm <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale = FALSE)+scale(MASS, scale = FALSE),
+norin_rstanarm <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale = FALSE)+scale(MASS, scale = FALSE),
                              data = norin,
                              family = gaussian(), 
                              iter = 5000,
@@ -464,7 +467,7 @@ norin.rstanarm <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale =
 
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-norin.rstanarm |> prior_summary()
+norin_rstanarm |> prior_summary()
 ```
 This tells us:
 
@@ -506,15 +509,15 @@ Lets now run with priors only so that we can explore the range of values they
 allow in the posteriors.
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-norin.rstanarm1 <- update(norin.rstanarm,  prior_PD=TRUE)
+norin_rstanarm1 <- update(norin_rstanarm,  prior_PD=TRUE)
 ```
 
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-norin.rstanarm1 |>
+norin_rstanarm1 |>
   ggpredict(~SMR_contr*TRIAL) |>
   plot(show_data=TRUE)
 #OR
-norin.rstanarm1 |>
+norin_rstanarm1 |>
   ggemmeans(~SMR_contr*TRIAL) |>
   plot(show_data=TRUE)
 ```
@@ -556,7 +559,7 @@ thin air):
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-norin.rstanarm2 <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale = FALSE)+offset(MASS),
+norin_rstanarm2 <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale = FALSE)+offset(MASS),
                                 data = norin,
                                 family = gaussian(), 
                                 prior_intercept = normal(17, 35, autoscale = FALSE),
@@ -573,7 +576,7 @@ norin.rstanarm2 <- stan_glmer(CHANGE ~  (1|FISHID)+TRIAL*scale(SMR_contr, scale 
 ```
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-norin.rstanarm2 |>
+norin_rstanarm2 |>
     ggpredict(~SMR_contr * TRIAL) |>
     plot(show_data = TRUE)
 ```
@@ -581,11 +584,11 @@ norin.rstanarm2 |>
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
-norin.rstanarm3 <- update(norin.rstanarm2,  prior_PD=FALSE)
+norin_rstanarm3 <- update(norin_rstanarm2,  prior_PD=FALSE)
 ```
  
 ```{r fitModel1j2, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
-norin.rstanarm4 <- stan_glmer(CHANGE ~  (TRIAL|FISHID)+TRIAL*SMR_contr + offset(MASS),
+norin_rstanarm4 <- stan_glmer(CHANGE ~  (TRIAL|FISHID)+TRIAL*SMR_contr + offset(MASS),
                                 data = norin,
                                 family = gaussian(), 
                                 prior_intercept = normal(17, 35, autoscale = FALSE),
@@ -598,12 +601,12 @@ norin.rstanarm4 <- stan_glmer(CHANGE ~  (TRIAL|FISHID)+TRIAL*SMR_contr + offset(
                                 thin = 5,
                                 refresh = 0
                                 )  
-preds <- norin.rstanarm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
-norin.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- norin_rstanarm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
+norin_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = norin$CHANGE,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = FALSE)
-plot(norin.resids, quantreg = FALSE)
+plot(norin_resids, quantreg = FALSE)
 
 ## Clearly an issue here!
 ```
@@ -611,8 +614,8 @@ plot(norin.resids, quantreg = FALSE)
 ### Plotting prior and posterior
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-get_variables(norin.rstanarm3)
-posterior_vs_prior(norin.rstanarm3, color_by='vs', group_by=TRUE,
+get_variables(norin_rstanarm3)
+posterior_vs_prior(norin_rstanarm3, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'),
                    regex_pars = "^.Intercept|TRIAL|SMR_contr|MASS|sigma|Sigma")
 ```
@@ -623,11 +626,11 @@ posterior_vs_prior(norin.rstanarm3, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.rstanarm3 |>
+norin_rstanarm3 |>
     ggpredict(~SMR_contr * TRIAL) |>
     plot(show_data = TRUE)
 ##OR
-norin.rstanarm3 |>
+norin_rstanarm3 |>
     ggemmeans(~SMR_contr * TRIAL) |>
     plot(show_data = TRUE)
 ```
@@ -645,13 +648,13 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80), echo=c(-4,-6)}
-norin.form <- bf(CHANGE ~  (1|FISHID)+TRIAL*SMR_contr+offset(MASS),
+norin_form <- bf(CHANGE ~  (1|FISHID)+TRIAL*SMR_contr+offset(MASS),
                    family = gaussian() 
                    )
 options(width=100)
-norin.form |> get_prior(data=norin)
+norin_form |> get_prior(data=norin)
 options(width=80)
-norin.brm <- brm(norin.form,
+norin_brm <- brm(norin_form,
                  data=norin,
                  iter = 5000,
                  warmup = 1000,
@@ -728,6 +731,7 @@ norin |>
     group_by(TRIAL) |>
     summarise(median(CHANGE),
               mad(CHANGE))
+
 norin |> 
     group_by(TRIAL, FISHID) |>
     summarise(median = median(CHANGE),
@@ -735,30 +739,34 @@ norin |>
     ungroup(FISHID) |>
     summarise(sd(median))
 
-sd(norin$CHANGE)/apply(model.matrix(~TRIAL*SMR_contr+MASS, norin)[, -1], 2, sd)
+sd(norin$CHANGE)/apply(model.matrix(~TRIAL*scale(SMR_contr)+scale(MASS), norin)[, -1], 2, sd)
+## mad(norin$CHANGE)/apply(model.matrix(~TRIAL*scale(SMR_contr)+scale(MASS), norin)[, -1], 2, mad)
 
-standist::visualize("normal(16,35)", xlim=c(-10,100))
-standist::visualize("normal(0, 70)", "normal(0, 54)", xlim=c(-200,200))
+standist::visualize("normal(53, 25)", xlim=c(-10,100))
+standist::visualize("normal(0, 60)", xlim=c(-200,200))
 standist::visualize("gamma(2, 1)", "gamma(35, 1)",
-                    "student_t(3,0, 34)",
+                    "student_t(3,0, 40)",
                     "cauchy(0, 5.8)",
                     xlim=c(-10,100))
 ```
 
 ```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-priors <- prior(normal(16, 35), class = 'Intercept') +
-    prior(normal(0, 70), class = 'b', coef = 'TRIALHypoxia') +
-    prior(normal(0, 70), class = 'b', coef = 'TRIALLowSalinity') +
-    prior(normal(0, 54), class = 'b', coef = 'SMR_contr') +
-    prior(normal(0, 4), class = 'b', coef = 'MASS') +
-    prior(normal(0, 13), class = 'b') +
-    prior(student_t(3,0,34), class = 'sigma') +
-    ## prior(gamma(35, 1), class = 'sigma') +
-    prior(cauchy(0, 5.8), class = 'sd') 
-norin.form <- bf(CHANGE ~ (1|FISHID) + TRIAL*SMR_contr + MASS,
+norin_form <- bf(CHANGE ~ (1|FISHID) + TRIAL*scale(SMR_contr) + scale(MASS),
                      family = gaussian()
                    )
-norin.brm2 <- brm(norin.form, 
+get_prior(norin_form, data = norin)
+
+priors <- prior(normal(53, 25), class = 'Intercept') +
+    ## prior(normal(0, 60), class = 'b', coef = 'TRIALHypoxia') +
+    ## prior(normal(0, 70), class = 'b', coef = 'TRIALLowSalinity') +
+    ## prior(normal(0, 54), class = 'b', coef = 'SMR_contr') +
+    ## prior(normal(0, 4), class = 'b', coef = 'MASS') +
+    prior(normal(0, 60), class = 'b') +
+    prior(student_t(3,0,40), class = 'sd') +
+    prior(student_t(3,0,40), class = 'sigma') 
+    ## prior(gamma(35, 1), class = 'sigma') +
+    ## prior(cauchy(0, 5.8), class = 'sd') 
+norin_brm2 <- brm(norin_form, 
                   data = norin,
                   prior = priors,
                   sample_prior = 'only',
@@ -796,7 +804,10 @@ Accordingly, these divergent transitions can be addressed by either:
   result in slower sampling speeds.
 
 ```{r partialPlot2h1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm2 |>
+norin_brm2 |>
+  conditional_effects(~"SMR_contr:TRIAL") |>
+  plot(points = TRUE)
+norin_brm2 |>
     ggpredict(~SMR_contr*TRIAL) |>
     plot(show_data = TRUE)
 ```
@@ -804,7 +815,7 @@ norin.brm2 |>
 
 
 ```{r fitModel2h1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-norin.brm3 <- update(norin.brm2,  
+norin_brm3 <- update(norin_brm2,   
                      sample_prior = 'yes',
                      control = list(adapt_delta = 0.99),
                      refresh = 0,
@@ -813,7 +824,10 @@ norin.brm3 <- update(norin.brm2,
 ```
 
 ```{r partialPlot2h1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm3 |>
+norin_brm3 |>
+  conditional_effects(~"SMR_contr:TRIAL") |>
+  plot(points = TRUE)
+norin_brm3 |>
     ggpredict(~SMR_contr*TRIAL) |>
     plot(show_data = TRUE)
 ```
@@ -821,13 +835,13 @@ norin.brm3 |>
 ### Plotting prior and posterior
 
 ```{r posterior2h2, results='markdown', eval=TRUE}
-norin.brm3 |> get_variables()
-norin.brm3 |> hypothesis('TRIALHypoxia=0') |> plot()
-norin.brm3 |> hypothesis('SMR_contr=0') |> plot()
+norin_brm3 |> get_variables() 
+norin_brm3 |> hypothesis('TRIALHypoxia=0') |> plot()
+norin_brm3 |> hypothesis('scaleSMR_contr=0') |> plot()
 ```
 
 ```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-## norin.brm3 |> SUYR_prior_and_posterior()
+norin_brm3 |> SUYR_prior_and_posterior()
 ```
 
 ### Random intercept/slope model
@@ -836,27 +850,27 @@ While we are here, we might like to explore a random intercept/slope model
 
 
 ```{r fitModel2h3, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-priors <- prior(normal(16, 35), class = 'Intercept') +
-    prior(normal(0, 70), class = 'b', coef = 'TRIALHypoxia') +
-    prior(normal(0, 70), class = 'b', coef = 'TRIALLowSalinity') +
-    prior(normal(0, 54), class = 'b', coef = 'SMR_contr') +
-    prior(normal(0, 4), class = 'b', coef = 'MASS') +
-    ## prior(normal(0, 70), class = 'b') +
-    prior(student_t(3,0,34), class = 'sigma') +
-    prior(cauchy(0, 5.8), class = 'sd') +
+priors <- prior(normal(53, 35), class = 'Intercept') +
+    ## prior(normal(0, 70), class = 'b', coef = 'TRIALHypoxia') +
+    ## prior(normal(0, 70), class = 'b', coef = 'TRIALLowSalinity') +
+    ## prior(normal(0, 54), class = 'b', coef = 'SMR_contr') +
+    ## prior(normal(0, 60), class = 'b', coef = 'MASS') +
+    prior(normal(0, 60), class = 'b') +
+    prior(student_t(3,0,40), class = 'sigma') +
+    prior(student_t(3, 0, 40), class = 'sd') +
     prior(lkj_corr_cholesky(1), class = 'cor')
-norin.form <- bf(CHANGE ~ (TRIAL|FISHID) + TRIAL*SMR_contr + MASS,
+norin_form <- bf(CHANGE ~ (TRIAL|FISHID) + TRIAL*scale(SMR_contr) + scale(MASS),
                  ## sigma ~ TRIAL*SMR_contr + offset(MASS) + (1|FISHID),
                  family = gaussian()
                  )
-norin.brm4 <-  brm(norin.form, 
+norin_brm4 <-  brm(norin_form, 
                   data = norin,
                   prior = priors,
                   sample_prior = 'yes',
                   iter = 5000,
                   warmup = 1000,
                   chains = 3, cores = 3,
-                  thin = 5,
+                  thin = 10,
                   refresh = 0,
                   control = list(adapt_delta=0.99),
                   backend = "cmdstanr"
@@ -865,17 +879,17 @@ norin.brm4 <-  brm(norin.form,
 ```
 
 ```{r posterior2k, results='markdown', eval=TRUE}
-norin.brm4 |> get_variables()
-norin.brm4 |> hypothesis('TRIALHypoxia=0') |> plot()
-norin.brm4 |> hypothesis('SMR_contr=0') |> plot()
+norin_brm4 |> get_variables() 
+norin_brm4 |> hypothesis('TRIALHypoxia=0') |> plot()
+norin_brm4 |> hypothesis('scaleSMR_contr=0') |> plot()
 ```
 
 ```{r posterior2k1, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-## norin.brm4 |> SUYR_prior_and_posterior()
+norin_brm4 |> SUYR_prior_and_posterior()  
 ```
 
 ```{r posterior2k2, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
-norin.brm4 |>
+norin_brm4 |> 
   posterior_samples() |>
   dplyr::select(-`lp__`) |>
   pivot_longer(everything(), names_to = 'key') |> 
@@ -884,8 +898,8 @@ norin.brm4 |>
          Class = case_when(
              str_detect(key, '(^b|^prior).*Intercept$') ~ 'Intercept',
              str_detect(key, 'b_TRIAL.*|prior_b_TRIAL.*') & !str_detect(key, '.*\\:.*') ~ 'TRIAL',
-             str_detect(key, 'b_SMR_contr|prior_b_SMR_contr') ~ 'SMR',
-             str_detect(key, 'b_MASS|prior_b_MASS') ~ 'MASS',
+             str_detect(key, 'b_scaleSMR_contr|prior_b_SMR_contr') ~ 'SMR',
+             str_detect(key, 'b_scaleMASS|prior_b_MASS') ~ 'MASS',
              str_detect(key, '.*\\:.*|prior_b_.*\\:.*') ~ 'Interaction',
              str_detect(key, 'sd') ~ 'sd',
              str_detect(key, '^cor|prior_cor') ~ 'cor',
@@ -902,9 +916,9 @@ norin.brm4 |>
 We can compare the two models using LOO
 
 ```{r fitModel2h3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-(l.1 <- norin.brm3 |> loo()) 
-(l.2 <- norin.brm4 |> loo())
-loo_compare(l.1, l.2)
+(l.1 <- norin_brm3 |> loo()) 
+(l.2 <- norin_brm4 |> loo())
+loo_compare(l.1, l.2) 
 ```
 
 There is substantially more support for the more complex random
@@ -955,7 +969,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> mcmc_plot(type='trace')
+norin_brm4 |> mcmc_plot(type='trace')
 ```
   
    The chains appear well mixed and very similar
@@ -964,7 +978,7 @@ norin.brm4 |> mcmc_plot(type='trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> mcmc_plot(type='acf_bar')
+norin_brm4 |> mcmc_plot(type='acf_bar')
 ```
 
    There IS evidence of autocorrelation in the MCMC samples.  We should consider thinning further!
@@ -975,7 +989,7 @@ norin.brm4 |> mcmc_plot(type='acf_bar')
   parameter estimated.
 
 ```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> mcmc_plot(type='rhat_hist')
+norin_brm4 |> mcmc_plot(type='rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -990,7 +1004,7 @@ norin.brm4 |> mcmc_plot(type='rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> mcmc_plot(type='neff_hist')
+norin_brm4 |> mcmc_plot(type='neff_hist')
 ```
 
   There are a small number of parameters that have very low effective
@@ -999,8 +1013,8 @@ norin.brm4 |> mcmc_plot(type='neff_hist')
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> mcmc_plot(type='combo')
-norin.brm4 |> mcmc_plot(type='violin')
+norin_brm4 |> mcmc_plot(type='combo')
+norin_brm4 |> mcmc_plot(type='violin')
 ```
 </details>
 
@@ -1019,11 +1033,11 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> get_variables()
-pars <- norin.brm4 |> get_variables()
+norin_brm4 |> get_variables()
+pars <- norin_brm4 |> get_variables()
 pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
-
-norin.brm4$fit |>
+ 
+norin_brm4$fit |>
     stan_trace(pars = pars)
 ```
 
@@ -1033,8 +1047,8 @@ norin.brm4$fit |>
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4$fit |>
-    stan_ac(pars = pars)
+norin_brm4$fit |>
+    stan_ac(pars = pars) 
 ```
 
    There IS evidence of autocorrelation in the MCMC samples.  We
@@ -1046,7 +1060,7 @@ norin.brm4$fit |>
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4$fit |> stan_rhat() 
+norin_brm4$fit |> stan_rhat()  
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -1061,7 +1075,7 @@ norin.brm4$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4$fit |> stan_ess()
+norin_brm4$fit |> stan_ess() 
 ```
 
   There are a small number of parameters that have very low effective
@@ -1069,8 +1083,8 @@ norin.brm4$fit |> stan_ess()
   determine whether it is concerning.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4$fit |>
-    stan_dens(separate_chains = TRUE, pars = pars)
+norin_brm4$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars) 
 ```
 
 ### ggmcmc
@@ -1088,8 +1102,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-norin.ggs <- norin.brm4 |> ggs(burnin = FALSE, inc_warmup = FALSE)
-norin.ggs |> ggs_traceplot()
+norin_ggs <- norin_brm4 |> ggs(burnin = FALSE, inc_warmup = FALSE)
+norin_ggs |> ggs_traceplot()
 ``` 
 
    The chains appear well mixed and very similar
@@ -1098,7 +1112,7 @@ norin.ggs |> ggs_traceplot()
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-ggs_autocorrelation(norin.ggs)
+ggs_autocorrelation(norin_ggs)
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -1109,7 +1123,7 @@ ggs_autocorrelation(norin.ggs)
   parameter estimated.
 
 ```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_Rhat(norin.ggs, scaling = 1.01)
+ggs_Rhat(norin_ggs, scaling = 1.01)
 ```
 
   All Rhat values are below 1.01, suggesting the chains have converged.
@@ -1124,18 +1138,18 @@ ggs_Rhat(norin.ggs, scaling = 1.01)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_effective(norin.ggs)
+ggs_effective(norin_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_crosscorrelation(norin.ggs)
+ggs_crosscorrelation(norin_ggs)
 ```
 
 ```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_grb(norin.ggs)
+ggs_grb(norin_ggs)
 ```
 </details>
 
@@ -1156,7 +1170,7 @@ overlayed ontop of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> pp_check(type = 'dens_overlay', ndraws = 100)
+norin_brm4 |> pp_check(type = 'dens_overlay', ndraws = 100) 
 ```
 The model draws appear to be consistent with the observed data.
 
@@ -1166,7 +1180,7 @@ The model draws appear to be consistent with the observed data.
   binomial response
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> pp_check(type = 'error_scatter_avg')
+norin_brm4 |> pp_check(type = 'error_scatter_avg')
 ```
 
 This is not really interpretable
@@ -1177,9 +1191,9 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-norin.brm4 |> pp_check(group = 'TRIAL', type = 'intervals')
-norin.brm3 |> pp_check(group = 'TRIAL', type = 'intervals_grouped')
-norin.brm3 |> pp_check(group = 'TRIAL', type = 'violin_grouped')
+norin_brm4 |> pp_check(group = 'TRIAL', type = 'intervals')
+norin_brm3 |> pp_check(group = 'TRIAL', type = 'intervals_grouped')
+norin_brm3 |> pp_check(group = 'TRIAL', type = 'violin_grouped')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -1187,7 +1201,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(norin.brm2)
+#launch_shinystan(norin_brm2)
 ```
 
 ### DHARMa residuals
@@ -1203,22 +1217,12 @@ We need to supply:
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
 
-```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- norin.brm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
-norin.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = norin$CHANGE,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = FALSE)
-plot(norin.resids, quantreg = FALSE)
-norin.resids |> testDispersion()
-```
-
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-norin.resids <- make_brms_dharma_res(norin.brm4, integerResponse = FALSE)
-wrap_elements(~testUniformity(norin.resids)) +
-               wrap_elements(~plotResiduals(norin.resids, form = factor(rep(1, nrow(norin))))) +
-               wrap_elements(~plotResiduals(norin.resids)) +
-               wrap_elements(~testDispersion(norin.resids)) 
+norin_resids <- make_brms_dharma_res(norin_brm4, integerResponse = FALSE)
+wrap_elements(~testUniformity(norin_resids)) +
+               wrap_elements(~plotResiduals(norin_resids, form = factor(rep(1, nrow(norin))))) +
+               wrap_elements(~plotResiduals(norin_resids)) +
+               wrap_elements(~testDispersion(norin_resids)) 
 ```
 
 
@@ -1241,7 +1245,7 @@ wrap_elements(~testUniformity(norin.resids)) +
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |>
+norin_brm4 |>
     conditional_effects() |>
     plot(ask = FALSE, points = TRUE, plot = FALSE) |>
     wrap_plots()
@@ -1250,7 +1254,7 @@ norin.brm4 |>
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |>
+norin_brm4 |>
     ggpredict(terms = c("SMR_contr", "TRIAL")) |>
     plot(show_data = TRUE)
 ```
@@ -1258,7 +1262,7 @@ norin.brm4 |>
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |>
+norin_brm4 |>
     ggemmeans(~SMR_contr*TRIAL) |>
     plot(show_data = TRUE)
 ```
@@ -1288,41 +1292,41 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 	
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |> summary()
+norin_brm4 |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-norin.sum <- summary(norin.brm4)
+norin_sum <- summary(norin_brm4)
 ```
-
+ 
 **Conclusions:**
 
 - the intercept indicates that the average metabolic change associated with the
   High Temperature trial (at the mean SMR_contr and MASS) across all
-  fish was `r round(norin.sum$fixed[1,1], 2)`.
+  fish was `r round(norin_sum$fixed[1,1], 2)`.
 - for the same SMR_contr and MASS, the average metabolic change was 
-  `r round(-1*norin.sum$fixed[2,1], 2)` less in the Hypoxia trial and 
-  `r round(-1*norin.sum$fixed[3,1], 2)` less in the Salinity trial than 
+  `r round(-1*norin_sum$fixed[2,1], 2)` less in the Hypoxia trial and 
+  `r round(-1*norin_sum$fixed[3,1], 2)` less in the Salinity trial than 
   the High Temperature trial. 
 - in the High Temperature trial, every 1 unit increase in SMR_contr was 
-  associated with a decline in metabolic change of `round(-1*norin.sum$fixed[4,1], 2)` 
+  associated with a decline in metabolic change of `round(-1*norin_sum$fixed[4,1], 2)` 
   units. 
 - in the High Temperature trial (and mean SMR_contr), every 1 unit 
   increase in MASS was associated with an increase in metabolic change of 
-  `round(-1*norin.sum$fixed[5,1], 2)` units. 
+  `round(-1*norin_sum$fixed[5,1], 2)` units. 
 - the rate of change in metabolic change associated with the Hypoxia trial was 
-  `round(-1*norin.sum$fixed[6,1], 2)` units higher than that of the High Temperature
-  trial and  `round(-1*norin.sum$fixed[7,1], 2)` units higher in the Low Salinity
+  `round(-1*norin_sum$fixed[6,1], 2)` units higher than that of the High Temperature
+  trial and  `round(-1*norin_sum$fixed[7,1], 2)` units higher in the Low Salinity
   trial.
 - the variance in intercepts across all fish is 
-  `r round(norin.sum$random[[1]][1,1],2)`
+  `r round(norin_sum$random[[1]][1,1],2)`
 - the variance in responses between High Temperature and Hypoxia trials across all fish is 
-  `r round(norin.sum$random[[1]][2,1],2)`.
+  `r round(norin_sum$random[[1]][2,1],2)`.
 - the variance in responses between High Temperature and Low Salinity trials across all fish is 
-  `r round(norin.sum$random[[1]][3,1],2)`.
+  `r round(norin_sum$random[[1]][3,1],2)`.
 
 - the scale of variance between fish within a treatment  
-  (sigma, `r round(norin.sum$spec_pars[1,1], 2)`) is substantially
+  (sigma, `r round(norin_sum$spec_pars[1,1], 2)`) is substantially
   higher than that both within the High Temperature trial and between
   the High Temperature and Hypoxia trials, yet lower than that between
   High Temperature and Low Salinity trials.
@@ -1330,7 +1334,7 @@ norin.sum <- summary(norin.brm4)
 ### summarise_draws
 
 ```{r summariseModel2i2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |>
+norin_brm4 |>
   summarise_draws(
     median,
     ~ HDInterval::hdi(.x),
@@ -1340,7 +1344,7 @@ norin.brm4 |>
   )
 
 ## or if you want to exclude some parameters
-norin.brm4 |>
+norin_brm4 |>
   summarise_draws(
     median,
     ~ HDInterval::hdi(.x),
@@ -1355,8 +1359,8 @@ norin.brm4 |>
 ### as_draws_df (posteriors)
 
 ```{r summariseModel2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |> as_draws_df()
-norin.brm4 |>
+norin_brm4 |> as_draws_df()
+norin_brm4 |>
   as_draws_df() |>
   summarise_draws(
     median,
@@ -1366,7 +1370,7 @@ norin.brm4 |>
     ess_tail
   )
 ## or if you want to exclude some parameters
-norin.brm4 |>
+norin_brm4 |>
   as_draws_df() |>
   summarise_draws(
     median,
@@ -1381,13 +1385,13 @@ norin.brm4 |>
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4$fit |>
+norin_brm4$fit |>
     tidyMCMC(estimate.method = 'median',
              conf.int = TRUE,  conf.method = 'HPDinterval',
              rhat = TRUE, ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-norin.tidy <- tidyMCMC(norin.brm4$fit, estimate.method='median',
+norin_tidy <- tidyMCMC(norin_brm4$fit, estimate.method='median',
                          conf.int=TRUE,  conf.method='HPDinterval',
                          rhat=TRUE, ess=TRUE)
 ```
@@ -1399,20 +1403,20 @@ see above
 ### gather_draws
 
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |> get_variables()
-norin.draw <- norin.brm4 |>
+norin_brm4 |> get_variables()
+norin_draw <- norin_brm4 |>
     gather_draws(`^b.Intercept$|b_.*|sd_.*|sigma`,  regex=TRUE)
-norin.draw
+norin_draw
 ```
 
 We can then summarise this
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.draw |> median_hdci()
+norin_draw |> median_hdci()
 ```
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-norin.gather <- norin.brm4 |>
+norin_gather <- norin_brm4 |>
     gather_draws(`b_Intercept|b_TREAT.*|sd_.*|sigma`,  regex=TRUE) %>%
   median_hdci()
 ```
@@ -1420,7 +1424,7 @@ norin.gather <- norin.brm4 |>
 ### slab
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-norin.brm4 |>
+norin_brm4 |>
     gather_draws(`b_Intercept|b_.*`, regex=TRUE) |> 
     ggplot() +
     geom_vline(xintercept=0, linetype='dashed') +
@@ -1431,13 +1435,13 @@ norin.brm4 |>
                            )), color='black') + 
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 
-norin.brm4 |> 
+norin_brm4 |> 
     gather_draws(`b_Intercept|b_.*`, regex=TRUE) |> 
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     facet_wrap(~.variable, scales='free')
 
-norin.brm4 |> 
+norin_brm4 |> 
     gather_draws(`b_Intercept|b_.*`, regex=TRUE) |> 
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
@@ -1447,20 +1451,20 @@ norin.brm4 |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4$fit |> plot(type='intervals') 
+norin_brm4$fit |> plot(type='intervals') 
 ```
 
 ### half-eye (ggdist)
 
 ```{r summariseModel2ka, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-norin.brm4 |> 
+norin_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     facet_wrap(~.variable, scales='free')
 
-norin.brm4 |> 
+norin_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1471,14 +1475,14 @@ norin.brm4 |>
 ### density ridges (ggridges)
 
 ```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-norin.brm4 |> 
+norin_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() +  
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or in colour
-norin.brm4 |> 
+norin_brm4 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1496,30 +1500,30 @@ norin.brm4 |>
 ### tidy_draws
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |> tidy_draws()
+norin_brm4 |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |> spread_draws(`.*Intercept.*|^b_.*`,  regex=TRUE)
+norin_brm4 |> spread_draws(`.*Intercept.*|^b_.*`,  regex=TRUE)
 ```
 
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |> posterior_samples() |> as_tibble()
+norin_brm4 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-norin.brm4 |>
+norin_brm4 |>
     bayes_R2(re.form = NA, summary=FALSE) |>
     median_hdci()
-norin.brm4 |>
+norin_brm4 |>
     bayes_R2(re.form = ~(1|FISHID), summary=FALSE) |>
     median_hdci()
-norin.brm4 |>
+norin_brm4 |>
     bayes_R2(re.form = ~(TRIAL|FISHID), summary=FALSE) |>
     median_hdci()
 ```
@@ -1530,8 +1534,8 @@ Region of Practical Equivalence
 
 ```{r summariseModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 0.1 * sd(norin$CHANGE)
-norin.brm4 |> rope(range = c(-3.38, 3.38))
-rope(norin.brm4, range = c(-3.38, 3.38)) |> plot()
+norin_brm4 |> rope(range = c(-3.38, 3.38))
+rope(norin_brm4, range = c(-3.38, 3.38)) |> plot()
 
 ```
 
@@ -1542,7 +1546,7 @@ rope(norin.brm4, range = c(-3.38, 3.38)) |> plot()
 #| eval: true
 #| echo: true
 #| cache: false
-norin.brm4 |> modelsummary(
+norin_brm4 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = FALSE
@@ -1555,7 +1559,7 @@ norin.brm4 |> modelsummary(
 #| eval: true
 #| echo: true
 #| cache: false
-norin.brm4 |> modelplot(exponentiate = FALSE)
+norin_brm4 |> modelplot(exponentiate = FALSE)
 ```
 ::::
 :::
@@ -1583,24 +1587,30 @@ or the other (depending on which variable was of more interest).
 :::: {.panel-tabset}
 ### Compare slopes
 
-```{r posteriors1a, results='markdown', eval=TRUE, echo=1,mhidden=TRUE}
-norin.brm4 |> emtrends(~TRIAL, var='SMR_contr') |> pairs()
-norin.emt <- norin.brm4 |> emtrends(~TRIAL, var='SMR_contr') |> pairs() |> as.data.frame()
+```{r posteriors1a, results='markdown', eval=TRUE, echo=TRUE, mhidden=TRUE}
+norin_brm4 |> emtrends(~TRIAL, var='SMR_contr') 
+norin_brm4 |> emtrends(~TRIAL, var='SMR_contr') |> pairs()
+norin_brm4 |> emtrends(~TRIAL, var='SMR_contr') |> pairs() |>
+  tidy_draws() |>
+  summarise_draws(median, HDInterval::hdi,
+                  Pl = ~ mean(.x < 0),
+                  Pg = ~ mean(.x > 0))
+norin_emt <- norin_brm4 |> emtrends(~TRIAL, var='SMR_contr') |> pairs() |> as.data.frame()
 ```
 
 **Conclusions:**
 
 - the partial slope associated with control SMR during High
-  Temperature was found to be `r -1*round(norin.emt[1, 2], 2)` units
+  Temperature was found to be `r -1*round(norin_emt[1, 2], 2)` units
   more negative than during Hypoxia (although not significant).  Note,
   we already had this partial slope in the original summary table.
 - the partial slope associated with control SMR during High
-  Temperature was found to be `r -1*round(norin.emt[2, 2], 2)` units
+  Temperature was found to be `r -1*round(norin_emt[2, 2], 2)` units
   more negative than during Low Salinity (although not significant).
   Note, we already had this partial slope in the original summary
   table.
 - the partial slope associated with control SMR during Hypoxia was
-  found to be `r round(norin.emt[3, 2], 2)` units less negative than
+  found to be `r round(norin_emt[3, 2], 2)` units less negative than
   during Low Salinity (although not significant).  Note, we already
   had this partial slope in the original summary table.
 
@@ -1611,17 +1621,17 @@ We will estimated the pairwise differences between each of the three trials at
 the minimum, mean and maximum control SMR.
 
 ```{r posteriors1b, results='markdown', eval=TRUE, mhidden=TRUE}
-norin.grid <- with(norin,  list(SMR_contr=Hmisc::smean.sdl(SMR_contr)))
-norin.grid
-norin.brm4 |> emmeans(~TRIAL|SMR_contr,  at=norin.grid) |> pairs()
+norin_grid <- with(norin,  list(SMR_contr=Hmisc::smean.sdl(SMR_contr)))
+norin_grid
+norin_brm4 |> emmeans(~TRIAL|SMR_contr,  at=norin_grid) |> pairs()
 
-norin.brm4 |>
-    emmeans(~TRIAL|SMR_contr,  at=norin.grid) |>
+norin_brm4 |>
+    emmeans(~TRIAL|SMR_contr,  at=norin_grid) |>
     pairs() |>
     gather_emmeans_draws() |>
     median_hdci()
-norin.brm4 |>
-    emmeans(~TRIAL|SMR_contr,  at=norin.grid) |>
+norin_brm4 |>
+    emmeans(~TRIAL|SMR_contr,  at=norin_grid) |>
     pairs() |>
     tidy_draws() |>
     summarise_draws(median)
@@ -1640,18 +1650,18 @@ entire posterior and use it to calculate exceedence probabilities etc.
 
 
 ```{r posteriors1b2, results='markdown', eval=TRUE, mhidden=TRUE}
-norin.em <- norin.brm4 |>
-    emmeans(~TRIAL|SMR_contr, at=norin.grid) |>
+norin_em <- norin_brm4 |>
+    emmeans(~TRIAL|SMR_contr, at=norin_grid) |>
     pairs() |> 
     gather_emmeans_draws() |>
     mutate(Fit=.value)
-norin.em
-norin.em |> group_by(contrast) |> median_hdci(Fit)
-norin.em |> group_by(contrast, SMR_contr) |> median_hdci(Fit)
-## norin.em |>
+norin_em
+norin_em |> group_by(contrast) |> median_hdci(Fit)
+norin_em |> group_by(contrast, SMR_contr) |> median_hdci(Fit)
+## norin_em |>
 ##     group_by(contrast) |>
 ##     summarize(P=sum(Fit>0)/n())
-norin.em |>
+norin_em |>
     group_by(contrast, SMR_contr) |>
     summarise(P=mean(Fit>0),
               P2 = 1 - P)
@@ -1668,8 +1678,8 @@ norin.em |>
 ## brms
 
 ```{r summaryFigure1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=5}
-norin.grid <- with(norin, list(SMR_contr = modelr::seq_range(SMR_contr, n = 100)))
-newdata <- norin.brm4 |> emmeans(~SMR_contr|TRIAL, at = norin.grid) |>
+norin_grid <- with(norin, list(SMR_contr = modelr::seq_range(SMR_contr, n = 100)))
+newdata <- norin_brm4 |> emmeans(~SMR_contr|TRIAL, at = norin_grid) |>
     as.data.frame()
 head(newdata)
 
@@ -1681,7 +1691,7 @@ ggplot(data = newdata, aes(y = emmean, x = SMR_contr)) +
         legend.justification = c(1, 1))
 
 ## The .fixed values are the predicted values without random effects
-obs <- norin.brm4 |>
+obs <- norin_brm4 |>
   augment() |>
   mutate(PartialObs=.fitted + .resid)
 
@@ -1729,101 +1739,101 @@ ggplot(norin, aes(y=CHANGE, x=as.numeric(FISHID), color=TRIAL)) +
 #ggplot(norin, aes(y=MASS, x=TRIAL)) + geom_boxplot()
 ggplot(norin, aes(y=CHANGE, x=MASS, color=TRIAL)) + geom_point() + geom_smooth(method='lm')
 
-norin.rstanarm = stan_glmer(CHANGE ~ (1|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
+norin_rstanarm = stan_glmer(CHANGE ~ (1|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
                             prior_PD=TRUE, 
                          iter=5000, warmup=2000, chains=3, thin=5, refresh=0)
-prior_summary(norin.rstanarm)
+prior_summary(norin_rstanarm)
 
-posterior_vs_prior(norin.rstanarm, color_by='vs', group_by=TRUE,
+posterior_vs_prior(norin_rstanarm, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'), pars=c('(Intercept)'))
-ggpredict(norin.rstanarm, ~TRIAL*SMR_contr) |> plot(show_data=TRUE)
+ggpredict(norin_rstanarm, ~TRIAL*SMR_contr) |> plot(show_data=TRUE)
 
-norin.rstanarm |> get_variables()
-plot(norin.rstanarm,  'mcmc_trace', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
-plot(norin.rstanarm,  'mcmc_acf_bar', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
-plot(norin.rstanarm,  'mcmc_rhat_hist', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
-plot(norin.rstanarm,  'mcmc_neff_hist', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+norin_rstanarm |> get_variables()
+plot(norin_rstanarm,  'mcmc_trace', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+plot(norin_rstanarm,  'mcmc_acf_bar', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+plot(norin_rstanarm,  'mcmc_rhat_hist', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
+plot(norin_rstanarm,  'mcmc_neff_hist', regex_pars='^.Intercept|TRIAL|SMR|MASS|[sS]igma')
 
-#norin.rstan1 = stan_glmer(CHANGE ~ (TRIAL|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
+#norin_rstan1 = stan_glmer(CHANGE ~ (TRIAL|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
 #                          iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
-norin.rstanarm1 = stan_glmer(CHANGE ~ (SMR_contr|FISHID) + TRIAL*SMR_contr+MASS, data=norin,
+norin_rstanarm1 = stan_glmer(CHANGE ~ (SMR_contr|FISHID) + TRIAL*SMR_contr+MASS, data=norin,
                              prior_PD=FALSE, 
                           iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
-norin.rstanarm1 = update(norin.rstanarm1,  prior_PD=FALSE)
+norin_rstanarm1 = update(norin_rstanarm1,  prior_PD=FALSE)
 
 
 
-norin.rstanarm2 = stan_glmer(CHANGE ~ (TRIAL*SMR_contr|FISHID) + TRIAL*SMR_contr+MASS, data=norin,
+norin_rstanarm2 = stan_glmer(CHANGE ~ (TRIAL*SMR_contr|FISHID) + TRIAL*SMR_contr+MASS, data=norin,
                              prior_PD=FALSE, 
                           iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
 
-posterior_vs_prior(norin.rstanarm1, color_by='vs', group_by=TRUE,
+posterior_vs_prior(norin_rstanarm1, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'), pars=c('(Intercept)'))
 
-ggpredict(norin.rstanarm1, ~TRIAL*SMR_contr) |> plot(show_data=TRUE)
+ggpredict(norin_rstanarm1, ~TRIAL*SMR_contr) |> plot(show_data=TRUE)
 
-norin.rstanarm1 |> get_variables()
-plot(norin.rstanarm1,  'mcmc_trace', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
-plot(norin.rstanarm1,  'mcmc_acf_bar', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
-plot(norin.rstanarm1,  'mcmc_rhat_hist', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
-plot(norin.rstanarm1,  'mcmc_neff_hist', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+norin_rstanarm1 |> get_variables()
+plot(norin_rstanarm1,  'mcmc_trace', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+plot(norin_rstanarm1,  'mcmc_acf_bar', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+plot(norin_rstanarm1,  'mcmc_rhat_hist', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
+plot(norin_rstanarm1,  'mcmc_neff_hist', regex_pars='^.Intercept|TRIAL|^SMR|MASS|[sS]igma')
 
 
-(l.1 <- loo(norin.rstanarm))
-(l.2 <- loo(norin.rstanarm1))
+(l.1 <- loo(norin_rstanarm))
+(l.2 <- loo(norin_rstanarm1))
 loo_compare(l.1,  l.2)
 
 
-preds <- posterior_predict(norin.rstanarm,  nsamples=250,  summary=FALSE)
-norin.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(norin_rstanarm,  nsamples=250,  summary=FALSE)
+norin_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = norin$CHANGE,
                             fittedPredictedResponse = apply(preds, 2, median))
-plot(norin.resids)
+plot(norin_resids)
 
 
-g=ggpredict(norin.rstanarm) |> plot()
+g=ggpredict(norin_rstanarm) |> plot()
 do.call('grid.arrange', g)
 
-#ggemmeans(norin.rstan, ~TRIAL)
+#ggemmeans(norin_rstan, ~TRIAL)
 
-summary(norin.rstanarm)
-nms <- norin.rstanarm1 |> get_variables()
+summary(norin_rstanarm)
+nms <- norin_rstanarm1 |> get_variables()
 wch <- grep('^.Intercept|TRIAL|^SMR|[sS]igma', nms)
-tidyMCMC(norin.rstanarm$stanfit,conf.int=TRUE, conf.method='HPDinterval',
+tidyMCMC(norin_rstanarm$stanfit,conf.int=TRUE, conf.method='HPDinterval',
          rhat=TRUE, ess=TRUE, pars=nms[wch], estimate.method='median')
 
-tidyMCMC(norin.rstanarm1$stanfit,conf.int=TRUE, conf.method='HPDinterval',
+tidyMCMC(norin_rstanarm1$stanfit,conf.int=TRUE, conf.method='HPDinterval',
          rhat=TRUE, ess=TRUE, pars=nms[wch], estimate.method='median')
 
 
-norin.grid = with(norin, list(SMR_contr=seq(min(SMR_contr),max(SMR_contr), len=100)))
-newdata = emmeans(norin.rstanarm, ~TRIAL|SMR_contr, at=norin.grid) |> as.data.frame()
+norin_grid = with(norin, list(SMR_contr=seq(min(SMR_contr),max(SMR_contr), len=100)))
+newdata = emmeans(norin_rstanarm, ~TRIAL|SMR_contr, at=norin_grid) |> as.data.frame()
 head(newdata)
 ggplot(newdata, aes(y=emmean, x=SMR_contr, color=TRIAL)) +
     geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD, fill=TRIAL), alpha=0.3,color=NA) +
     geom_line()
 
-norin.grid = with(norin, list(SMR_contr=c(min(SMR_contr),mean(SMR_contr),max(SMR_contr))))
+norin_grid = with(norin, list(SMR_contr=c(min(SMR_contr),mean(SMR_contr),max(SMR_contr))))
 
-emmeans(norin.rstan, pairwise~TRIAL|SMR_contr, at=norin.grid)
+emmeans(norin_rstan, pairwise~TRIAL|SMR_contr, at=norin_grid)
 
-norin.em = emmeans(norin.rstan, pairwise~TRIAL|SMR_contr, at=norin.grid)$contrast |>
+norin_em = emmeans(norin_rstan, pairwise~TRIAL|SMR_contr, at=norin_grid)$contrast |>
               gather_emmeans_draws() |>
               mutate(Fit=.value)
-norin.em
-norin.em |> group_by(contrast) |> median_hdci(Fit)
-norin.em |> group_by(contrast, SMR_contr) |> median_hdci(Fit)
-## norin.em |>
+norin_em
+norin_em |> group_by(contrast) |> median_hdci(Fit)
+norin_em |> group_by(contrast, SMR_contr) |> median_hdci(Fit)
+## norin_em |>
 ##     group_by(contrast) |>
 ##     summarize(P=sum(Fit>0)/n())
-norin.em |>
+norin_em |>
     group_by(contrast, SMR_contr) |>
     summarize(P=mean(Fit>0))
 
 
-bayes_R2(norin.rstanarm, re.form=NA) |> median_hdi()
-bayes_R2(norin.rstanarm, re.form=~(1|FISHID)) |> median_hdi()
-#bayes_R2(norin.rstan1, re.form=~(SMR_contr|FISHID)) |> median_hdi
+bayes_R2(norin_rstanarm, re.form=NA) |> median_hdi()
+bayes_R2(norin_rstanarm, re.form=~(1|FISHID)) |> median_hdi()
+#bayes_R2(norin_rstan1, re.form=~(SMR_contr|FISHID)) |> median_hdi
 
 ```
 
@@ -1851,132 +1861,132 @@ priors <- prior(normal(50, 20), class='Intercept') +
     prior(gamma(2,1), class='sigma') +
     prior(gamma(2,1), class='sd')
 
-norin.form <- bf(CHANGE ~ (1|FISHID)+TRIAL*SMR_contr+MASS,
+norin_form <- bf(CHANGE ~ (1|FISHID)+TRIAL*SMR_contr+MASS,
                  family=gaussian)
 
-norin.brm1 = brm(norin.form,
+norin_brm1 = brm(norin_form,
                  data=norin,
                  prior = priors,
                  sample_prior = 'yes',
                  iter=5000, warmup=2000,
                  chains=3, thin=5, refresh=0)
 
-norin.brm1 |> get_variables()
-pars <- norin.brm1 |> get_variables()
+norin_brm1 |> get_variables()
+pars <- norin_brm1 |> get_variables()
 wch <- grepl('^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd', pars, perl=TRUE)
 
-stan_trace(norin.brm1$fit, pars=pars[wch])
-stan_ac(norin.brm1$fit, pars=pars[wch])
-stan_rhat(norin.brm1$fit, pars=pars[wch])
-stan_ess(norin.brm1$fit, pars=pars[wch])
+stan_trace(norin_brm1$fit, pars=pars[wch])
+stan_ac(norin_brm1$fit, pars=pars[wch])
+stan_rhat(norin_brm1$fit, pars=pars[wch])
+stan_ess(norin_brm1$fit, pars=pars[wch])
 
-##mcmc_plot(norin.brms,  type='trace',
+##mcmc_plot(norin_brms,  type='trace',
 ##          regex_pars='^b.*|sigma|^sd')
-##mcmc_plot(norin.brms,  type='trace',
+##mcmc_plot(norin_brms,  type='trace',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
-##mcmc_plot(norin.brms,  type='acf_bar',
+##mcmc_plot(norin_brms,  type='acf_bar',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
-##mcmc_plot(norin.brms,  type='rhat_hist',
+##mcmc_plot(norin_brms,  type='rhat_hist',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
-##mcmc_plot(norin.brms,  type='neff_hist',
+##mcmc_plot(norin_brms,  type='neff_hist',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
 
-preds <- posterior_predict(norin.brm1,  nsamples=250,  summary=FALSE)
-norin.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(norin_brm1,  nsamples=250,  summary=FALSE)
+norin_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = norin$CHANGE,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse =FALSE)
-plot(norin.resids)
-#norin.rstan1 = stan_glmer(CHANGE ~ (TRIAL|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
+plot(norin_resids)
+#norin_rstan1 = stan_glmer(CHANGE ~ (TRIAL|FISHID)+TRIAL*SMR_contr+MASS, data=norin,
 #                          iter=5000, warmup=2000, chains=3, thin=5, refresh=0, cores=3)
-norin.form <- bf(CHANGE ~ (TRIAL|FISHID) + TRIAL*SMR_contr+MASS,
+norin_form <- bf(CHANGE ~ (TRIAL|FISHID) + TRIAL*SMR_contr+MASS,
                  family=gaussian)
-norin.brm2 = brm(norin.form, data=norin,
+norin_brm2 = brm(norin_form, data=norin,
                  prior = priors,
                  sample_prior = 'yes',
                  iter=5000, warmup=2000,
                  chains=3, thin=5, refresh=0, cores=3,
                  control=list(adapt_delta=0.99))
 
-norin.brm2 |> get_variables()
+norin_brm2 |> get_variables()
 
-pars <- norin.brm2 |> get_variables()
+pars <- norin_brm2 |> get_variables()
 ## wch <- grepl('^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd', pars, perl=TRUE)
 wch <- grepl('^b_.*|[sS]igma|^sd_.*', pars, perl=TRUE)
 
-stan_trace(norin.brm2$fit, pars=pars[wch])
-stan_ac(norin.brm2$fit, pars=pars[wch])
-stan_rhat(norin.brm2$fit)#, pars=pars[wch])
-stan_ess(norin.brm2$fit)#, pars=pars[wch])
-##mcmc_plot(norin.brm2,  type='trace',
+stan_trace(norin_brm2$fit, pars=pars[wch])
+stan_ac(norin_brm2$fit, pars=pars[wch])
+stan_rhat(norin_brm2$fit)#, pars=pars[wch])
+stan_ess(norin_brm2$fit)#, pars=pars[wch])
+##mcmc_plot(norin_brm2,  type='trace',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
-##mcmc_plot(norin.brm2,  type='trace',
+##mcmc_plot(norin_brm2,  type='trace',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
-##mcmc_plot(norin.brm2,  type='acf_bar',
+##mcmc_plot(norin_brm2,  type='acf_bar',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
-##mcmc_plot(norin.brm2,  type='rhat_hist',
+##mcmc_plot(norin_brm2,  type='rhat_hist',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
-##mcmc_plot(norin.brm2,  type='neff_hist',
+##mcmc_plot(norin_brm2,  type='neff_hist',
 ##          regex_pars='^b.Intercept|TRIAL|SMR|MASS|[sS]igma|^sd')
 
-(l.1 <- loo(norin.brm1))
-(l.2 <- loo(norin.brm2))
+(l.1 <- loo(norin_brm1))
+(l.2 <- loo(norin_brm2))
 loo_compare(l.1,  l.2)
 
 
-preds <- posterior_predict(norin.brm2,  nsamples=250,  summary=FALSE)
-norin.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(norin_brm2,  nsamples=250,  summary=FALSE)
+norin_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = norin$CHANGE,
                             fittedPredictedResponse = apply(preds, 2, median))
-plot(norin.resids)
+plot(norin_resids)
 
-g <- norin.brm2 |>
+g <- norin_brm2 |>
     conditional_effects() |>
     plot(points=TRUE, ask=FALSE)
 library(patchwork)
 g[[1]] + g[[2]] + g[[3]] + g[[4]]
 
 
-##g=ggpredict(norin.brms1) |> plot
+##g=ggpredict(norin_brms1) |> plot
 ##library(patchwork)
 ##g[[1]] + g[[2]] + g[[3]]
 
 ##do.call('grid.arrange', g)
 
-ggemmeans(norin.brm2, ~TRIAL) |> plot()
+ggemmeans(norin_brm2, ~TRIAL) |> plot()
 
-summary(norin.brm2)
+summary(norin_brm2)
 
-tidyMCMC(norin.brm2$fit,conf.int=TRUE, conf.method='HPDinterval',
+tidyMCMC(norin_brm2$fit,conf.int=TRUE, conf.method='HPDinterval',
          rhat=TRUE, ess=TRUE, estimate.method='median') |>
   slice(1:11)
 
-pars <- norin.brm2 |> get_variables()
+pars <- norin_brm2 |> get_variables()
 wch <- grep('^b.Intercept|TRIAL|^b.*SMR|[sS]igma|^sd', pars)
-tidyMCMC(norin.brms1$fit,conf.int=TRUE, conf.method='HPDinterval',
+tidyMCMC(norin_brms1$fit,conf.int=TRUE, conf.method='HPDinterval',
          rhat=TRUE, ess=TRUE, pars=pars[wch], estimate.method='median')
 
-bayes_R2(norin.brm2, re.form=NA,  summary=FALSE) |>
+bayes_R2(norin_brm2, re.form=NA,  summary=FALSE) |>
     median_hdci()
-bayes_R2(norin.brm2, re.form=~(1|FISHID), summary=FALSE) |>
+bayes_R2(norin_brm2, re.form=~(1|FISHID), summary=FALSE) |>
     median_hdci()
-bayes_R2(norin.brm2, re.form=~(TRIAL|FISHID), summary=FALSE) |>
+bayes_R2(norin_brm2, re.form=~(TRIAL|FISHID), summary=FALSE) |>
     median_hdci()
 
-emmeans(norin.brm2, pairwise~TRIAL)
+emmeans(norin_brm2, pairwise~TRIAL)
 
 
-norin.em <- norin.brm2 |>
+norin_em <- norin_brm2 |>
     emmeans(~TRIAL) |>
     pairs() |>
     gather_emmeans_draws() |>
     mutate(Fit=.value)
 
-norin.em |>
+norin_em |>
   group_by(contrast) |>
   median_hdi()
 
-norin.em |>
+norin_em |>
     ggplot() +
     geom_vline(xintercept=0, linetype='dashed') +
     stat_slab(aes(x=.value, y=contrast,
@@ -1987,37 +1997,37 @@ norin.em |>
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) +
     theme_bw()
 
-norin.em |>
+norin_em |>
     group_by(contrast) |>
   summarize(P=mean(Fit>0))
 
 
-norin.grid <- with(norin, list(SMR_contr=c(min(SMR_contr),
+norin_grid <- with(norin, list(SMR_contr=c(min(SMR_contr),
                                            mean(SMR_contr),
                                            max(SMR_contr))))
 
-norin.em <- norin.brm2 |>
-    emmeans(~TRIAL|SMR_contr, at=norin.grid) |>
+norin_em <- norin_brm2 |>
+    emmeans(~TRIAL|SMR_contr, at=norin_grid) |>
     pairs() |>
     gather_emmeans_draws()
 
-norin.em |> head()
-norin.em |>
+norin_em |> head()
+norin_em |>
     group_by(contrast, SMR_contr) |>
     median_hdi()
 
-norin.em |>
+norin_em |>
     group_by(contrast, SMR_contr) |>
     summarize(P=mean(.value>0))
 
-norin.grid <- with(norin, list(SMR_contr=modelr::seq_range(SMR_contr, n=100)))
-newdata <- norin.brm2 |>
-    emmeans(~SMR_contr|TRIAL, at=norin.grid) |>
+norin_grid <- with(norin, list(SMR_contr=modelr::seq_range(SMR_contr, n=100)))
+newdata <- norin_brm2 |>
+    emmeans(~SMR_contr|TRIAL, at=norin_grid) |>
     as.data.frame()
 head(newdata)
 partial.obs <- norin |>
-    mutate(Pred = predict(norin.brm2, re.form = NA, summary=TRUE)[,'Estimate'],
-           Resid = resid(norin.brm2)[,'Estimate'],
+    mutate(Pred = predict(norin_brm2, re.form = NA, summary=TRUE)[,'Estimate'],
+           Resid = resid(norin_brm2)[,'Estimate'],
            Obs = Pred + Resid)
 ggplot(newdata, aes(y=emmean, x=SMR_contr, color=TRIAL)) +
     geom_point(data=partial.obs, aes(y=Obs)) +

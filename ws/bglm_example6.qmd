@@ -152,8 +152,8 @@ $$
 \begin{align}
 y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
 ln(\mu_i) &= \beta_0 + \sum_{j=1}^nT_{[i],j}.\beta_j\\
-\beta_0 &\sim{} \mathcal{N}(2.4, 1.5)\\
-\beta_{[1,2,3]} &\sim{} \mathcal{N}(0, 1)\\
+\beta_0 &\sim{} \mathcal{N}(2.4, 0.2)\\
+\beta_{[1,2,3]} &\sim{} \mathcal{N}(0, 2.5)\\
 \end{align}
 $$
 
@@ -163,7 +163,30 @@ each group mean to that of the first group and $T{[i],j}$ represents a
 $i$ by $j$ model matrix is a model matrix representing the season,
 density and their interaction on mussel recruitment.
 
+OR alternatively, we could write this as 
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
+ln(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
+\beta_0 &\sim{} \mathcal{N}(2.4, 0.2)\\
+\beta_{[1,2,3]} &\sim{} \mathcal{N}(0, 2.5)\\
+\end{align}
+$$
+
+where $\beta_{0}$ is the y-intercept (mean of the first group),
+$\beta_{[1,2,3]}$ are the vector of effects parameters (contrasting
+each group mean to that of the first group and $\boldsymbol{\beta}$ is
+a vector of effects parameters (including the intercept) and
+$\bf{X_i}$ is a model matrix representing the intercept and treatment
+contrasts for the effects of density and season on mussel recruitment.
+
+
 ```{r dataprep, results='markdown', eval=TRUE}
+## A recent bug has infiltrated emmeans such that SEASON seems
+## to be some sort of keyword.  So in order to prevent downstream issues
+## when declaring season as a factor, we will also alter its name...
 quinn <- quinn |>
   mutate(fSEASON = factor(SEASON,
                          levels = c("Spring", "Summer", "Autumn", "Winter")),
@@ -190,3 +213,4 @@ quinn <- quinn |>
 
 
 # References
+

@@ -75,6 +75,7 @@ Load the necessary libraries
 library(gbm)         #for gradient boosted models
 library(car)
 library(dismo)
+library(caret)
 library(pdp)
 library(ggfortify)
 library(randomForest)

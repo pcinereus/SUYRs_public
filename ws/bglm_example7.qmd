@@ -34,7 +34,7 @@ format:
     ## Execution
     execute:
       echo: true
-      cache: true
+      cache: false
     ## Rendering
     embed-resources: true
 crossref:
@@ -101,81 +101,79 @@ source('helperFunctions.R')
 
 # Scenario
 
-@Mitchell-2019 presented a data set in which male guppy fish where
-placed individually into long, narrow and shallow tanks that
-predominately only permitted the fish to swim in two dimensions. The
-activity rate (cumulative distance swam) of each guppy fish was
-remotely recorded via tracking software during 20 minute trials
-conducted each day for 14 days. The order in which individual guppy
-fish were recorded each day was randomised and the time of day of each
-trial was recorded.
+@Freitas-2016 investigated the effect of sea temperature on habitat
+selection and habitat use of acoustically tagged Atlantic cod (_Gadus
+morhua_) a the Norwegian Skagerrak coast. More specifically, they
+explored the relationship between sea temperature and how deep
+individually tagged Atlantic cod dove during the day and night. These
+data were collected between late June and early December 2013,
+although the duration of the data varies across the different
+individual cod.
 
-The researchers were interested in whether the the guppy fish become
-habituated to the experimental conditions and altered their activity
-patterns over time.
+![Atlantic cod](../resources/Atlantic_cod.jpg){#fig-cod width=70%}
 
-![guppy fish](../resources/guppy.png){#fig-guppy width=70%}
 
 The data are in the file
-**mitchell.csv** in the **data** folder.
+**freitas.csv** in the **data** folder.
 
-| ID   | TOD  | Day | Dist_moved |
-|------|------|-----|------------|
-| A39  | 0.39 | 7   | 3439.93    |
-| A3   | 0.39 | 7   | 2795.08    |
-| A13  | 0.39 | 7   | 5258.79    |
-| \... | \... |     |            |
+| FISH     |       DATE | DEPTH_MEAN_DAY | DEPTH_MEAN_NIGHT | TEMPERATURE |
+|----------+------------+----------------+------------------+-------------|
+| Cod_6755 | 2013-06-28 |    19.64416667 |      19.59565217 | 18.00541667 |
+| Cod_6755 | 2013-06-29 |    19.98275862 |      19.72678571 | 17.75595833 |
+| Cod_6755 | 2013-06-30 |    19.94709302 |        20.040625 |   17.181125 |
+| Cod_6755 | 2013-07-01 |    19.96827957 |      19.94153846 | 17.49952174 |
+| Cod_6755 | 2013-07-02 |    17.74377907 |            19.93 |   17.601375 |
+| Cod_6755 | 2013-07-03 |    14.47237037 |      19.12307692 |     17.6055 |
+| \...     |       \... |                |                  |             |
 
-: Format of the mitchell.csv data file {#tbl-mitchell .table-condensed}
+: Format of the freitas.csv data file {#tbl-freitas .table-condensed}
 
----------------- ---------------------------------------------------
-**ID**:           Individual guppy fish ID - Random variable
-**TOD**:          Time of day of observation as a proportion - Predictor variable
-**Day**:          Day post entry into tank - Predictor variable
-**Dist_moved**:   Total distance (cm) moved in 20 min trial - Response variable
----------------- ---------------------------------------------------
+--------------------  ---------------------------------------------------
+**FISH**:             Individual Atlantic code fish ID - Random variable
+**DATE**:             Date of observation - Covariate variable
+**DEPTH_MEAN_DAY**:   Mean dive depth that day - Response variable
+**DEPTH_MEAN_NIGHT**: Mean dive depth that night - Response variable
+**TEMPERATUREd**:     Sea surface temperature - Predictor variable
+--------------------  ---------------------------------------------------
  
-: Description of the variables in the mitchell data file {#tbl-mitchell1 .table-condensed}
- 
+: Description of the variables in the freitas data file {#tbl-freitas1 .table-condensed}
+
 # Read in the data
 
 ```{r readData, results='markdown', eval=TRUE}
-mitchell <- read_csv("../data/mitchell.csv", trim_ws = TRUE)
+freitas <- read_csv("../data/freitas.csv", trim_ws = TRUE)
 ```
 
 
 # Data preparation
 
+For the current worksheet, we are going to restrict ourselfs to a
+single individual fish (`Cod_9044`) so that we can concentrate on
+dependency issues without the extra distraction of dependency issues
+introduced by random effects.
+
+We will also restrict ourselves to exploring the mean diving depth
+during daylight hours as the response (i.e. we will ignore the
+`MEAN_DEPTH_NIGHT` variable).
+
+
 # Exploratory data analysis
+
 
 Model formula:
 $$
-y_i/1000 \sim{} \mathcal{Gamma}(\lambda_i)\\
-ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\begin{align}
+y_i &\sim{} \mathcal{Gamma}(\mu_i, \phi)\\
+ln(\mu_i) &=\boldsymbol{\beta} \bf{X_i} 
+\end{align}
 $$
 
-where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of
-the fixed and random effects parameters respectively and $\bf{X}$ is
-the model matrix representing the overall intercept and effects of day
-and time of day on the total distance moved during the trial. $\bf{Z}$
-represents a cell means model matrix for the random intercepts
-associated with individual guppies.
+where $\boldsymbol{\beta}$ is a vector of the fixed parameters and
+$\bf{X}$ is the model matrix representing the overall intercept and
+effects of temperature.
 
 
 # Fit the model 
-
-```{r}
-#| label: process_more
-#| results: markup
-#| eval: true
-#| echo: true
-#| cache: false
-mitchell_sub <- mitchell |>
-    ## filter(ID == "A63") |>
-    filter(ID == "C69") |>
-    droplevels()
-```
-
 
 
 # Model validation 
@@ -184,8 +182,7 @@ mitchell_sub <- mitchell |>
 # Refit model
  
 
-
-### stan plots
+## stan plots
 
 The `brms` package offers a range of MCMC diagnostics.
 Lets start with the MCMC diagnostics.
@@ -230,11 +227,11 @@ Of these, we will focus on:
 
 
 
-### pp check
+## pp check
 
 
 
-### DHARMa residuals
+## DHARMa residuals
 
 DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
 directly use the `simulateResiduals()` function to generate the simulated
@@ -246,6 +243,7 @@ We need to supply:
 - simulated (predicted) responses associated with each observation.
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
+
 
 
 **Conclusions:**
@@ -261,7 +259,7 @@ We need to supply:
 #| echo: true
 #| cache: false
 
-mitchell.brm3 |> augment() |>
+freitas_brm3 |> augment() |>
   ## group_by(ID) |>
   reframe(ACF = as.numeric(acf(.resid, plot =  FALSE)$acf)) |>
   ## group_by(ID) |>
@@ -273,7 +271,7 @@ mitchell.brm3 |> augment() |>
   ggplot(aes(y =  ACF, x =  N)) +
   geom_hline(yintercept =  0) +
   geom_segment(aes(yend =  0, xend =  N))
-mitchell.brm4 |> augment() |>
+freitas_brm4 |> augment() |>
   ## group_by(ID) |>
   reframe(ACF = as.numeric(acf(.resid, plot =  FALSE)$acf)) |>
   ## group_by(ID) |>

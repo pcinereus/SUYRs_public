@@ -177,13 +177,14 @@ the following priors:
 Model formula:
 $$
 \begin{align}
+y_i &\sim{} \mathcal{Pois}(\lambda_i)\\
+OR\\
 y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
 ln(\lambda_i) &= \beta_0 + \beta_1 ln(x_i)\\
-\beta_0 & \sim\mathcal{N}(6,1.5)\\
-\beta_1 & \sim\mathcal{N}(0,1)\\
-\theta &\sim{} \mathcal{Exp}(1)\\
+\beta_0 & \sim\mathcal{N}(6,1.1)\\
+\beta_1 & \sim\mathcal{N}(0,1.1)\\
 OR\\
-\theta &\sim{} \mathcal{\Gamma}(2,1)\\
+\theta &\sim{} \mathcal{\Gamma}(0.01, 0.01)\\
 \end{align}
 $$
 

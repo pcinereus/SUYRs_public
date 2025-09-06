@@ -215,13 +215,14 @@ the following priors:
 Model formula:
 $$
 \begin{align}
+y_i &\sim{} \mathcal{Pois}(\lambda_i)\\
+OR\\
 y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
 ln(\lambda_i) &= \beta_0 + \beta_1 ln(x_i)\\
-\beta_0 & \sim\mathcal{N}(6,1.5)\\
-\beta_1 & \sim\mathcal{N}(0,1)\\
-\theta &\sim{} \mathcal{Exp}(1)\\
+\beta_0 & \sim\mathcal{N}(6,1.1)\\
+\beta_1 & \sim\mathcal{N}(0,1.1)\\
 OR\\
-\theta &\sim{} \mathcal{\Gamma}(2,1)\\
+\theta &\sim{} \mathcal{\Gamma}(0.01, 0.01)\\
 \end{align}
 $$
 
@@ -319,14 +320,14 @@ are chosen to provide moderate regularlization (to help prevent overfitting) and
 help stabalise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
-peake.rstanarm = stan_glm(INDIV ~ log(AREA), data=peake,
+peake_rstanarm = stan_glm(INDIV ~ log(AREA), data=peake,
                           family=poisson(), 
                           iter = 5000, warmup = 1000,
                           chains = 3, thin = 5, refresh = 0)
 ```
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
-prior_summary(peake.rstanarm)
+prior_summary(peake_rstanarm)
 ```
 
 This tells us:
@@ -369,11 +370,11 @@ refittin the model in this way, we can plot the predictions to gain insights
 into the range of predictions supported by the priors alone.
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE}
-peake.rstanarm1 <- update(peake.rstanarm,  prior_PD=TRUE)
+peake_rstanarm1 <- update(peake_rstanarm,  prior_PD=TRUE)
 ```
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE}
-ggemmeans(peake.rstanarm1,  ~AREA) |> plot(show_data=TRUE)
-ggemmeans(peake.rstanarm1,  ~AREA) |> plot(jitter = FALSE, show_data = TRUE) + scale_y_log10()
+ggemmeans(peake_rstanarm1,  ~AREA) |> plot(show_data=TRUE)
+ggemmeans(peake_rstanarm1,  ~AREA) |> plot(jitter = FALSE, show_data = TRUE) + scale_y_log10()
 ```
  
 **Conclusions:**
@@ -406,7 +407,7 @@ thin air):
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE}
-peake.rstanarm2 <- stan_glm(INDIV ~ log(AREA), data=peake,
+peake_rstanarm2 <- stan_glm(INDIV ~ log(AREA), data=peake,
                           family=poisson(), 
                           prior_intercept = normal(6, 2.8, autoscale=FALSE),
                           prior = normal(0, 2.3, autoscale=FALSE),
@@ -417,7 +418,7 @@ peake.rstanarm2 <- stan_glm(INDIV ~ log(AREA), data=peake,
 ```
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE}
-ggemmeans(peake.rstanarm2,  ~AREA) |>
+ggemmeans(peake_rstanarm2,  ~AREA) |>
     plot(show_data=TRUE) +
     scale_y_log10()
 ```
@@ -425,13 +426,13 @@ ggemmeans(peake.rstanarm2,  ~AREA) |>
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE}
-peake.rstanarm3 <- update(peake.rstanarm2,  prior_PD=FALSE)  
+peake_rstanarm3 <- update(peake_rstanarm2,  prior_PD=FALSE)  
 ```
 
 ### Plotting prior and posterior
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-posterior_vs_prior(peake.rstanarm3, color_by='vs', group_by=TRUE,
+posterior_vs_prior(peake_rstanarm3, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
@@ -441,7 +442,7 @@ posterior_vs_prior(peake.rstanarm3, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggemmeans(peake.rstanarm3,  ~AREA) |> plot(show_data=TRUE)
+ggemmeans(peake_rstanarm3,  ~AREA) |> plot(show_data=TRUE)
 ```
 ::::
 
@@ -458,8 +459,8 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
-form <- bf(INDIV ~ log(AREA), family=poisson())
-peake.brm <- brm(form,
+peake_form <- bf(INDIV ~ scale(log(AREA)), family=poisson())
+peake_brm <- brm(peake_form,
                 data=peake,
                 iter = 5000, warmup = 1000,
                 chains = 3, cores = 3,
@@ -469,7 +470,7 @@ peake.brm <- brm(form,
 
 ```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=2}
 options(width=100)
-prior_summary(peake.brm)
+prior_summary(peake_brm)
 options(width=80)
 ```
 
@@ -514,28 +515,36 @@ there are flat priors (since the posteriors will necessarily extend to negative
 and positive infinity).  Therefore, in order to use this useful routine, we need
 to make sure that we have defined a proper prior for all parameters.
 
-We will adopt a similar approach to that of `rstanarm` - that is
-`2.5 * sd(log(peake$INDIV))/sd(log(peake$AREA))` (approx. 2.3).
+We will adopt a similar approach to that of `rstanarm` - that is if we
+DO NOT scale the predictor, then we would use `2.5 *
+sd(log(peake$INDIV))/sd(log(peake$AREA))` (approx. 2.3). If we do
+scale the predictor (good practice for Bayesian models), then we would
+use `2.5 * sd(log(peake$INDIV))/1` (approx. 2.8)
 
 ```{r fitModel2d, results='markdown', eval=TRUE, mhidden=TRUE}
-form <- bf(INDIV ~ log(AREA), family=poisson())
-peake.brm1 = brm(form,
+peake_form <- bf(INDIV ~ scale(log(AREA)), family=poisson())
+peake_brm1 <- brm(peake_form,
                  data=peake,
-                prior=c(
-                  prior(normal(0, 2.3), class='b')), 
-                sample_prior = 'only', 
-                iter = 5000, warmup = 1000,
-                chains = 3, cores = 3,
-                thin = 5, refresh = 0,
-                backend = "cmdstanr")
+                 prior=c(
+                   prior(normal(0, 2.8), class='b')), 
+                 sample_prior = 'only', 
+                 iter = 5000, warmup = 1000,
+                 chains = 3, cores = 3,
+                 thin = 5, refresh = 0,
+                 backend = "cmdstanr")
 ```
 
 
 ```{r fitModel2e, results='markdown', eval=TRUE, mhidden=TRUE}
-ggemmeans(peake.brm1,  ~AREA) |> plot(show_data=TRUE)
-ggemmeans(peake.brm1,  ~AREA) |> plot(show_data=TRUE) + scale_y_log10()
-conditional_effects(peake.brm1) |>  plot(points=TRUE) |> _[[1]] + scale_y_log10()
-plot(conditional_effects(peake.brm1), points=TRUE, plot = FALSE)[[1]] + scale_y_log10()
+peake_brm1 |>
+  conditional_effects() |>
+  plot(points=TRUE) |>
+  _[[1]] + scale_y_log10()
+#OR
+plot(conditional_effects(peake_brm1), points=TRUE, plot = FALSE)[[1]] + scale_y_log10()
+
+ggemmeans(peake_brm1,  ~AREA) |> plot(show_data=TRUE)
+ggemmeans(peake_brm1,  ~AREA) |> plot(show_data=TRUE) + scale_y_log10()
 ```
 
 **Conclusions:**
@@ -555,18 +564,18 @@ to bias the outcomes, we could try the following priors (mainly plucket out of
 thin air):
 
 - $\beta_0$: normal centred at 6 with a standard deviation of 6
-  - mean of 6: because (`mean(log(peake$INDIV))`)
-  - sd of 1.5: because (`sd(log(peake$INDIV))`)
+  - mean of 6: because (`median(log(peake$INDIV))`)
+  - sd of 1.1: because (`mad(log(peake$INDIV))`)
 - $\beta_1$: normal centred at 0 with a standard deviation of 1
-  - sd of 1:  because (`sd(log(peake$INDIV))/sd(log(peake$AREA))`)
+  - sd of 1.1:  because (`mad(log(peake$INDIV))/1`)
 
 I will also overlay the raw data for comparison.
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE}
-form <- bf(INDIV ~ log(AREA), family=poisson())
-priors <- prior(normal(6, 1.5), class = "Intercept") +
-  prior(normal(0, 1), class = "b")
-peake.brm2 <- brm(form,
+peake_form <- bf(INDIV ~ scale(log(AREA)), family=poisson())
+priors <- prior(normal(6, 1.1), class = "Intercept") +
+  prior(normal(0, 1.1), class = "b")
+peake_brm2 <- brm(peake_form,
                  data=peake,
                  prior=priors, 
                  sample_prior = 'only', 
@@ -577,13 +586,17 @@ peake.brm2 <- brm(form,
 ```
 
 ```{r fitModel2i, results='markdown', eval=TRUE, mhidden=TRUE}
-ggemmeans(peake.brm2,  ~AREA) |>
+peake_brm2 |>
+  conditional_effects() |>
+  plot(points=TRUE) |>
+  _[[1]] + scale_y_log10()
+ggemmeans(peake_brm2,  ~AREA) |>
     plot(show_data=TRUE) +
     scale_y_log10()
 ```
 
 ```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE}
-peake.brm3 <- update(peake.brm2,  sample_prior=TRUE, refresh=0) 
+peake_brm3 <- update(peake_brm2,  sample_prior=TRUE, refresh=0) 
 ```
 	
 ```{r fitModel2j2, results='markdown', eval=TRUE, echo = FALSE, mhidden=TRUE}
@@ -594,18 +607,18 @@ peake.brm3 <- update(peake.brm2,  sample_prior=TRUE, refresh=0)
 
 
 ```{r fitModel2k, results='markdown', eval=TRUE, mhidden=TRUE}
-peake.brm3 |> get_variables()
-peake.brm3 |>
-  hypothesis("logAREA=0") |>
+peake_brm3 |> get_variables()
+peake_brm3 |>
+  hypothesis("scalelogAREA=0") |>
   plot()
-peake.brm3 |> SUYR_prior_and_posterior()
+peake_brm3 |> SUYR_prior_and_posterior()
 ```
-
+ 
 ### Exploring the stan code
 
 ```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE}
-standata(peake.brm3)
-stancode(peake.brm3)
+standata(peake_brm3)
+stancode(peake_brm3)
 ```
 
 ::::
@@ -655,7 +668,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(peake.rstanarm3, plotfun='mcmc_trace')
+plot(peake_rstanarm3, plotfun='mcmc_trace')
 ```
   
    The chains appear well mixed and very similar
@@ -664,7 +677,7 @@ plot(peake.rstanarm3, plotfun='mcmc_trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(peake.rstanarm3, 'acf_bar')
+plot(peake_rstanarm3, 'acf_bar')
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -675,7 +688,7 @@ plot(peake.rstanarm3, 'acf_bar')
   parameter estimated.
 
 ```{r modelValidation1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(peake.rstanarm3, 'rhat_hist')
+plot(peake_rstanarm3, 'rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -690,15 +703,15 @@ plot(peake.rstanarm3, 'rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(peake.rstanarm3, 'neff_hist')
+plot(peake_rstanarm3, 'neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r Validation1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(peake.rstanarm3, 'combo')
-plot(peake.rstanarm3, 'violin')
+plot(peake_rstanarm3, 'combo')
+plot(peake_rstanarm3, 'violin')
 ```
 </details>
 
@@ -718,7 +731,7 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_trace(peake.rstanarm3)
+stan_trace(peake_rstanarm3)
 ```
 
    The chains appear well mixed and very similar
@@ -727,7 +740,7 @@ stan_trace(peake.rstanarm3)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ac(peake.rstanarm3) 
+stan_ac(peake_rstanarm3) 
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -738,7 +751,7 @@ stan_ac(peake.rstanarm3)
   parameter estimated.
 
 ```{r modelValidation1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_rhat(peake.rstanarm3) 
+stan_rhat(peake_rstanarm3) 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -753,13 +766,13 @@ stan_rhat(peake.rstanarm3)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ess(peake.rstanarm3)
+stan_ess(peake_rstanarm3)
 ```
 
   Ratios all very high.
 
 ```{r modelValidation1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_dens(peake.rstanarm3, separate_chains = TRUE)
+stan_dens(peake_rstanarm3, separate_chains = TRUE)
 ```
 
 ### ggmcmc
@@ -777,8 +790,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-peake.ggs <- ggs(peake.rstanarm3)
-ggs_traceplot(peake.ggs)
+peake_ggs <- ggs(peake_rstanarm3)
+ggs_traceplot(peake_ggs)
 ```
 
    The chains appear well mixed and very similar
@@ -787,7 +800,7 @@ ggs_traceplot(peake.ggs)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_autocorrelation(peake.ggs)
+ggs_autocorrelation(peake_ggs)
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -798,7 +811,7 @@ ggs_autocorrelation(peake.ggs)
   parameter estimated.
 
 ```{r modelValidation1n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_Rhat(peake.ggs)
+ggs_Rhat(peake_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -813,18 +826,18 @@ ggs_Rhat(peake.ggs)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_effective(peake.ggs)
+ggs_effective(peake_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation1p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_crosscorrelation(peake.ggs)
+ggs_crosscorrelation(peake_ggs)
 ```
 
 ```{r modelValidation1q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_grb(peake.ggs)
+ggs_grb(peake_ggs)
 ```
 </details>
 
@@ -855,7 +868,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mcmc_plot(peake.brm3, type='trace')
+mcmc_plot(peake_brm3, type='trace')
 ```
   
    The chains appear well mixed and very similar
@@ -864,7 +877,7 @@ mcmc_plot(peake.brm3, type='trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mcmc_plot(peake.brm3, type='acf_bar')
+mcmc_plot(peake_brm3, type='acf_bar')
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -875,7 +888,7 @@ mcmc_plot(peake.brm3, type='acf_bar')
   parameter estimated.
 
 ```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mcmc_plot(peake.brm3, type='rhat_hist')
+mcmc_plot(peake_brm3, type='rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -890,15 +903,15 @@ mcmc_plot(peake.brm3, type='rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mcmc_plot(peake.brm3, type='neff_hist')
+mcmc_plot(peake_brm3, type='neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-mcmc_plot(peake.brm3, type='combo')
-mcmc_plot(peake.brm3, type='violin')
+mcmc_plot(peake_brm3, type='combo')
+mcmc_plot(peake_brm3, type='violin')
 ```
 </details>
 
@@ -917,7 +930,7 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_trace(peake.brm3$fit)
+stan_trace(peake_brm3$fit)
 ```
 
    The chains appear well mixed and very similar
@@ -926,7 +939,7 @@ stan_trace(peake.brm3$fit)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ac(peake.brm3$fit) 
+stan_ac(peake_brm3$fit) 
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -937,7 +950,7 @@ stan_ac(peake.brm3$fit)
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_rhat(peake.brm3$fit) 
+stan_rhat(peake_brm3$fit) 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -952,13 +965,13 @@ stan_rhat(peake.brm3$fit)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ess(peake.brm3$fit)
+stan_ess(peake_brm3$fit)
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_dens(peake.brm3$fit, separate_chains = TRUE)
+stan_dens(peake_brm3$fit, separate_chains = TRUE)
 ```
 
 ### ggmcmc
@@ -976,8 +989,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-peake.ggs <- ggs(peake.brm3)
-ggs_traceplot(peake.ggs)
+peake_ggs <- ggs(peake_brm3)
+ggs_traceplot(peake_ggs)
 ```
 
    The chains appear well mixed and very similar
@@ -986,7 +999,7 @@ ggs_traceplot(peake.ggs)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-ggs_autocorrelation(peake.ggs)
+ggs_autocorrelation(peake_ggs)
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -997,7 +1010,7 @@ ggs_autocorrelation(peake.ggs)
   parameter estimated.
 
 ```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_Rhat(peake.ggs)
+ggs_Rhat(peake_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -1012,18 +1025,18 @@ ggs_Rhat(peake.ggs)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_effective(peake.ggs)
+ggs_effective(peake_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_crosscorrelation(peake.ggs)
+ggs_crosscorrelation(peake_ggs)
 ```
 
 ```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_grb(peake.ggs)
+ggs_grb(peake_ggs)
 ```
 </details>
 
@@ -1057,7 +1070,7 @@ overlayed ontop of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.rstanarm3,  plotfun='dens_overlay')
+pp_check(peake_rstanarm3,  plotfun='dens_overlay')
 ```
 
 The model draws appear deviate from the observed data.
@@ -1067,7 +1080,7 @@ The model draws appear deviate from the observed data.
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation3c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.rstanarm3, plotfun='error_scatter_avg')
+pp_check(peake_rstanarm3, plotfun='error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -1078,7 +1091,7 @@ poorest at higher mussel clump areas.
   should be interpreted as such.  Again, this is not interpretable for binary data.
 
 ```{r modelValidation3d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.rstanarm3, x=peake$AREA, plotfun='error_scatter_avg_vs_x')
+pp_check(peake_rstanarm3, x=peake$AREA, plotfun='error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed ontop of posterior predictions
@@ -1087,7 +1100,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.rstanarm3, x=peake$AREA, plotfun='intervals')
+pp_check(peake_rstanarm3, x=peake$AREA, plotfun='intervals')
 ```
 
 The modelled preditions seem to underestimate the uncertainty with increasing
@@ -1096,7 +1109,7 @@ mussel clump area.
 - ribbon: this is just an alternative way of expressing the above plot.
 
 ```{r modelValidation3f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.rstanarm3, x=peake$AREA, plotfun='ribbon')
+pp_check(peake_rstanarm3, x=peake$AREA, plotfun='ribbon')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -1104,7 +1117,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation3g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(peake.rstanarm3)
+#launch_shinystan(peake_rstanarm3)
 ```
 
 ### DHARMa residuals
@@ -1121,13 +1134,13 @@ We need to supply:
 - fitted (predicted) responses (averaged) associated with each observation
 
 ```{r modelValidation4a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- posterior_predict(peake.rstanarm3,  ndraws=250,  summary=FALSE)
-peake.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(peake_rstanarm3,  ndraws=250,  summary=FALSE)
+peake_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = peake$INDIV,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(peake.resids)
-peake.resids |> testDispersion()
+plot(peake_resids)
+peake_resids |> testDispersion()
 ```
 
 **Conclusions:**
@@ -1157,7 +1170,7 @@ overlayed ontop of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.brm3,  type='dens_overlay', ndraws = 100)
+pp_check(peake_brm3,  type='dens_overlay', ndraws = 100)
 ```
 
 The model draws appear deviate from the observed data.
@@ -1167,7 +1180,7 @@ The model draws appear deviate from the observed data.
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.brm3, type='error_scatter_avg')
+pp_check(peake_brm3, type='error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -1178,7 +1191,7 @@ poorest at higher mussel clump areas.
   should be interpreted as such.  Again, this is not interpretable for binary data.
 
 ```{r modelValidation5d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.brm3, x='AREA', type='error_scatter_avg_vs_x')
+pp_check(peake_brm3, x='AREA', type='error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed ontop of posterior predictions
@@ -1187,7 +1200,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.brm3, x='AREA', type='intervals')
+pp_check(peake_brm3, x='AREA', type='intervals')
 ```
 
 The modelled preditions seem to underestimate the uncertainty with increasing
@@ -1196,7 +1209,7 @@ mussel clump area.
 - ribbon: this is just an alternative way of expressing the above plot.
 
 ```{r modelValidation5f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(peake.brm3, x='AREA', type='ribbon')
+pp_check(peake_brm3, x='AREA', type='ribbon')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -1204,7 +1217,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(peake.brm3)
+#launch_shinystan(peake_brm3)
 ```
 
 ### DHARMa residuals
@@ -1220,21 +1233,12 @@ We need to supply:
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
 
-```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- posterior_predict(peake.brm3,  ndraws=250,  summary=FALSE)
-peake.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = peake$INDIV,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = TRUE)
-plot(peake.resids)
-peake.resids |> testDispersion()
-```
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-peake.resids <- make_brms_dharma_res(peake.brm3, integerResponse = FALSE)
-wrap_elements(~testUniformity(peake.resids)) +
-               wrap_elements(~plotResiduals(peake.resids, form = factor(rep(1, nrow(peake))))) +
-               wrap_elements(~plotResiduals(peake.resids, quantreg = FALSE)) +
-               wrap_elements(~testDispersion(peake.resids))
+peake_resids <- make_brms_dharma_res(peake_brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(peake_resids)) +
+               wrap_elements(~plotResiduals(peake_resids, form = factor(rep(1, nrow(peake))))) +
+               wrap_elements(~plotResiduals(peake_resids, quantreg = FALSE)) +
+               wrap_elements(~testDispersion(peake_resids))
 
 ```
 
@@ -1244,6 +1248,17 @@ wrap_elements(~testUniformity(peake.resids)) +
 and outliers 
 - perhaps we should explore a negative binomial model
 
+And the old (and now incorrect) way....
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- posterior_predict(peake_brm3,  ndraws=250,  summary=FALSE)
+peake_resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = peake$INDIV,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = TRUE)
+plot(peake_resids)
+peake_resids |> testDispersion()
+```
 ::::
 :::
 <!-- END_PRIVATE-->
@@ -1258,7 +1273,7 @@ and outliers
 
 ### Fit the model
 ```{r fitNBModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
-peake.rstanarm4 <- stan_glm(INDIV ~ log(AREA), data=peake,
+peake_rstanarm4 <- stan_glm(INDIV ~ log(AREA), data=peake,
                           family=neg_binomial_2(), 
                           prior_intercept = normal(6, 2.8, autoscale=FALSE),
                           prior = normal(0, 2.3, autoscale=FALSE),
@@ -1271,7 +1286,7 @@ peake.rstanarm4 <- stan_glm(INDIV ~ log(AREA), data=peake,
 ### Plotting prior and posterior
 
 ```{r fitNBModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-posterior_vs_prior(peake.rstanarm4, color_by='vs', group_by=TRUE,
+posterior_vs_prior(peake_rstanarm4, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
@@ -1281,30 +1296,30 @@ posterior_vs_prior(peake.rstanarm4, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r fitNBModel1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggemmeans(peake.rstanarm4,  ~AREA) |> plot(show_data=TRUE)
-ggpredict(peake.rstanarm4,  ~AREA) |> plot(show_data=TRUE)
+## ggemmeans(peake_rstanarm4,  ~AREA) |> plot(show_data=TRUE)
+ggpredict(peake_rstanarm4,  ~AREA) |> plot(show_data=TRUE)
 ```
 
 ### MCMC chain and posterior checks
 ```{r fitNBModel1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(peake.rstanarm4, plotfun='mcmc_trace')
-plot(peake.rstanarm4, 'acf_bar')
-plot(peake.rstanarm4, 'rhat_hist')
-plot(peake.rstanarm4, 'neff_hist')
-pp_check(peake.rstanarm4, x=peake$AREA, plotfun='dens_overlay')
-pp_check(peake.rstanarm4, x=peake$AREA, plotfun='error_scatter_avg_vs_x')
-pp_check(peake.rstanarm4, x=peake$AREA, plotfun='intervals')
+plot(peake_rstanarm4, plotfun='mcmc_trace')
+plot(peake_rstanarm4, 'acf_bar')
+plot(peake_rstanarm4, 'rhat_hist')
+plot(peake_rstanarm4, 'neff_hist')
+pp_check(peake_rstanarm4, x=peake$AREA, plotfun='dens_overlay')
+pp_check(peake_rstanarm4, x=peake$AREA, plotfun='error_scatter_avg_vs_x')
+pp_check(peake_rstanarm4, x=peake$AREA, plotfun='intervals')
 ```
 
 ### DHARMa residuals
 
 ```{r fitNBModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- posterior_predict(peake.rstanarm4,  ndraws=250,  summary=FALSE)
-peake.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(peake_rstanarm4,  ndraws=250,  summary=FALSE)
+peake_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = peake$INDIV,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(peake.resids)
+plot(peake_resids)
 ```
 
 ### LOOIC
@@ -1341,7 +1356,7 @@ More information about the above can be gleaned from [https://mc-stan.org/loo/re
 
 Start with the Poisson model
 ```{r fitNBModel1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-(peake.rstanarm3.loo <- loo(peake.rstanarm3))
+(peake_rstanarm3.loo <- loo(peake_rstanarm3))
 ```
 
 **Conclusions:**
@@ -1351,7 +1366,7 @@ Start with the Poisson model
 
 Now for the Negative Binomial model
 ```{r fitNBModel1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-(peake.rstanarm4.loo <- loo(peake.rstanarm4))
+(peake_rstanarm4.loo <- loo(peake_rstanarm4))
 ```
 
 **Conclusions:**
@@ -1375,7 +1390,7 @@ genuine candidate.  Nevertheless, we will compare the Poisson to the Negative
 Binomial for illustrative purposes.
 
 ```{r fitNBModel1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loo_compare(peake.rstanarm3.loo, peake.rstanarm4.loo)
+loo_compare(peake_rstanarm3.loo, peake_rstanarm4.loo)
 ```
 
 **Conclusions:**
@@ -1389,14 +1404,20 @@ loo_compare(peake.rstanarm3.loo, peake.rstanarm4.loo)
 :::: {.panel-tabset}
 
 ### Fit the model
+
+```{r fitNBModel2a2, results='markdown', eval=TRUE, mhidden=TRUE}
+standist::visualize("gamma(0.01, 0.01)", "gamma(2, 1)", "inv_gamma(0.4, 0.3)")
+```
+
 ```{r fitNBModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
-form <- bf(INDIV ~ log(AREA), family=negbinomial())
+peake_form <- bf(INDIV ~ scale(log(AREA)), family=negbinomial())
+get_prior(peake_form, data = peake)
 priors <-
-  prior(normal(6, 1.5),  class='Intercept') +
-  prior(normal(0, 1), class='b') +
-  ## prior(gamma(0.01, 0.01), class='shape')
-  prior(gamma(2, 1), class='shape')
-peake.brm4 <- brm(form,
+  prior(normal(6, 1.1),  class='Intercept') +
+  prior(normal(0, 1.1), class='b') +
+  prior(gamma(0.01, 0.01), class='shape')
+  ## prior(gamma(2, 1), class='shape')
+peake_brm4 <- brm(peake_form,
                  data=peake,
                  prior = priors,
                  sample_prior=TRUE, 
@@ -1410,7 +1431,7 @@ peake.brm4 <- brm(form,
 ### Plotting prior and posterior
 
 ```{r fitNBModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-peake.brm4 |> SUYR_prior_and_posterior()
+peake_brm4 |> SUYR_prior_and_posterior()
 ```
 
 **Conclusions:**
@@ -1419,39 +1440,49 @@ peake.brm4 |> SUYR_prior_and_posterior()
   that the posterior is not biased towards the prior.
   
 ```{r fitNBModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggemmeans(peake.brm4,  ~AREA) |> plot(show_data=TRUE)
-ggpredict(peake.brm4,  ~AREA) |> plot(show_data=TRUE)
+peake_brm4 |>
+  conditional_effects() |>
+  plot(points=TRUE) |>
+  _[[1]] + scale_y_log10()
+peake_brm4 |>
+  conditional_effects() |>
+  plot(points=TRUE) |>
+  _[[1]] + scale_y_log10() + scale_x_log10()
+## ggemmeans(peake_brm4,  ~AREA) |> plot(show_data=TRUE)
+ggpredict(peake_brm4,  ~AREA) |> plot(show_data=TRUE)
 ```
 
 ### MCMC chain and posterior checks
 ```{r fitNBModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-peake.brm4$fit |> stan_trace()
-peake.brm4$fit |> stan_ac()
-peake.brm4$fit |> stan_rhat()
-peake.brm4$fit |> stan_ess()
-pp_check(peake.brm4, x='AREA',type='dens_overlay', ndraws = 100)
-pp_check(peake.brm4, x='AREA', type='intervals')
+peake_brm4$fit |> stan_trace()
+peake_brm4$fit |> stan_ac()
+peake_brm4$fit |> stan_rhat()
+peake_brm4$fit |> stan_ess()
+pp_check(peake_brm4, x='AREA',type='dens_overlay', ndraws = 100)
+pp_check(peake_brm4, x='AREA', type='intervals')
 ```
 
 ### DHARMa residuals
 
+
+```{r fitNBModel2e2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
+peake_resids <- make_brms_dharma_res(peake_brm4, integerResponse = FALSE)
+wrap_elements(~testUniformity(peake_resids)) +
+               wrap_elements(~plotResiduals(peake_resids, form = factor(rep(1, nrow(peake))))) +
+               wrap_elements(~plotResiduals(peake_resids, quantreg = FALSE)) +
+               wrap_elements(~testDispersion(peake_resids))
+
+```
+
 ```{r fitNBModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- posterior_predict(peake.brm4,  ndraws=250,  summary=FALSE)
-peake.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(peake_brm4,  ndraws=250,  summary=FALSE)
+peake_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = peake$INDIV,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(peake.resids)
+plot(peake_resids)
 ```
 
-```{r fitNBModel2e2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-peake.resids <- make_brms_dharma_res(peake.brm4, integerResponse = FALSE)
-wrap_elements(~testUniformity(peake.resids)) +
-               wrap_elements(~plotResiduals(peake.resids, form = factor(rep(1, nrow(peake))))) +
-               wrap_elements(~plotResiduals(peake.resids, quantreg = FALSE)) +
-               wrap_elements(~testDispersion(peake.resids))
-
-```
 ### LOOIC
 
 Different models can be compared via information criterion.
@@ -1486,7 +1517,7 @@ More information about the above can be gleaned from [https://mc-stan.org/loo/re
 
 Start with the Poisson model
 ```{r fitNBModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-(peake.brm3.loo <- loo(peake.brm3))
+(peake_brm3.loo <- loo(peake_brm3))
 ```
 
 **Conclusions:**
@@ -1496,7 +1527,7 @@ Start with the Poisson model
 
 Now for the Negative Binomial model
 ```{r fitNBModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-(peake.brm4.loo <- loo(peake.brm4))
+(peake_brm4.loo <- loo(peake_brm4))
 ```
 
 **Conclusions:**
@@ -1520,7 +1551,7 @@ genuine candidate.  Nevertheless, we will compare the Poisson to the Negative
 Binomial for illustrative purposes.
 
 ```{r fitNBModel2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loo_compare(peake.brm3.loo, peake.brm4.loo)
+loo_compare(peake_brm3.loo, peake_brm4.loo)
 ```
 
 **Conclusions:**
@@ -1543,7 +1574,7 @@ loo_compare(peake.brm3.loo, peake.brm4.loo)
 ### ggpredict
 
 ```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> ggpredict() |> plot(show_data=TRUE)
+peake_rstanarm4 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 
@@ -1551,13 +1582,13 @@ peake.rstanarm4 |> ggpredict() |> plot(show_data=TRUE)
 
 ```{r partialPlot1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 ## Note, does not seem to backtransform...
-peake.rstanarm4 |> ggemmeans(~AREA, type = "fixed", back.transform = TRUE) |> plot()
+peake_rstanarm4 |> ggemmeans(~AREA, type = "fixed", back.transform = TRUE) |> plot()
 ```
 
 ### epred_draws
 
 ```{r partialPlot1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> epred_draws(newdata=peake) |>
+peake_rstanarm4 |> epred_draws(newdata=peake) |>
   median_hdci() |>
   ggplot(aes(x=AREA, y=.epred)) +
   geom_ribbon(aes(ymin=.lower, ymax=.upper), fill='blue', alpha=0.3) + 
@@ -1571,29 +1602,29 @@ peake.rstanarm4 |> epred_draws(newdata=peake) |>
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> conditional_effects() |> plot(points = TRUE) 
-peake.brm4 |> conditional_effects(spaghetti=TRUE,ndraws=200) |> plot(points = TRUE) + theme_classic()
-ce <- peake.brm4 |> conditional_effects(spaghetti=TRUE,ndraws=200)
+peake_brm4 |> conditional_effects() |> plot(points = TRUE) 
+peake_brm4 |> conditional_effects(spaghetti=TRUE,ndraws=200) |> plot(points = TRUE) + theme_classic()
+ce <- peake_brm4 |> conditional_effects(spaghetti=TRUE,ndraws=200)
 plot(ce, points = TRUE, plot = FALSE)[[1]] + theme_classic()
 ```
 
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> ggpredict() |> plot(show_data=TRUE)
+peake_brm4 |> ggpredict() |> plot(show_data=TRUE)
 ```
 
 
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> ggemmeans(~AREA) |> plot(show_data=TRUE)
+peake_brm4 |> ggemmeans(~AREA) |> plot(show_data=TRUE)
 ```
 
 ### epred_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> epred_draws(newdata=peake) |>
+peake_brm4 |> epred_draws(newdata=peake) |>
   median_hdci() |>
   ggplot(aes(x=AREA, y=.epred)) +
   geom_ribbon(aes(ymin=.lower, ymax=.upper), fill='blue', alpha=0.3) + 
@@ -1624,33 +1655,33 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-summary(peake.rstanarm4)
+summary(peake_rstanarm4)
 ```
 
 ```{r summariseModel1a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-peake.sum <- summary(peake.rstanarm4)
+peake_sum <- summary(peake_rstanarm4)
 ```
 
 **Conclusions:**
 
 - in the Model Info, we are informed that the total MCMC posterior sample size
-  is `r nrow(as.matrix(peake.rstanarm4))` and that there were 19 raw observations.
+  is `r nrow(as.matrix(peake_rstanarm4))` and that there were 19 raw observations.
 - the estimated intercept (expected number of individuals for a mussel clump of
   log-transformed area = 0) is
-  `r round(peake.sum[1,1],2)`.  This is the mean of the posterior distribution
+  `r round(peake_sum[1,1],2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(peake.sum[1, 1]),2)`.  When the mussel clump is 0, we
-  expect to find `r round(exp(peake.sum[1, 1]),2)` individuals in the mussel
+  becomes `r round(exp(peake_sum[1, 1]),2)`.  When the mussel clump is 0, we
+  expect to find `r round(exp(peake_sum[1, 1]),2)` individuals in the mussel
   clump (which obviously does not exist if it has a log-transformed area of 0!).  
 - the estimated slope (rate at which the number of individuals changes per 1 unit change in
-  log-transformed area), is `r round(peake.sum[2,1],2)` (mean) or 
-  `r round(peake.sum[2,4],2)` (median) with a standard deviation of `r round(peake.sum[2,2],2)`.
+  log-transformed area), is `r round(peake_sum[2,1],2)` (mean) or 
+  `r round(peake_sum[2,4],2)` (median) with a standard deviation of `r round(peake_sum[2,2],2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(peake.sum[2,1],2)` and `r round(peake.sum[2,5],2)` - e.g. there is a
+  `r round(peake_sum[2,1],2)` and `r round(peake_sum[2,5],2)` - e.g. there is a
   significant positive trend.  When back-transformed onto the reponse scale, we see
   that for a one unit increase in log-transformed mussel clump area, the number
-  of individuals increases by a factor of `r round(exp(peake.sum[2,1]),2)`.
-  This represents a `r round(100*(exp(peake.sum[2, 1])-1), 0)`% increase per 1
+  of individuals increases by a factor of `r round(exp(peake_sum[2,1]),2)`.
+  This represents a `r round(100*(exp(peake_sum[2, 1])-1), 0)`% increase per 1
   unit change in log-transformed mussel clump area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1658,7 +1689,7 @@ peake.sum <- summary(peake.rstanarm4)
 ### summarise_draws (posterior)
 
 ```{r summariseModel1dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4$stanfit |>
+peake_rstanarm4$stanfit |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
@@ -1667,7 +1698,7 @@ peake.rstanarm4$stanfit |>
 We can also alter the CI level.
 
 ```{r summariseModel1d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4$stanfit |>
+peake_rstanarm4$stanfit |>
     summarise_draws(median,
                     ~HDInterval::hdi(.x, credMass = 0.9),
                     rhat, length, ess_bulk, ess_tail)
@@ -1676,7 +1707,7 @@ peake.rstanarm4$stanfit |>
 Arguably, it would be better to back-transform to the ratio scale
 
 ```{r summariseModel1d3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4$stanfit |>
+peake_rstanarm4$stanfit |>
     ## tidy_draws() |>
     ## exp() |> 
     summarise_draws(
@@ -1688,30 +1719,30 @@ peake.rstanarm4$stanfit |>
 ### tidyMCMC
 
 ```{r summariseModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tidyMCMC(peake.rstanarm4$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+tidyMCMC(peake_rstanarm4$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 ```{r summariseModel1b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-peake.tidy <- tidyMCMC(peake.rstanarm4$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+peake_tidy <- tidyMCMC(peake_rstanarm4$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
 
 - the estimated intercept (expected number of individuals for a mussel clump of
   log-transformed area = 0) is
-  `r round(as.numeric(peake.tidy[1,2]),2)`.  This is the median of the posterior distribution
+  `r round(as.numeric(peake_tidy[1,2]),2)`.  This is the median of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(peake.tidy[1, 2])),2)`.  When the mussel clump is 0, we
-  expect to find `r round(exp(as.numeric(peake.tidy[1, 2])),2)` individuals in the mussel
+  becomes `r round(exp(as.numeric(peake_tidy[1, 2])),2)`.  When the mussel clump is 0, we
+  expect to find `r round(exp(as.numeric(peake_tidy[1, 2])),2)` individuals in the mussel
   clump (which obviously does not exist if it has a log-transformed area of 0!).  
 - the estimated slope (rate at which the number of individuals changes per 1 unit change in
-  log-transformed area), is `r round(as.numeric(peake.tidy[2,2]),2)` (mean) with
-  a standard error of `r round(as.numeric(peake.tidy[2,3]),2)`.
+  log-transformed area), is `r round(as.numeric(peake_tidy[2,2]),2)` (mean) with
+  a standard error of `r round(as.numeric(peake_tidy[2,3]),2)`.
   The 95% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(as.numeric(peake.tidy[2,4]),2)` and `r round(as.numeric(peake.tidy[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(peake_tidy[2,4]),2)` and `r round(as.numeric(peake_tidy[2,5]),2)` - e.g. there is a
   significant positive trend.  When back-transformed onto the reponse scale, we see
   that for a one unit increase in log-transformed mussel clump area, the number
-  of individuals increases by a factor of `r round(exp(as.numeric(peake.tidy[2,2])),2)`.
-  This represents a `r round(100*(exp(as.numeric(peake.tidy[2, 2]))-1), 0)`% increase per 1
+  of individuals increases by a factor of `r round(exp(as.numeric(peake_tidy[2,2])),2)`.
+  This represents a `r round(100*(exp(as.numeric(peake_tidy[2, 2]))-1), 0)`% increase per 1
   unit change in log-transformed mussel clump area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1719,10 +1750,10 @@ peake.tidy <- tidyMCMC(peake.rstanarm4$stanfit, estimate.method='median',  conf.
 ### as_draws_df (posterior)
 
 ```{r summariseModel1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4$stanfit |> as_draws_df()
+peake_rstanarm4$stanfit |> as_draws_df()
 
 ## summarised
-peake.rstanarm4$stanfit |>
+peake_rstanarm4$stanfit |>
     as_draws_df() |>
     exp() |>
     summarise_draws(median,
@@ -1730,7 +1761,7 @@ peake.rstanarm4$stanfit |>
                     rhat,
                     ess_bulk, ess_tail)
 ## summarised on fractional scale
-peake.rstanarm4$stanfit |>
+peake_rstanarm4$stanfit |>
     as_draws_df() |>
     dplyr::select(matches('Intercept|AREA')) |> 
     summarise_draws(median,
@@ -1739,12 +1770,12 @@ peake.rstanarm4$stanfit |>
                     length,
                     ess_bulk, ess_tail)
 ## OR
-names <- peake.rstanarm4 |>
+names <- peake_rstanarm4 |>
     formula() |>
     model.matrix(peake) |>
     colnames()
 
-peake.rstanarm4$stanfit |>
+peake_rstanarm4$stanfit |>
     as_draws_df() |>
     dplyr::select(any_of(names)) |> 
     mutate(across(everything(), exp)) |> 
@@ -1760,24 +1791,24 @@ peake.rstanarm4$stanfit |>
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> get_variables()
-peake.draw <- peake.rstanarm4 |> gather_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE)
-peake.draw
+peake_rstanarm4 |> get_variables()
+peake_draw <- peake_rstanarm4 |> gather_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE)
+peake_draw
 ```
 
 We can then summarise this
 
 ```{r summariseModel1c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.draw |> median_hdci()
+peake_draw |> median_hdci()
 ```
 
 ```{r summariseModel1c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-peake.gather <- peake.rstanarm4 |> gather_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE) |>
+peake_gather <- peake_rstanarm4 |> gather_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE) |>
   median_hdci()
 ```
 
 ```{r summariseModel1c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-peake.rstanarm4 |> 
+peake_rstanarm4 |> 
   gather_draws(`.Intercept.*|.*AREA.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
@@ -1786,7 +1817,7 @@ peake.rstanarm4 |>
  
 We could alternatively express the parameters on the response scale.
 ```{r summariseModel1c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-peake.rstanarm4 |> 
+peake_rstanarm4 |> 
   gather_draws(`.Intercept.*|.*AREA.*`, regex=TRUE) |>
   group_by(.variable) |>
   mutate(.value=exp(.value)) |>
@@ -1797,20 +1828,20 @@ peake.rstanarm4 |>
 
 - the estimated intercept (expected number of individuals for a mussel clump of
   log-transformed area = 0) is
-  `r round(as.numeric(peake.gather[1,2]),2)`.  This is the median of the posterior distribution
+  `r round(as.numeric(peake_gather[1,2]),2)`.  This is the median of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(peake.gather[1, 2])),2)`.  When the mussel clump is 0, we
-  expect to find `r round(exp(as.numeric(peake.gather[1, 2])),2)` individuals in the mussel
+  becomes `r round(exp(as.numeric(peake_gather[1, 2])),2)`.  When the mussel clump is 0, we
+  expect to find `r round(exp(as.numeric(peake_gather[1, 2])),2)` individuals in the mussel
   clump (which obviously does not exist if it has a log-transformed area of 0!).  
 - the estimated slope (rate at which the number of individuals changes per 1 unit change in
-  log-transformed area), is `r round(as.numeric(peake.gather[2,2]),2)` (mean) with
-  a standard error of `r round(as.numeric(peake.gather[2,3]),2)`.
+  log-transformed area), is `r round(as.numeric(peake_gather[2,2]),2)` (mean) with
+  a standard error of `r round(as.numeric(peake_gather[2,3]),2)`.
   The 95% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(as.numeric(peake.gather[2,4]),2)` and `r round(as.numeric(peake.gather[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(peake_gather[2,4]),2)` and `r round(as.numeric(peake_gather[2,5]),2)` - e.g. there is a
   significant positive trend.  When back-transformed onto the reponse scale, we see
   that for a one unit increase in log-transformed mussel clump area, the number
-  of individuals increases by a factor of `r round(exp(as.numeric(peake.gather[2,2])),2)`.
-  This represents a `r round(100*(exp(as.numeric(peake.gather[2, 2]))-1), 0)`% increase per 1
+  of individuals increases by a factor of `r round(exp(as.numeric(peake_gather[2,2])),2)`.
+  This represents a `r round(100*(exp(as.numeric(peake_gather[2, 2]))-1), 0)`% increase per 1
   unit change in log-transformed mussel clump area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1818,7 +1849,7 @@ peake.rstanarm4 |>
 ### bayesplot
 
 ```{r summariseModel1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> plot(plotfun='mcmc_intervals') 
+peake_rstanarm4 |> plot(plotfun='mcmc_intervals') 
 ```
 
 ### tidy_draws
@@ -1826,16 +1857,16 @@ peake.rstanarm4 |> plot(plotfun='mcmc_intervals')
 This is purely a graphical depiction on the posteriors.
 
 ```{r summariseModel1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> tidy_draws()
+peake_rstanarm4 |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> spread_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE)
+peake_rstanarm4 |> spread_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE)
 
 ## summarised
-peake.rstanarm4 |>
+peake_rstanarm4 |>
     spread_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE) |>
     summarise_draws("median",
                     ~ HDInterval::hdi(.x),
@@ -1843,7 +1874,7 @@ peake.rstanarm4 |>
                     "ess_bulk")
 
 ## summarised on fractional scale
-peake.rstanarm4 |>
+peake_rstanarm4 |>
     spread_draws(`.Intercept.*|.*AREA.*`,  regex=TRUE) |>
     mutate(across(everything(), exp)) |> 
     summarise_draws("median",
@@ -1854,7 +1885,7 @@ peake.rstanarm4 |>
 
 ### posterior_samples
 ```{r summariseModel1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> posterior_samples() |> as_tibble()
+peake_rstanarm4 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
@@ -1863,7 +1894,7 @@ Unfortunately, $R^2$ calculations for models other than Gaussian and Binomial
 have not yet been implemented for `rstanarm` models yet.
 
 ```{r summariseModel1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-## peake.rstanarm4 |> bayes_R2() |> median_hdci
+## peake_rstanarm4 |> bayes_R2() |> median_hdci
 ```
 ::::
 
@@ -1881,34 +1912,34 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-summary(peake.brm4)
+summary(peake_brm4)
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-peake.sum <- summary(peake.brm4)
+peake_sum <- summary(peake_brm4)
 ```
 
 **Conclusions:**
 
 - in the Model Info, we are informed that the total MCMC posterior sample size
-  is `r nrow(as.matrix(peake.brm4))` and that there were 19 raw observations.
+  is `r nrow(as.matrix(peake_brm4))` and that there were 19 raw observations.
 - the estimated intercept (expected number of individuals for a mussel clump of
   log-transformed area = 0) is
-  `r round(peake.sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
+  `r round(peake_sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(peake.sum$fixed[1, 1]),2)`.  When the mussel clump is 0, we
-  expect to find `r round(exp(peake.sum$fixed[1, 1]),2)` individuals in the mussel
+  becomes `r round(exp(peake_sum$fixed[1, 1]),2)`.  When the mussel clump is 0, we
+  expect to find `r round(exp(peake_sum$fixed[1, 1]),2)` individuals in the mussel
   clump (which obviously does not exist if it has a log-transformed area of 0!).  
 - the estimated slope (rate at which the number of individuals changes per 1 unit change in
-  log-transformed area), is `r round(peake.sum$fixed[2,1],2)` (mean) or 
-  `r round(peake.sum$fixed[2,4],2)` (median) with a standard deviation of `r round(peake.sum$fixed[2,2],2)`.
+  scaled log-transformed area), is `r round(peake_sum$fixed[2,1],2)` (mean) or 
+  `r round(peake_sum$fixed[2,4],2)` (median) with a standard deviation of `r round(peake_sum$fixed[2,2],2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(peake.sum$fixed[2,1],2)` and `r round(peake.sum$fixed[2,5],2)` - e.g. there is a
+  `r round(peake_sum$fixed[2,1],2)` and `r round(peake_sum$fixed[2,5],2)` - e.g. there is a
   significant positive trend.  When back-transformed onto the reponse scale, we see
-  that for a one unit increase in log-transformed mussel clump area, the number
-  of individuals increases by a factor of `r round(exp(peake.sum$fixed[2,1]),2)`.
-  This represents a `r round(100*(exp(peake.sum$fixed[2, 1])-1), 0)`% increase per 1
-  unit change in log-transformed mussel clump area.
+  that for a one unit increase in scaled log-transformed mussel clump area, the number
+  of individuals increases by a factor of `r round(exp(peake_sum$fixed[2,1]),2)`.
+  This represents a `r round(100*(exp(peake_sum$fixed[2, 1])-1), 0)`% increase per 1
+  unit change in scaled log-transformed mussel clump area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
 
@@ -1916,7 +1947,7 @@ peake.sum <- summary(peake.brm4)
 ### summarise_draws (posterior)
 
 ```{r summariseModel2dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |>
+peake_brm4 |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
@@ -1925,7 +1956,7 @@ peake.brm4 |>
 We can also alter the CI level.
 
 ```{r summariseModel2d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |>
+peake_brm4 |>
     summarise_draws(median,
                     ~HDInterval::hdi(.x, credMass = 0.9),
                     rhat, length, ess_bulk, ess_tail)
@@ -1937,30 +1968,30 @@ To narrow down to just the parameters of interest, see the code under the **tidy
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tidyMCMC(peake.brm4$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+tidyMCMC(peake_brm4$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-peake.tidy <- tidyMCMC(peake.brm4$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+peake_tidy <- tidyMCMC(peake_brm4$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
 
 - the estimated intercept (expected number of individuals for a mussel clump of
   log-transformed area = 0) is
-  `r round(as.numeric(peake.tidy[1,2]),2)`.  This is the median of the posterior distribution
+  `r round(as.numeric(peake_tidy[1,2]),2)`.  This is the median of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(peake.tidy[1, 2])),2)`.  When the mussel clump is 0, we
-  expect to find `r round(exp(as.numeric(peake.tidy[1, 2])),2)` individuals in the mussel
+  becomes `r round(exp(as.numeric(peake_tidy[1, 2])),2)`.  When the mussel clump is 0, we
+  expect to find `r round(exp(as.numeric(peake_tidy[1, 2])),2)` individuals in the mussel
   clump (which obviously does not exist if it has a log-transformed area of 0!).  
 - the estimated slope (rate at which the number of individuals changes per 1 unit change in
-  log-transformed area), is `r round(as.numeric(peake.tidy[2,2]),2)` (mean) with
-  a standard error of `r round(as.numeric(peake.tidy[2,3]),2)`.
+  log-transformed area), is `r round(as.numeric(peake_tidy[2,2]),2)` (mean) with
+  a standard error of `r round(as.numeric(peake_tidy[2,3]),2)`.
   The 95% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(as.numeric(peake.tidy[2,4]),2)` and `r round(as.numeric(peake.tidy[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(peake_tidy[2,4]),2)` and `r round(as.numeric(peake_tidy[2,5]),2)` - e.g. there is a
   significant positive trend.  When back-transformed onto the reponse scale, we see
   that for a one unit increase in log-transformed mussel clump area, the number
-  of individuals increases by a factor of `r round(exp(as.numeric(peake.tidy[2,2])),2)`.
-  This represents a `r round(100*(exp(as.numeric(peake.tidy[2, 2]))-1), 0)`% increase per 1
+  of individuals increases by a factor of `r round(exp(as.numeric(peake_tidy[2,2])),2)`.
+  This represents a `r round(100*(exp(as.numeric(peake_tidy[2, 2]))-1), 0)`% increase per 1
   unit change in log-transformed mussel clump area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1968,9 +1999,9 @@ peake.tidy <- tidyMCMC(peake.brm4$fit, estimate.method='median',  conf.int=TRUE,
 ### as_draws_df (posterior)
 
 ```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> as_draws_df()
+peake_brm4 |> as_draws_df()
 ## summarised 
-peake.brm4 |>
+peake_brm4 |>
   as_draws_df() |>
   summarise_draws(
     median,
@@ -1981,16 +2012,40 @@ peake.brm4 |>
   )
 
 ## summarised on fractional scale
-peake.brm4 |>
+peake_brm4 |>
     as_draws_df() |>
     dplyr::select(starts_with("b_")) |> 
-    ## mutate(across(everything(), exp)) |> 
-    exp() |> 
+    mutate(across(everything(), exp)) |> 
+    ## exp() |> 
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat,
                     length,
                     ess_bulk, ess_tail)
+
+
+## To get the slope on a scale that is based on a unit change in the
+## predictor (rather than a unit change in scaled log-transformed
+## area)
+## Note, type= "response" is would be ignored 
+peake_brm4 |>
+  emtrends(~1, var = "AREA") 
+
+## As if we had not scaled the predictor (but did log-transform it)
+peake_brm4 |>
+  emtrends(~0, var = "log(AREA)") |>
+  tidy_draws() |>
+  mutate(.value = exp(`1 overall`)) |>
+  summarise_draws(median,
+                  HDInterval::hdi)
+
+## peake_brm4 |>
+##   emmeans(~AREA, type = "response", at = list(AREA = c(1, 2))) |>
+##   pairs(reverse = TRUE) 
+
+## peake_brm4 |>
+##   emmeans(~AREA, type = "response", at = list(AREA = c(10, 20))) |>
+##   pairs(reverse = TRUE) 
 ```
 
 ### tidy_draws
@@ -1998,10 +2053,10 @@ peake.brm4 |>
 Return the draws (samples) for each parameter in wide format
 
 ```{r summariseModel2d1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> tidy_draws()
+peake_brm4 |> tidy_draws()
 
-peake.brm4 |> get_variables()
-peake.brm4$fit |>
+peake_brm4 |> get_variables()
+peake_brm4$fit |>
     tidy_draws() |>
     dplyr::select(matches('^b_.*'))  |>
     exp() |> 
@@ -2015,7 +2070,7 @@ parameters of performing specific calculations using the posteriors,
 summarising the parameters takes a few more steps.
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |>
+peake_brm4 |>
     tidy_draws() |>
     exp() |>
     gather_variables() |>
@@ -2033,19 +2088,19 @@ them in full or via regexp).
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> get_variables()
-peake.draw <- peake.brm4 |> gather_draws(`b_.*`,  regex=TRUE)
-peake.draw
+peake_brm4 |> get_variables()
+peake_draw <- peake_brm4 |> gather_draws(`b_.*`,  regex=TRUE)
+peake_draw
 ```
 
 We can then summarise this
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.draw |> median_hdci()
+peake_draw |> median_hdci()
 ```
 
 ```{r summariseModel2c11, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |>
+peake_brm4 |>
     gather_draws(`b_.*`,  regex=TRUE) |>
     mutate(.value = exp(.value)) |> 
     summarise_draws(median,
@@ -2054,12 +2109,12 @@ peake.brm4 |>
 ```
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-peake.gather <- peake.brm4 |> gather_draws(`b_.*`,  regex=TRUE) |>
+peake_gather <- peake_brm4 |> gather_draws(`b_.*`,  regex=TRUE) |>
   median_hdci()
 ```
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-peake.brm4 |> 
+peake_brm4 |> 
   gather_draws(`b_.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
@@ -2068,7 +2123,7 @@ peake.brm4 |>
  
 We could alternatively express the parameters on the response scale.
 ```{r summariseModel2c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-peake.brm4 |> 
+peake_brm4 |> 
   gather_draws(`.Intercept.*|.*AREA.*`, regex=TRUE) |>
   group_by(.variable) |>
   mutate(.value=exp(.value)) |>
@@ -2079,20 +2134,20 @@ peake.brm4 |>
 
 - the estimated intercept (expected number of individuals for a mussel clump of
   log-transformed area = 0) is
-  `r round(as.numeric(peake.gather[1,2]),2)`.  This is the median of the posterior distribution
+  `r round(as.numeric(peake_gather[1,2]),2)`.  This is the median of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(peake.gather[1, 2])),2)`.  When the mussel clump is 0, we
-  expect to find `r round(exp(as.numeric(peake.gather[1, 2])),2)` individuals in the mussel
+  becomes `r round(exp(as.numeric(peake_gather[1, 2])),2)`.  When the mussel clump is 0, we
+  expect to find `r round(exp(as.numeric(peake_gather[1, 2])),2)` individuals in the mussel
   clump (which obviously does not exist if it has a log-transformed area of 0!).  
 - the estimated slope (rate at which the number of individuals changes per 1 unit change in
-  log-transformed area), is `r round(as.numeric(peake.gather[2,2]),2)` (mean) with
-  a standard error of `r round(as.numeric(peake.gather[2,3]),2)`.
+  log-transformed area), is `r round(as.numeric(peake_gather[2,2]),2)` (mean) with
+  a standard error of `r round(as.numeric(peake_gather[2,3]),2)`.
   The 95% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(as.numeric(peake.gather[2,4]),2)` and `r round(as.numeric(peake.gather[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(peake_gather[2,4]),2)` and `r round(as.numeric(peake_gather[2,5]),2)` - e.g. there is a
   significant positive trend.  When back-transformed onto the reponse scale, we see
   that for a one unit increase in log-transformed mussel clump area, the number
-  of individuals increases by a factor of `r round(exp(as.numeric(peake.gather[2,2])),2)`.
-  This represents a `r round(100*(exp(as.numeric(peake.gather[2, 2]))-1), 0)`% increase per 1
+  of individuals increases by a factor of `r round(exp(as.numeric(peake_gather[2,2])),2)`.
+  This represents a `r round(100*(exp(as.numeric(peake_gather[2, 2]))-1), 0)`% increase per 1
   unit change in log-transformed mussel clump area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -2100,15 +2155,15 @@ peake.brm4 |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> plot(plotfun='mcmc_intervals') 
+peake_brm4 |> plot(plotfun='mcmc_intervals') 
 ```
 
 ### spread_draws
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> spread_draws(`b_.*`,  regex=TRUE)
+peake_brm4 |> spread_draws(`b_.*`,  regex=TRUE)
 ## summarised
-peake.brm4 |>
+peake_brm4 |>
     as_draws_df() |>
     dplyr::select(starts_with("b_")) |> 
     summarise_draws("median",
@@ -2116,7 +2171,7 @@ peake.brm4 |>
                     "rhat",
                     "ess_bulk")
 ## summarised on fractional scale
-peake.brm4 |>
+peake_brm4 |>
     as_draws_df() |>
     dplyr::select(starts_with("b_")) |> 
     mutate(across(everything(), exp)) |> 
@@ -2128,14 +2183,14 @@ peake.brm4 |>
 
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> posterior_samples() |> as_tibble()
+peake_brm4 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> bayes_R2(summary=FALSE) |> median_hdci()
+peake_brm4 |> bayes_R2(summary=FALSE) |> median_hdci()
 ```
 
 ### Modelsummary
@@ -2145,18 +2200,18 @@ peake.brm4 |> bayes_R2(summary=FALSE) |> median_hdci()
 #| eval: true
 #| echo: true
 #| cache: false
-peake.brm4 |> modelsummary(
+peake_brm4 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic
 )
 
-peake.brm4 |> modelsummary(
+peake_brm4 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = TRUE
 )
 
-modelsummary(list("Raw" = peake.brm4, "Exponentiated" = peake.brm4),
+modelsummary(list("Raw" = peake_brm4, "Exponentiated" = peake_brm4),
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = c(FALSE, TRUE)
@@ -2169,8 +2224,8 @@ modelsummary(list("Raw" = peake.brm4, "Exponentiated" = peake.brm4),
 #| eval: true
 #| echo: true
 #| cache: false
-peake.brm4 |> modelplot()
-peake.brm4 |> modelplot(exponentiate = TRUE)
+peake_brm4 |> modelplot()
+peake_brm4 |> modelplot(exponentiate = TRUE)
 ```
 
 ::::
@@ -2205,7 +2260,7 @@ Unfortunately, the inline log-transformation of the predictor interfers with
 before calling `hypothesis()`.
 
 ```{r Probability1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |> as.data.frame() |> rename(lAREA=`log(AREA)`) |> hypothesis('lAREA>0')
+peake_rstanarm4 |> as.data.frame() |> rename(lAREA=`log(AREA)`) |> hypothesis('lAREA>0')
 ```
 
 **Conclusions:**
@@ -2220,7 +2275,7 @@ peake.rstanarm4 |> as.data.frame() |> rename(lAREA=`log(AREA)`) |> hypothesis('l
 Alternatively...
 
 ```{r Probability1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
-peake.rstanarm4 |> tidy_draws() |> summarise(P=mean(`log(AREA)`>0))
+peake_rstanarm4 |> tidy_draws() |> summarise(P=mean(`log(AREA)`>0))
 ```
 
 **Conclusions:**
@@ -2234,69 +2289,69 @@ peake.rstanarm4 |> tidy_draws() |> summarise(P=mean(`log(AREA)`>0))
 ```{r Probability1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:5}
 newdata = list(AREA=c(5000, 10000)) 
 ## fractional scale
-peake.rstanarm4 |> emmeans(~AREA,  at=newdata, type = 'response') |> pairs(reverse = TRUE)
+peake_rstanarm4 |> emmeans(~AREA,  at=newdata, type = 'response') |> pairs(reverse = TRUE)
 ## absolute scale
-peake.rstanarm4 |> emmeans(~AREA,  at=newdata) |> regrid() |> pairs(reverse = TRUE)
-peake.mcmc <- peake.rstanarm4 |> emmeans(~AREA,  at=newdata) |> pairs(reverse = TRUE) |> as.data.frame()
+peake_rstanarm4 |> emmeans(~AREA,  at=newdata) |> regrid() |> pairs(reverse = TRUE)
+peake_mcmc <- peake_rstanarm4 |> emmeans(~AREA,  at=newdata) |> pairs(reverse = TRUE) |> as.data.frame()
 ```
 
 **Conclusions:**
 
 - the change in expected number of individuals associated with an increase in
-  mussel clump area from 5,000 to 10,000 is `r peake.mcmc[1, 2] |> round(2)`.
+  mussel clump area from 5,000 to 10,000 is `r peake_mcmc[1, 2] |> round(2)`.
 
 If we want to derive other properties, such as the percentage change, then we
 use `tidy_draws()` and then simple `tidyverse` spreadsheet operation.
 
 ```{r Probability1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc <- peake.rstanarm4 |> emmeans(~AREA,  at=newdata) |> 
+peake_mcmc <- peake_rstanarm4 |> emmeans(~AREA,  at=newdata) |> 
     regrid() |> 
     tidy_draws() |>
     rename_with(~str_replace(., 'AREA ', 'p')) |>
     mutate(Eff=p10000 - p5000,
            PEff=100*Eff/p5000)
-peake.mcmc |> head()
+peake_mcmc |> head()
 ```
 
 Now we can calculate the medians and HPD intervals of each column (and ignore
 the `.chain`, `.iteration` and `.draw`).
 
 ```{r Probability1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc |> tidyMCMC(estimate.method='median',
+peake_mcmc |> tidyMCMC(estimate.method='median',
                        conf.int=TRUE, conf.method='HPDinterval')
 ```
 
 Alternatively, we could use `median_hdci`
 
 ```{r Probability1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc |> median_hdci(PEff)
+peake_mcmc |> median_hdci(PEff)
 ```
 
 **Conclusions:**
 
 - the percentage change in expected number of individuals associated with an
-  increase in mussel clump area from 5,000 to 10,000 is `r peake.mcmc |> median_hdci(PEff) |> _[1, 1] |> as.numeric() |> round(2)`% 
+  increase in mussel clump area from 5,000 to 10,000 is `r peake_mcmc |> median_hdci(PEff) |> _[1, 1] |> as.numeric() |> round(2)`% 
   with a 95% credibility interval of 
-  `r peake.mcmc |> median_hdci(PEff) |> _[1, 2] |> as.numeric() |> round(2)`
-  `r peake.mcmc |> median_hdci(PEff) |> _[1, 3] |> as.numeric() |> round(2)`
+  `r peake_mcmc |> median_hdci(PEff) |> _[1, 2] |> as.numeric() |> round(2)`
+  `r peake_mcmc |> median_hdci(PEff) |> _[1, 3] |> as.numeric() |> round(2)`
 
 To get the probability that the effect is greater than a 50% increase.
 ```{r Probability1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, paged.print=FALSE}
-peake.mcmc |> summarise(P=mean(PEff>50))
+peake_mcmc |> summarise(P=mean(PEff>50))
 ```
 
 **Conclusions:**
 
 - the probability that the number of individuals will increase by more than 50% following an increase
   in mussel clump area from 5,000 to 10,000 is
-  `r peake.mcmc |> summarise(P=mean(PEff>50)) |> as.numeric() |> round(2)`.
+  `r peake_mcmc |> summarise(P=mean(PEff>50)) |> as.numeric() |> round(2)`.
 
 
 Finally, we could alternatively use `hypothesis()`. Note that when we do so, the
 estimate is the difference between the effect and the hypothesised effect (50%).
 
 ```{r Probability1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc |> hypothesis('PEff>50')
+peake_mcmc |> hypothesis('PEff>50')
 ```
 
 ### Change 5000 to 10000 (Method 2)
@@ -2304,7 +2359,7 @@ peake.mcmc |> hypothesis('PEff>50')
 ```{r Probability1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 ## Note, the P value is on absolute difference
 newdata = list(AREA=c(5000, 10000)) 
-peake.rstanarm4 |>
+peake_rstanarm4 |>
     emmeans(~AREA,  at=newdata) |>
     regrid() |>
     pairs(reverse = TRUE) |>
@@ -2322,20 +2377,20 @@ We can also express this as a percentage change
 ```{r Probability1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 newdata = list(AREA=c(5000, 10000)) 
 ## Simple
-peake.rstanarm4 |>
+peake_rstanarm4 |>
     emmeans(~AREA,  at=newdata) |>
     pairs(reverse = TRUE) |>
     regrid() 
 
 ## More advanced (both P and percent change)
-peake.mcmc <- peake.rstanarm4 |>
+peake_mcmc <- peake_rstanarm4 |>
     emmeans(~AREA,  at=newdata) |>
     pairs(reverse = TRUE) |>
     regrid() |>
     tidy_draws() |>
     mutate(across(contains('contrast'), ~ 100*(. - 1)))
 
-peake.mcmc |>
+peake_mcmc |>
     summarise(across(contains('contrast'),
                      list(P = ~ mean(.>50),
                           HDCI = ~ median_hdci(.)),
@@ -2348,7 +2403,7 @@ peake.mcmc |>
 ### Change 5000 to 10000 (Method 3)
 	
 ```{r Probability1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.rstanarm4 |>
+peake_rstanarm4 |>
     linpred_draws(newdata = as.data.frame(newdata)) |>
     mutate(.linpred = exp(.linpred)) |>
     ungroup() |>
@@ -2362,7 +2417,7 @@ peake.rstanarm4 |>
     median_hdci()
 
 ##OR
-peake.rstanarm4 |>
+peake_rstanarm4 |>
     epred_draws(newdata = as.data.frame(newdata)) |>
     ungroup() |>
     group_by(.draw) |>
@@ -2375,7 +2430,7 @@ peake.rstanarm4 |>
     median_hdci()
 
 ##OR for prediction of individual values
-peake.rstanarm4 |>
+peake_rstanarm4 |>
     predicted_draws(newdata = as.data.frame(newdata)) |>
     ungroup() |>
     group_by(.draw) |>
@@ -2394,7 +2449,7 @@ peake.rstanarm4 |>
 ### Prob. of effect
 
 ```{r Probability2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |> hypothesis('logAREA>0')
+peake_brm4 |> hypothesis('scalelogAREA>0')
 ```
 
 **Conclusions:**
@@ -2409,7 +2464,7 @@ peake.brm4 |> hypothesis('logAREA>0')
 Alternatively...
 
 ```{r Probability2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,paged.print=FALSE}
-peake.brm4 |> tidy_draws() |> summarise(P=mean(b_logAREA>0))
+peake_brm4 |> tidy_draws() |> summarise(P=mean(b_scalelogAREA>0))
 ```
 
 **Conclusions:**
@@ -2423,69 +2478,69 @@ peake.brm4 |> tidy_draws() |> summarise(P=mean(b_logAREA>0))
 ```{r Probability2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=1:5}
 newdata = list(AREA=c(5000, 10000)) 
 ## fractional scale
-peake.brm4 |> emmeans(~AREA,  at=newdata, type = 'response') |> pairs(reverse = TRUE)
+peake_brm4 |> emmeans(~AREA,  at=newdata, type = 'response') |> pairs(reverse = TRUE)
 ## absolute scale
-peake.brm4 |> emmeans(~AREA,  at=newdata) |> regrid() |> pairs(reverse = TRUE)
-peake.mcmc <- peake.brm4 |> emmeans(~AREA,  at=newdata) |> pairs(reverse = TRUE) |> as.data.frame()
+peake_brm4 |> emmeans(~AREA,  at=newdata) |> regrid() |> pairs(reverse = TRUE)
+peake_mcmc <- peake_brm4 |> emmeans(~AREA,  at=newdata) |> pairs(reverse = TRUE) |> as.data.frame()
 ```
 
 **Conclusions:**
 
 - the change in expected number of individuals associated with an increase in
-  mussel clump area from 5,000 to 10,000 is `r peake.mcmc[1, 2] |> round(2)`.
+  mussel clump area from 5,000 to 10,000 is `r peake_mcmc[1, 2] |> round(2)`.
 
 If we want to derive other properties, such as the percentage change, then we
 use `tidy_draws()` and then simple `tidyverse` spreadsheet operation.
 
 ```{r Probability2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc <- peake.brm4 |> emmeans(~AREA,  at=newdata) |> 
+peake_mcmc <- peake_brm4 |> emmeans(~AREA,  at=newdata) |> 
     regrid() |> 
     tidy_draws() |>
     rename_with(~str_replace(., 'AREA ', 'p')) |>
     mutate(Eff=p10000 - p5000,
            PEff=100*Eff/p5000)
-peake.mcmc |> head()
+peake_mcmc |> head()
 ```
 
 Now we can calculate the medians and HPD intervals of each column (and ignore
 the `.chain`, `.iteration` and `.draw`).
 
 ```{r Probability2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc |> tidyMCMC(estimate.method='median',
+peake_mcmc |> tidyMCMC(estimate.method='median',
                        conf.int=TRUE, conf.method='HPDinterval')
 ```
 
 Alternatively, we could use `median_hdci`
 
 ```{r Probability2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc |> median_hdci(PEff)
+peake_mcmc |> median_hdci(PEff)
 ```
 
 **Conclusions:**
 
 - the percentage change in expected number of individuals associated with an
-  increase in mussel clump area from 5,000 to 10,000 is `r peake.mcmc |> median_hdci(PEff) |> _[1, 1] |> as.numeric() |> round(2)`% 
+  increase in mussel clump area from 5,000 to 10,000 is `r peake_mcmc |> median_hdci(PEff) |> _[1, 1] |> as.numeric() |> round(2)`% 
   with a 95% credibility interval of 
-  `r peake.mcmc |> median_hdci(PEff) |> _[1, 2] |> as.numeric() |> round(2)`
-  `r peake.mcmc |> median_hdci(PEff) |> _[1, 3] |> as.numeric() |> round(2)`
+  `r peake_mcmc |> median_hdci(PEff) |> _[1, 2] |> as.numeric() |> round(2)`
+  `r peake_mcmc |> median_hdci(PEff) |> _[1, 3] |> as.numeric() |> round(2)`
 
 To get the probability that the effect is greater than a 50% increase.
 ```{r Probability2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, paged.print=FALSE}
-peake.mcmc |> summarise(P=mean(PEff>50))
+peake_mcmc |> summarise(P=mean(PEff>50))
 ```
 
 **Conclusions:**
 
 - the probability that the number of individuals will increase by more than 50% following an increase
   in mussel clump area from 5,000 to 10,000 is
-  `r peake.mcmc |> summarise(P=mean(PEff>50)) |> as.numeric() |> round(2)`.
+  `r peake_mcmc |> summarise(P=mean(PEff>50)) |> as.numeric() |> round(2)`.
 
 
 Finally, we could alternatively use `hypothesis()`. Note that when we do so, the
 estimate is the difference between the effect and the hypothesised effect (50%).
 
 ```{r Probability2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.mcmc |> hypothesis('PEff>50')
+peake_mcmc |> hypothesis('PEff>50')
 ```
 
 ### Change 5000 to 10000 (Method 2)
@@ -2493,7 +2548,7 @@ peake.mcmc |> hypothesis('PEff>50')
 ```{r Probability2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 ## Note, the P value is on absolute difference
 newdata = list(AREA=c(5000, 10000)) 
-peake.brm4 |>
+peake_brm4 |>
     emmeans(~AREA,  at=newdata) |>
     regrid() |>
     pairs(reverse = TRUE) |>
@@ -2511,20 +2566,20 @@ We can also express this as a percentage change
 ```{r Probability2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 newdata = list(AREA=c(5000, 10000)) 
 ## Simple
-peake.brm4 |>
+peake_brm4 |>
     emmeans(~AREA,  at=newdata) |>
     pairs(reverse = TRUE) |>
     regrid() 
 
 ## More advanced (both P and percent change)
-peake.mcmc <- peake.brm4 |>
+peake_mcmc <- peake_brm4 |>
     emmeans(~AREA,  at=newdata) |>
     pairs(reverse = TRUE) |>
     regrid() |>
     tidy_draws() |>
     mutate(across(contains('contrast'), ~ 100*(. - 1)))
 
-peake.mcmc |>
+peake_mcmc |>
     summarise(across(contains('contrast'),
                      list(P = ~ mean(.>50),
                           HDCI = ~ median_hdci(.)),
@@ -2537,7 +2592,7 @@ peake.mcmc |>
 ### Change 5000 to 10000 (Method 3)
 	
 ```{r Probability2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-peake.brm4 |>
+peake_brm4 |>
     linpred_draws(newdata = as.data.frame(newdata)) |>
     mutate(.linpred = exp(.linpred)) |>
     ungroup() |>
@@ -2551,7 +2606,7 @@ peake.brm4 |>
     median_hdci()
 
 ##OR
-peake.brm4 |>
+peake_brm4 |>
     epred_draws(newdata = as.data.frame(newdata)) |>
     ungroup() |>
     group_by(.draw) |>
@@ -2564,7 +2619,7 @@ peake.brm4 |>
     median_hdci()
 
 ##OR for prediction of individual values
-peake.brm4 |>
+peake_brm4 |>
     predicted_draws(newdata = as.data.frame(newdata)) |>
     ungroup() |>
     group_by(.draw) |>
@@ -2590,9 +2645,9 @@ peake.brm4 |>
 
 ```{r figureModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
 ## Using emmeans
-peake.grid = with(peake, list(AREA = seq(min(AREA), max(AREA), len=100)))
+peake_grid = with(peake, list(AREA = seq(min(AREA), max(AREA), len=100)))
 
-newdata = emmeans(peake.rstanarm4, ~AREA, at=peake.grid, type='response') |> as.data.frame()
+newdata = emmeans(peake_rstanarm4, ~AREA, at=peake_grid, type='response') |> as.data.frame()
 head(newdata)
 
 ggplot(newdata, aes(y=prob, x=AREA)) + 
@@ -2604,7 +2659,7 @@ ggplot(newdata, aes(y=prob, x=AREA)) +
     theme_classic()
 
 ## spaghetti plot
-newdata = emmeans(peake.rstanarm4, ~AREA, at=peake.grid) |>
+newdata = emmeans(peake_rstanarm4, ~AREA, at=peake_grid) |>
     regrid() |> 
     gather_emmeans_draws()
 newdata |> head()
@@ -2620,9 +2675,9 @@ ggplot(newdata,  aes(y=.value,  x=AREA)) +
 
 ```{r figureModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
 ## Using emmeans
-peake.grid = with(peake, list(AREA = seq(min(AREA), max(AREA), len=100)))
+peake_grid = with(peake, list(AREA = seq(min(AREA), max(AREA), len=100)))
 
-newdata = emmeans(peake.brm4, ~AREA, at=peake.grid, type='response') |> as.data.frame()
+newdata = emmeans(peake_brm4, ~AREA, at=peake_grid, type='response') |> as.data.frame()
 head(newdata)
 
 ggplot(newdata, aes(y=prob, x=AREA)) + 
@@ -2634,7 +2689,7 @@ ggplot(newdata, aes(y=prob, x=AREA)) +
     theme_classic()
 
 ## spaghetti plot
-newdata = emmeans(peake.brm4, ~AREA, at=peake.grid) |>
+newdata = emmeans(peake_brm4, ~AREA, at=peake_grid) |>
     regrid() |> 
     gather_emmeans_draws()
 newdata |> head()

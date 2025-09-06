@@ -194,8 +194,8 @@ $$
 \begin{align}
 y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
 ln(\mu_i) &= \beta_0 + \sum_{j=1}^nT_{[i],j}.\beta_j\\
-\beta_0 &\sim{} \mathcal{N}(2.4, 1.5)\\
-\beta_{[1,2,3]} &\sim{} \mathcal{N}(0, 1)\\
+\beta_0 &\sim{} \mathcal{N}(2.4, 0.2)\\
+\beta_{[1,2,3]} &\sim{} \mathcal{N}(0, 2.5)\\
 \end{align}
 $$
 
@@ -205,7 +205,30 @@ each group mean to that of the first group and $T{[i],j}$ represents a
 $i$ by $j$ model matrix is a model matrix representing the season,
 density and their interaction on mussel recruitment.
 
+OR alternatively, we could write this as 
+
+Model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{NB}(\lambda_i, \theta)\\
+ln(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
+\beta_0 &\sim{} \mathcal{N}(2.4, 0.2)\\
+\beta_{[1,2,3]} &\sim{} \mathcal{N}(0, 2.5)\\
+\end{align}
+$$
+
+where $\beta_{0}$ is the y-intercept (mean of the first group),
+$\beta_{[1,2,3]}$ are the vector of effects parameters (contrasting
+each group mean to that of the first group and $\boldsymbol{\beta}$ is
+a vector of effects parameters (including the intercept) and
+$\bf{X_i}$ is a model matrix representing the intercept and treatment
+contrasts for the effects of density and season on mussel recruitment.
+
+
 ```{r dataprep, results='markdown', eval=TRUE}
+## A recent bug has infiltrated emmeans such that SEASON seems
+## to be some sort of keyword.  So in order to prevent downstream issues
+## when declaring season as a factor, we will also alter its name...
 quinn <- quinn |>
   mutate(fSEASON = factor(SEASON,
                          levels = c("Spring", "Summer", "Autumn", "Winter")),
@@ -242,7 +265,7 @@ are chosen to provide moderate regularisation (to help prevent over-fitting) and
 help stabilise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarmP <- stan_glm(RECRUITS~fSEASON*DENSITY,
+quinn_rstanarmP <- stan_glm(RECRUITS~fSEASON*DENSITY,
                             data = quinn,
                             family = poisson(link = 'log'),
                             refresh = 0,
@@ -250,7 +273,7 @@ quinn.rstanarmP <- stan_glm(RECRUITS~fSEASON*DENSITY,
 ```
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarmP |> prior_summary()
+quinn_rstanarmP |> prior_summary()
 ```
 
 This tells us:
@@ -275,7 +298,7 @@ variables for the predictor (then rounded).
 ### Assessing priors
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarm1 <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
+quinn_rstanarm1 <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
                             family = poisson(link = 'log'),
                             prior_PD = TRUE, 
                             refresh = 0,
@@ -287,16 +310,16 @@ quinn.rstanarm1 <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
 #### ggpredict
 
 ```{r fitModel1g1, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarm1 |>
+quinn_rstanarm1 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data = TRUE)
-quinn.rstanarm1 |>
+quinn_rstanarm1 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data = TRUE) |>
     wrap_plots() &
     scale_y_log10()
 ## although, since there are zeros...
-quinn.rstanarm1 |>
+quinn_rstanarm1 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data = TRUE, jitter = FALSE) |>
     wrap_plots() &
@@ -306,14 +329,14 @@ quinn.rstanarm1 |>
 #### ggemmeans
 
 ```{r fitModel1g2, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarm1 |>
+quinn_rstanarm1 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data=TRUE) |>
     plot(show_data = TRUE) |>
     wrap_plots() &
     scale_y_log10()
 ## although, since there are zeros...
-quinn.rstanarm1 |>
+quinn_rstanarm1 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data = TRUE, jitter = FALSE) |>
     wrap_plots() &
@@ -351,7 +374,7 @@ quinn |> group_by(fSEASON, DENSITY) |>
               SD = log(sd(RECRUITS)))
 log(sd(quinn$RECRUITS))/
     apply(model.matrix(~fSEASON*DENSITY, data = quinn), 2, sd)
-quinn.rstanarm2 <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
+quinn_rstanarm2 <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
                             family = poisson(link = 'log'),
                             prior_intercept = normal(2.3, 2, autoscale = FALSE),
                             prior = normal(0, 10, autoscale = FALSE),
@@ -365,16 +388,16 @@ quinn.rstanarm2 <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
 #### ggpredict
 
 ```{r fitModel1i1, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarm2 |>
+quinn_rstanarm2 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data = TRUE)
-quinn.rstanarm2 |>
+quinn_rstanarm2 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data = TRUE) |>
     wrap_plots() &
     scale_y_log10()
 ## although, since there are zeros...
-quinn.rstanarm2 |>
+quinn_rstanarm2 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data = TRUE, jitter = FALSE) |>
     wrap_plots() &
@@ -384,14 +407,14 @@ quinn.rstanarm2 |>
 #### ggemmeans
 
 ```{r fitModel1i2, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarm2 |>
+quinn_rstanarm2 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data=TRUE) |>
     plot(show_data = TRUE) |>
     wrap_plots() &
     scale_y_log10()
 ## although, since there are zeros...
-quinn.rstanarm2 |>
+quinn_rstanarm2 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data = TRUE, jitter = FALSE) |>
     wrap_plots() &
@@ -403,13 +426,13 @@ quinn.rstanarm2 |>
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarm3 <- quinn.rstanarm2 |> update(prior_PD = FALSE) 
+quinn_rstanarm3 <- quinn_rstanarm2 |> update(prior_PD = FALSE) 
 ```
 
 ### Plotting prior and posterior 
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.rstanarm3 |> posterior_vs_prior(color_by = 'vs', group_by = TRUE,
+quinn_rstanarm3 |> posterior_vs_prior(color_by = 'vs', group_by = TRUE,
                    facet_args = list(scales = 'free_y'))
 ```
 
@@ -423,7 +446,7 @@ quinn.rstanarm3 |> posterior_vs_prior(color_by = 'vs', group_by = TRUE,
 #### ggpredict
 
 ```{r modelFit1l1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.rstanarm3 |>
+quinn_rstanarm3 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data = TRUE)
 ```
@@ -431,7 +454,7 @@ quinn.rstanarm3 |>
 #### ggemmeans
 
 ```{r modelFit1l2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.rstanarm3 |>
+quinn_rstanarm3 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data=TRUE) 
 ```
@@ -451,12 +474,12 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.form <- bf(RECRUITS ~ fSEASON*DENSITY,  family = poisson(link = 'log'))
+quinn_form <- bf(RECRUITS ~ fSEASON*DENSITY,  family = poisson(link = 'log'))
 ```
 
 ```{r fitModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, echo=2}
 options(width=100)
-get_prior(quinn.form,  data = quinn)
+get_prior(quinn_form,  data = quinn)
 options(width=80)
 ```
 
@@ -464,29 +487,30 @@ options(width=80)
 ### Defining priors
 
 Remember that the priors are applied on the link (in this case, log) scale.
+Given that there are some zero's, we need to add a small constant before
+logarithmic transform.  It might also necessary to use means/sd rather than 
+median/mad
 
 ```{r fitModel2d1, results='markdown', eval=TRUE}
 quinn |>
-    group_by(fSEASON, DENSITY) |>
-    summarise(Mean = mean(RECRUITS),
-              Median = median(RECRUITS),
-              MAD = mad(RECRUITS),
-              SD = sd(RECRUITS)) |>
-    mutate(log(Mean),
-           log(Median),
-           log(MAD),
-           log(SD))
+  group_by(fSEASON, DENSITY) |>
+  summarise(Mean = mean(log(RECRUITS+1)),
+    Median = median(log(RECRUITS+1)),
+    SD = sd(log(RECRUITS+1)),
+    MAD = mad(log(RECRUITS+1))
+    )
 ```
 
-- $\beta_0$: normal centred at 2.3 with a standard deviation of 1.5
-- $\beta_1$: normal centred at 0 with a standard deviation of 1
+- $\beta_0$: normal centred at 2.5 with a standard deviation of 0.2
+- $\beta_1$: normal centred at 0 with a standard deviation of 2.5
 
 
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE}
-priors <- prior(normal(2.4, 1.5), class = 'Intercept') +
-    prior(normal(0, 1), class = 'b') 
-quinn.brm2 <- brm(quinn.form,
+quinn_form <- bf(RECRUITS ~ fSEASON*DENSITY,  family = poisson(link = 'log'))
+priors <- prior(normal(2.5, 0.2), class = 'Intercept') +
+    prior(normal(0, 2.5), class = 'b') 
+quinn_brm2 <- brm(quinn_form,
                   data = quinn,
                   prior = priors,
                   sample_prior = "only",
@@ -502,15 +526,15 @@ quinn.brm2 <- brm(quinn.form,
 #### ggpredict 
 
 ```{r fitModel2i1, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.brm2 |>
+quinn_brm2 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data=TRUE)
-quinn.brm2 |>
+quinn_brm2 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data=TRUE) +
     scale_y_log10()
 ## Or since there are zeros
-quinn.brm2 |>
+quinn_brm2 |>
     ggpredict(~fSEASON+DENSITY) |>
     plot(show_data=TRUE) +
     scale_y_continuous(trans = scales::pseudo_log_trans())
@@ -519,15 +543,15 @@ quinn.brm2 |>
 #### ggemmeans
 
 ```{r fitModel2i2, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.brm2 |>
+quinn_brm2 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data=TRUE)
-quinn.brm2 |>
+quinn_brm2 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data=TRUE) +
     scale_y_log10()
 ## Or since there are zeros
-quinn.brm2 |>
+quinn_brm2 |>
     ggemmeans(~fSEASON+DENSITY) |>
     plot(show_data=TRUE) +
     scale_y_continuous(trans = scales::pseudo_log_trans())
@@ -536,10 +560,10 @@ quinn.brm2 |>
 #### conditional_effects
 
 ```{r fitModel2i3, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.brm2 |>
+quinn_brm2 |>
     conditional_effects('fSEASON:DENSITY') |>
     plot(points=TRUE)
-quinn.brm2 |>
+quinn_brm2 |>
     conditional_effects('fSEASON:DENSITY') |>
     plot(points=TRUE) |>
     wrap_plots() &
@@ -549,21 +573,21 @@ quinn.brm2 |>
 :::::
 
 ```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.brmP <- quinn.brm2 |> update(sample_prior = 'yes', refresh = 0)
+quinn_brmP <- quinn_brm2 |> update(sample_prior = 'yes', refresh = 0)
 ```
 
 ### Plotting prior and posterior
 
 ```{r fitModel2k1, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.brmP |> get_variables()
-quinn.brmP |> hypothesis('fSEASONSummer<0') |> plot()
-quinn.brmP |> hypothesis('DENSITYLow<0') |> plot()
-quinn.brmP |> hypothesis('fSEASONSummer:DENSITYLow<0') |> plot()
+quinn_brmP |> get_variables()
+quinn_brmP |> hypothesis('fSEASONSummer<0') |> plot()
+quinn_brmP |> hypothesis('DENSITYLow<0') |> plot()
+quinn_brmP |> hypothesis('fSEASONSummer:DENSITYLow<0') |> plot()
 ```
 
 ```{r fitModel2k2, results='markdown', out.width = 600, fig.width = 8, fig.height = 4, eval=TRUE, mhidden=TRUE}
-quinn.brmP |> SUYR_prior_and_posterior()
-quinn.brmP |>
+quinn_brmP |> SUYR_prior_and_posterior()
+quinn_brmP |>
   posterior_samples() |>
   dplyr::select(-`lp__`) |>
   pivot_longer(everything(), names_to = 'key') |> 
@@ -579,8 +603,8 @@ quinn.brmP |>
 ### Exploring the stan code
 
 ```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.brmP |> standata()
-quinn.brmP |> stancode()
+quinn_brmP |> standata()
+quinn_brmP |> stancode()
 ```
 
 ::::
@@ -624,7 +648,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(quinn.rstanarm3, plotfun='mcmc_trace')
+plot(quinn_rstanarm3, plotfun='mcmc_trace')
 ```
   
    The chains appear well mixed and very similar
@@ -633,7 +657,7 @@ plot(quinn.rstanarm3, plotfun='mcmc_trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(quinn.rstanarm3, 'acf_bar')
+plot(quinn_rstanarm3, 'acf_bar')
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -644,7 +668,7 @@ plot(quinn.rstanarm3, 'acf_bar')
   parameter estimated.
 
 ```{r modelValidation1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(quinn.rstanarm3, 'rhat_hist')
+plot(quinn_rstanarm3, 'rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -659,15 +683,15 @@ plot(quinn.rstanarm3, 'rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(quinn.rstanarm3, 'neff_hist')
+plot(quinn_rstanarm3, 'neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r Validation1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(quinn.rstanarm3, 'combo')
-plot(quinn.rstanarm3, 'violin')
+plot(quinn_rstanarm3, 'combo')
+plot(quinn_rstanarm3, 'violin')
 ```
 </details>
 
@@ -687,7 +711,7 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_trace(quinn.rstanarm3)
+stan_trace(quinn_rstanarm3)
 ```
 
    The chains appear well mixed and very similar
@@ -696,7 +720,7 @@ stan_trace(quinn.rstanarm3)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ac(quinn.rstanarm3) 
+stan_ac(quinn_rstanarm3) 
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -707,7 +731,7 @@ stan_ac(quinn.rstanarm3)
   parameter estimated.
 
 ```{r modelValidation1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_rhat(quinn.rstanarm3) 
+stan_rhat(quinn_rstanarm3) 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -722,13 +746,13 @@ stan_rhat(quinn.rstanarm3)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ess(quinn.rstanarm3)
+stan_ess(quinn_rstanarm3)
 ```
 
   Ratios all very high.
 
 ```{r modelValidation1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_dens(quinn.rstanarm3, separate_chains = TRUE)
+stan_dens(quinn_rstanarm3, separate_chains = TRUE)
 ```
 
 
@@ -747,8 +771,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.ggs <- ggs(quinn.rstanarm3, burnin = FALSE, inc_warmup = FALSE)
-ggs_traceplot(quinn.ggs)
+quinn_ggs <- ggs(quinn_rstanarm3, burnin = FALSE, inc_warmup = FALSE)
+ggs_traceplot(quinn_ggs)
 ```
 
    The chains appear well mixed and very similar
@@ -757,7 +781,7 @@ ggs_traceplot(quinn.ggs)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_autocorrelation(quinn.ggs)
+ggs_autocorrelation(quinn_ggs)
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -768,7 +792,7 @@ ggs_autocorrelation(quinn.ggs)
   parameter estimated.
 
 ```{r modelValidation1n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_Rhat(quinn.ggs)
+ggs_Rhat(quinn_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -783,18 +807,18 @@ ggs_Rhat(quinn.ggs)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_effective(quinn.ggs)
+ggs_effective(quinn_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation1p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_crosscorrelation(quinn.ggs)
+ggs_crosscorrelation(quinn_ggs)
 ```
 
 ```{r modelValidation1q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_grb(quinn.ggs)
+ggs_grb(quinn_ggs)
 ```
 </details>
 
@@ -817,8 +841,8 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP$fit |> stan_trace()
-quinn.brmP$fit |> stan_trace(inc_warmup=TRUE)
+quinn_brmP$fit |> stan_trace()
+quinn_brmP$fit |> stan_trace(inc_warmup=TRUE)
 ```
 
    The chains appear well mixed and very similar
@@ -827,7 +851,7 @@ quinn.brmP$fit |> stan_trace(inc_warmup=TRUE)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP$fit |> stan_ac() 
+quinn_brmP$fit |> stan_ac() 
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -838,7 +862,7 @@ quinn.brmP$fit |> stan_ac()
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP$fit |> stan_rhat() 
+quinn_brmP$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -853,13 +877,13 @@ quinn.brmP$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP$fit |> stan_ess()
+quinn_brmP$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP$fit |> stan_dens(separate_chains = TRUE)
+quinn_brmP$fit |> stan_dens(separate_chains = TRUE)
 ```
 
 ::::
@@ -887,7 +911,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(quinn.rstanarm3,  plotfun='dens_overlay')
+pp_check(quinn_rstanarm3,  plotfun='dens_overlay')
 ```
 
 The model draws are broadly similar to the observed data.
@@ -897,7 +921,7 @@ The model draws are broadly similar to the observed data.
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation3c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(quinn.rstanarm3, plotfun='error_scatter_avg')
+pp_check(quinn_rstanarm3, plotfun='error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -908,8 +932,8 @@ poorest at higher recruitments
   should be interpreted as such.  
 
 ```{r modelValidation3d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(quinn.rstanarm3, x=as.numeric(quinn$fSEASON), plotfun='error_scatter_avg_vs_x')
-pp_check(quinn.rstanarm3, x=as.numeric(quinn$DENSITY), plotfun='error_scatter_avg_vs_x')
+pp_check(quinn_rstanarm3, x=as.numeric(quinn$fSEASON), plotfun='error_scatter_avg_vs_x')
+pp_check(quinn_rstanarm3, x=as.numeric(quinn$DENSITY), plotfun='error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed on top of posterior predictions
@@ -918,7 +942,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(quinn.rstanarm3, x=as.numeric(quinn$fSEASON), plotfun='intervals')
+pp_check(quinn_rstanarm3, x=as.numeric(quinn$fSEASON), plotfun='intervals')
 ```
 
 The modelled predictions seem to do a reasonable job of representing the observations. 
@@ -928,7 +952,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation3g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(quinn.rstanarm3)
+#launch_shinystan(quinn_rstanarm3)
 ```
 
 ### DHARMa residuals
@@ -945,12 +969,12 @@ We need to supply:
 - fitted (predicted) responses (averaged) associated with each observation
 
 ```{r modelValidation4a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- posterior_predict(quinn.rstanarm3,  nsamples=250,  summary=FALSE)
-quinn.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(quinn_rstanarm3,  nsamples=250,  summary=FALSE)
+quinn_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = quinn$RECRUITS,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(quinn.resids)
+plot(quinn_resids)
 ```
 
 **Conclusions:**
@@ -977,7 +1001,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP |> pp_check(type = 'dens_overlay', ndraws = 100)
+quinn_brmP |> pp_check(type = 'dens_overlay', ndraws = 100)
 ```
 
 The model draws appear to represent the shape of the observed data reasonably well 
@@ -987,7 +1011,7 @@ The model draws appear to represent the shape of the observed data reasonably we
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP |> pp_check(type = 'error_scatter_avg')
+quinn_brmP |> pp_check(type = 'error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -999,8 +1023,8 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-quinn.brmP |> pp_check(type='intervals')
-## quinn.brmP |> pp_check(group='DENSITY', type='intervals')
+quinn_brmP |> pp_check(type='intervals')
+## quinn_brmP |> pp_check(group='DENSITY', type='intervals')
 ```
 
 Whilst the modelled predictions do a reasonable job of representing the observed data, 
@@ -1011,9 +1035,9 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(quinn.brmP)
+#launch_shinystan(quinn_brmP)
 ```
-
+    
 ### DHARMa residuals
 
 DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
@@ -1027,24 +1051,12 @@ We need to supply:
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
 
-```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- quinn.brmP |> posterior_predict(nsamples = 250,  summary = FALSE)
-quinn.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = quinn$RECRUITS,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = TRUE)
-quinn.resids |> plot()
-
-quinn.resids |> testDispersion()
-quinn.resids |> testZeroInflation()
-```
-
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-quinn.resids <- make_brms_dharma_res(quinn.brmP, integerResponse = TRUE)
-wrap_elements(~testUniformity(quinn.resids)) +
-               wrap_elements(~plotResiduals(quinn.resids, form = factor(rep(1, nrow(quinn))))) +
-               wrap_elements(~plotResiduals(quinn.resids, quantreg = TRUE)) +
-               wrap_elements(~testDispersion(quinn.resids))
+quinn_resids <- make_brms_dharma_res(quinn_brmP, integerResponse = TRUE)
+wrap_elements(~testUniformity(quinn_resids)) +
+               wrap_elements(~plotResiduals(quinn_resids, form = factor(rep(1, nrow(quinn))))) +
+               wrap_elements(~plotResiduals(quinn_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(quinn_resids))
 
 ```
 **Conclusions:**
@@ -1053,8 +1065,25 @@ wrap_elements(~testUniformity(quinn.resids)) +
 - it might be worth exploring either zero-inflation, a negative
   binomial model, or including a observation-level random effect.
 
+And the old (and now incorrect) way...
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- quinn_brmP |> posterior_predict(nsamples = 250,  summary = FALSE)
+quinn_resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = quinn$RECRUITS,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = TRUE)
+quinn_resids |> plot()
+
+quinn_resids |> testDispersion()
+quinn_resids |> testZeroInflation()
+```
+
 ::::
 :::
+
+Clearly this is overdispersed...
+
 <!-- END_PRIVATE-->
 
 # Explore negative binomial model
@@ -1065,7 +1094,7 @@ wrap_elements(~testUniformity(quinn.resids)) +
 ### Fit model
 
 ```{r fitModel3a, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarmNB <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
+quinn_rstanarmNB <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
                             family = neg_binomial_2(link = 'log'),
                             prior_intercept = normal(2.3, 2, autoscale = FALSE),
                             prior = normal(0, 10, autoscale = FALSE),
@@ -1078,20 +1107,20 @@ quinn.rstanarmNB <- stan_glm(RECRUITS~fSEASON*DENSITY, data = quinn,
 ### Explore posteriors vs priors
 
 ```{r fitModel3b, results='markdown', eval=TRUE, mhidden=TRUE}
-posterior_vs_prior(quinn.rstanarmNB, color_by='vs', group_by=TRUE,
+posterior_vs_prior(quinn_rstanarmNB, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
 ### ggpredict
 
 ```{r fitModel3b2, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarmNB |> ggpredict(~fSEASON+DENSITY) |> plot(show_data = TRUE)
+quinn_rstanarmNB |> ggpredict(~fSEASON+DENSITY) |> plot(show_data = TRUE)
 ```
 
 ### ggemmeans
 
 ```{r fitModel3b3, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     ggemmeans(~fSEASON+DENSITY, back.transform = TRUE) |>
     plot(show_data=TRUE)
 ```
@@ -1100,21 +1129,21 @@ There seems to be a bug here.  The expected values should be being back transfor
 ### MCMC diagnostics
 
 ```{r fitModel3b4, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.rstanarmNB |> plot('mcmc_trace')
-quinn.rstanarmNB |> plot('mcmc_acf_bar')
-quinn.rstanarmNB |> plot('mcmc_rhat_hist')
-quinn.rstanarmNB |> plot('mcmc_neff_hist')
+quinn_rstanarmNB |> plot('mcmc_trace')
+quinn_rstanarmNB |> plot('mcmc_acf_bar')
+quinn_rstanarmNB |> plot('mcmc_rhat_hist')
+quinn_rstanarmNB |> plot('mcmc_neff_hist')
 ```
 
 ### DHARMa residuals
 ```{r fitModel3b5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, out.width = 600}
-preds <- posterior_predict(quinn.rstanarmNB,  nsamples=250,  summary=FALSE)
-quinn.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(quinn_rstanarmNB,  nsamples=250,  summary=FALSE)
+quinn_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = quinn$RECRUITS,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse=TRUE)
-plot(quinn.resids)
-quinn.resids |> testDispersion()
+plot(quinn_resids)
+quinn_resids |> testDispersion()
 ```
 
 Now possibly under-dispersed..
@@ -1122,8 +1151,8 @@ Now possibly under-dispersed..
 ### Model comparison
 
 ```{r fitModel3c, results='markdown', eval=TRUE, mhidden=TRUE}
-(loo.P = loo(quinn.rstanarmP))
-(loo.NB = loo(quinn.rstanarmNB))
+(loo.P = loo(quinn_rstanarmP))
+(loo.NB = loo(quinn_rstanarmNB))
 loo_compare(loo.P, loo.NB)
 ```
 
@@ -1133,13 +1162,13 @@ loo_compare(loo.P, loo.NB)
 ::: {.panel-tabset}
 ### Fit model
 ```{r fitModel4a, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.form <- bf(RECRUITS ~ fSEASON*DENSITY,  family = negbinomial(link = 'log'))
-get_prior(quinn.form,  data = quinn)
+quinn_form <- bf(RECRUITS ~ fSEASON*DENSITY,  family = negbinomial(link = 'log'))
+get_prior(quinn_form,  data = quinn)
 
-priors <- prior(normal(2.4, 1.5), class = 'Intercept') +
-    prior(normal(0, 1), class = 'b') +
+priors <- prior(normal(2.5, 0.2), class = 'Intercept') +
+    prior(normal(0, 2.5), class = 'b') +
     prior(gamma(0.01, 0.01), class = "shape")
-quinn.brmsNB <- brm(quinn.form,
+quinn_brmsNB <- brm(quinn_form,
                     data = quinn,
                     prior = priors,
                     refresh = 0,
@@ -1152,21 +1181,12 @@ quinn.brmsNB <- brm(quinn.form,
 
 ### DHARMa residuals
 
-```{r fitModel4a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, out.width = 600}
-preds <- posterior_predict(quinn.brmsNB,  nsamples = 250,  summary = FALSE)
-quinn.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = quinn$RECRUITS,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = TRUE)
-plot(quinn.resids)
-```
-
 ```{r fitModel4a1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4, out.width = 600}
-quinn.resids <- make_brms_dharma_res(quinn.brmsNB, integerResponse = TRUE)
-wrap_elements(~testUniformity(quinn.resids)) +
-               ## wrap_elements(~plotResiduals(quinn.resids, form = factor(rep(1, nrow(quinn))))) +
-               wrap_elements(~plotResiduals(quinn.resids, quantreg = TRUE)) +
-               wrap_elements(~testDispersion(quinn.resids))
+quinn_resids <- make_brms_dharma_res(quinn_brmsNB, integerResponse = TRUE)
+wrap_elements(~testUniformity(quinn_resids)) +
+               ## wrap_elements(~plotResiduals(quinn_resids, form = factor(rep(1, nrow(quinn))))) +
+               wrap_elements(~plotResiduals(quinn_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(quinn_resids))
 
 ```
 ::::
@@ -1180,14 +1200,14 @@ wrap_elements(~testUniformity(quinn.resids)) +
 ### ggpredict
 
 ```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |> ggpredict(~fSEASON+DENSITY) |> plot(show_data=TRUE)
+quinn_rstanarmNB |> ggpredict(~fSEASON+DENSITY) |> plot(show_data=TRUE)
 ```
 
 
 ### ggemmeans
 
 ```{r partialPlot1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     ggemmeans(~fSEASON|DENSITY,  type='fixed', back.transform = TRUE) |>
     plot(show_data=TRUE)
 ```
@@ -1195,7 +1215,7 @@ quinn.rstanarmNB |>
 ### fitted_draws
 
 ```{r partialPlot1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     fitted_draws(newdata=quinn) |>
     median_hdci() |>
     ggplot(aes(x=fSEASON, colour=DENSITY, y=.value)) +
@@ -1209,26 +1229,26 @@ quinn.rstanarmNB |>
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> conditional_effects("fSEASON:DENSITY") |> plot(points = TRUE)
+quinn_brmsNB |> conditional_effects("fSEASON:DENSITY") |> plot(points = TRUE)
 ```
 
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> ggpredict(~fSEASON+DENSITY) |> plot(show_data = TRUE)
+quinn_brmsNB |> ggpredict(~fSEASON+DENSITY) |> plot(show_data = TRUE)
 ```
 
 
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> ggemmeans(~fSEASON|DENSITY) |> plot(show_data = TRUE)
+quinn_brmsNB |> ggemmeans(~fSEASON|DENSITY) |> plot(show_data = TRUE)
 ```
 
 ### fitted_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |>
+quinn_brmsNB |>
     fitted_draws(newdata=quinn) |>
     median_hdci() |>
     ggplot(aes(x=fSEASON, colour=DENSITY, y=.value)) +
@@ -1258,11 +1278,11 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |> summary()
+quinn_rstanarmNB |> summary()
 ```
 
 ```{r summariseModel1a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-quinn.sum <- summary(quinn.rstanarmNB)
+quinn_sum <- summary(quinn_rstanarmNB)
 ```
 
 
@@ -1270,18 +1290,18 @@ quinn.sum <- summary(quinn.rstanarmNB)
 
 - the intercept represents the estimated mean of the first combination of Season
   (Spring) and Density (High). On the link scale this is 
-  `r round(quinn.sum[1,1], 2)`
+  `r round(quinn_sum[1,1], 2)`
 - the difference between Low and High adult density in spring is 
-  `r round(quinn.sum[2,1], 2)`, although this is not significant
+  `r round(quinn_sum[2,1], 2)`, although this is not significant
 - the difference between Spring and Summer for High adult density is 
-  `r round(quinn.sum[3,1], 2)`
+  `r round(quinn_sum[3,1], 2)`
 - the difference between Spring and Autumn for High adult density is 
-  `r round(quinn.sum[4,1], 2)`
+  `r round(quinn_sum[4,1], 2)`
 - the difference between Spring and Winter for High adult density is 
-  `r round(quinn.sum[5,1], 2)`
+  `r round(quinn_sum[5,1], 2)`
 - if there were no interactions, we would expect the Low density Summer
   recruitment to be the additive of the main effects (Low and Summer).  However,
-  the modelled mean is `r -1*round(quinn.sum[6,1], 2)` less than the additive
+  the modelled mean is `r -1*round(quinn_sum[6,1], 2)` less than the additive
   effects would have expected.  This value is significantly different to 0,
   indicating that there is evidence that the density effect in Summer is
   different to that in Spring.
@@ -1291,10 +1311,10 @@ quinn.sum <- summary(quinn.rstanarmNB)
 ### tidyMCMC
 
 ```{r summariseModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tidyMCMC(quinn.rstanarmNB$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+tidyMCMC(quinn_rstanarmNB$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 ```{r summariseModel1b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-quinn.tidy <- tidyMCMC(quinn.rstanarmNB$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+quinn_tidy <- tidyMCMC(quinn_rstanarmNB$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
@@ -1304,7 +1324,7 @@ See above
 ### summarise_draws (posterior)
 
 ```{r summariseModel1dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB$stanfit |>
+quinn_rstanarmNB$stanfit |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
@@ -1313,7 +1333,7 @@ quinn.rstanarmNB$stanfit |>
 We can also alter the CI level.
 
 ```{r summariseModel1d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB$stanfit |>
+quinn_rstanarmNB$stanfit |>
     summarise_draws(median,
                     ~HDInterval::hdi(.x, credMass = 0.9),
                     rhat, length, ess_bulk, ess_tail)
@@ -1322,7 +1342,7 @@ quinn.rstanarmNB$stanfit |>
 Arguably, it would be better to back-transform to the ratio scale
 
 ```{r summariseModel1d3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB$stanfit |>
+quinn_rstanarmNB$stanfit |>
     summarise_draws(
         ~ median(exp(.x)),
         ~HDInterval::hdi(exp(.x)),
@@ -1332,8 +1352,8 @@ quinn.rstanarmNB$stanfit |>
 ### as_draws_df (posteriors)
 
 ```{r summariseModel1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB$stanfit |> as_draws_df()
-quinn.rstanarmNB$stanfit |>
+quinn_rstanarmNB$stanfit |> as_draws_df()
+quinn_rstanarmNB$stanfit |>
     as_draws_df() |>
     summarise_draws(
         median,
@@ -1342,7 +1362,7 @@ quinn.rstanarmNB$stanfit |>
         ess_bulk
     )
 
-quinn.rstanarmNB$stanfit |>
+quinn_rstanarmNB$stanfit |>
     as_draws_df() |>
     exp() |> 
     summarise_draws(
@@ -1358,13 +1378,13 @@ quinn.rstanarmNB$stanfit |>
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |> get_variables()
-quinn.draw <- quinn.rstanarmNB |> gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE)
-quinn.draw
+quinn_rstanarmNB |> get_variables()
+quinn_draw <- quinn_rstanarmNB |> gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE)
+quinn_draw
 
 exceedP <- function(x, Val = 0) mean(x>Val)
 
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE) |>
     mutate(.value = exp(.value)) |>
     summarise_draws(median,
@@ -1379,26 +1399,26 @@ quinn.rstanarmNB |>
 We can then summarise this
 
 ```{r summariseModel1c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.draw |> median_hdci()
+quinn_draw |> median_hdci()
 ```
 
 We could alternatively express the parameters on the response scale.
 ```{r summariseModel1c8, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.draw |> median_hdci(exp(.value))
+quinn_draw |> median_hdci(exp(.value))
 ```
 
 ```{r summariseModel1c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-quinn.gather <- quinn.rstanarmNB |> gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE) |>
+quinn_gather <- quinn_rstanarmNB |> gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE) |>
   median_hdci()
 ```
 
 ```{r summariseModel1c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
   facet_wrap(~.variable, scales='free')
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
     geom_vline(xintercept=0, linetype='dashed') +
@@ -1408,12 +1428,12 @@ quinn.rstanarmNB |>
  
 We could alternatively express the parameters on the response scale.
 ```{r summariseModel1c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
   group_by(.variable) |>
   mutate(.value=exp(.value)) |>
   median_hdci()
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   mutate(.value=exp(.value)) |>
   ggplot() + 
@@ -1426,14 +1446,14 @@ quinn.rstanarmNB |>
 ### bayesplot
 
 ```{r summariseModel1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |> plot(plotfun='mcmc_intervals') 
+quinn_rstanarmNB |> plot(plotfun='mcmc_intervals') 
 ```
 
 ### slab (ggdist)
 
 ```{r summariseModel2d5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
 ## Link scale
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     ggplot() +
     stat_slab(aes(x = .value, y = .variable,
@@ -1444,7 +1464,7 @@ quinn.rstanarmNB |>
     geom_vline(xintercept=0, linetype='dashed') +
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 ## Fractional scale
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     mutate(.value=exp(.value)) |>
     ggplot() +
@@ -1461,19 +1481,19 @@ quinn.rstanarmNB |>
 ### half-eye (ggdist)
 
 ```{r summariseModel1c44, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
   facet_wrap(~.variable, scales='free')
 
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 
-quinn.rstanarmNB |>  
+quinn_rstanarmNB |>  
   gather_draws(`.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=exp(.value),  y=.variable)) +
@@ -1484,13 +1504,13 @@ quinn.rstanarmNB |>
 ### density ridges (ggridges)
 
 ```{r summariseModel1c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or on a fractional scale
-quinn.rstanarmNB |> 
+quinn_rstanarmNB |> 
   gather_draws(`.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges_gradient(aes(x=exp(.value),
@@ -1509,18 +1529,18 @@ quinn.rstanarmNB |>
 This is purely a graphical depiction on the posteriors.
 
 ```{r summariseModel1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |> tidy_draws()
+quinn_rstanarmNB |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |> spread_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE)
+quinn_rstanarmNB |> spread_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE)
 ```
 
 ### posterior_samples
 ```{r summariseModel1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.rstanarmNB |> posterior_samples() |> as_tibble()
+quinn_rstanarmNB |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
@@ -1529,7 +1549,7 @@ Unfortunately, $R^2$ calculations for models other than Gaussian and Binomial
 have not yet been implemented for `rstanarm` models yet.
 
 ```{r summariseModel1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-#quinn.rstanarmNB |> bayes_R2() |> median_hdci
+#quinn_rstanarmNB |> bayes_R2() |> median_hdci
 ```
 
 ::::
@@ -1546,30 +1566,30 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> summary()
+quinn_brmsNB |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-quinn.sum <- quinn.brmsNB |> summary()
-quinn.sum <- quinn.sum$fixed
+quinn_sum <- quinn_brmsNB |> summary()
+quinn_sum <- quinn_sum$fixed
 ```
 
 **Conclusions:**
 
 - the intercept represents the estimated mean of the first combination of Season
   (Spring) and Density (High). On the link scale this is 
-  `r round(quinn.sum[1,1], 2)`
+  `r round(quinn_sum[1,1], 2)`
 - the difference between Low and High adult density in spring is 
-  `r round(quinn.sum[2,1], 2)`, although this is not significant
+  `r round(quinn_sum[2,1], 2)`, although this is not significant
 - the difference between Spring and Summer for High adult density is 
-  `r round(quinn.sum[3,1], 2)`
+  `r round(quinn_sum[3,1], 2)`
 - the difference between Spring and Autumn for High adult density is 
-  `r round(quinn.sum[4,1], 2)`
+  `r round(quinn_sum[4,1], 2)`
 - the difference between Spring and Winter for High adult density is 
-  `r round(quinn.sum[5,1], 2)`
+  `r round(quinn_sum[5,1], 2)`
 - if there were no interactions, we would expect the Low density Summer
   recruitment to be the additive of the main effects (Low and Summer).  However,
-  the modelled mean is `r -1*round(quinn.sum[6,1], 2)` less than the additive
+  the modelled mean is `r -1*round(quinn_sum[6,1], 2)` less than the additive
   effects would have expected.  This value is significantly different to 0,
   indicating that there is evidence that the density effect in Summer is
   different to that in Spring.
@@ -1580,7 +1600,7 @@ quinn.sum <- quinn.sum$fixed
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB$fit |>
+quinn_brmsNB$fit |>
     tidyMCMC(estimate.method = 'median',
              conf.int = TRUE,
              conf.method = 'HPDinterval',
@@ -1588,7 +1608,7 @@ quinn.brmsNB$fit |>
              ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-quinn.tidy <- tidyMCMC(quinn.brmsNB$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+quinn_tidy <- tidyMCMC(quinn_brmsNB$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
@@ -1598,8 +1618,8 @@ see above
 ### as_draws_df (posteriors)
 
 ```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> as_draws_df()
-quinn.brmsNB |>
+quinn_brmsNB |> as_draws_df()
+quinn_brmsNB |>
   as_draws_df() |>
   summarise_draws(
     median,
@@ -1608,7 +1628,7 @@ quinn.brmsNB |>
     ess_bulk, ess_tail
   )
 
-quinn.brmsNB |>
+quinn_brmsNB |>
     as_draws_df() |>
     exp() |>
     summarise_draws(
@@ -1625,12 +1645,12 @@ quinn.brmsNB |>
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> get_variables()
-quinn.draw <- quinn.brmsNB |>
+quinn_brmsNB |> get_variables()
+quinn_draw <- quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex = TRUE)
-quinn.draw
+quinn_draw
 
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex = TRUE) |>
     mutate(.value = exp(.value)) |>
     summarise_draws(median,
@@ -1641,7 +1661,7 @@ quinn.brmsNB |>
     
 
 exceedP <- function(x, Val = 0) mean(x>Val)
-quinn.brmsNB |>
+quinn_brmsNB |>
     tidy_draws() |>
     exp() |>
     dplyr::select(starts_with("b_")) |>
@@ -1655,23 +1675,23 @@ quinn.brmsNB |>
 We can then summarise this
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.draw |> median_hdci()
+quinn_draw |> median_hdci()
 ```
 
 We could alternatively express the parameters on the response scale.
 
 ```{r summariseModel2c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.draw |> 
+quinn_draw |> 
   median_hdci(exp(.value))
 ```
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-quinn.gather <- quinn.brmsNB |> gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex = TRUE) |>
+quinn_gather <- quinn_brmsNB |> gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex = TRUE) |>
   median_hdci()
 ```
 
 ```{r summariseModel2c45, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
     ggplot() +
     geom_vline(xintercept=0, linetype='dashed') +
@@ -1682,7 +1702,7 @@ quinn.brmsNB |>
                            )), color='black') + 
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 
-quinn.brmsNB |> 
+quinn_brmsNB |> 
   gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |> 
   ggplot() + 
     geom_vline(xintercept=0, linetype='dashed') +
@@ -1692,13 +1712,13 @@ quinn.brmsNB |>
  
 We could alternatively express the parameters on the response scale.
 ```{r summariseModel2c55, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.brmsNB |> 
+quinn_brmsNB |> 
   gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
   group_by(.variable) |>
   mutate(.value=exp(.value)) |>
   median_hdci()
 
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     mutate(.value=exp(.value)) |>
     ggplot() +
@@ -1716,21 +1736,21 @@ quinn.brmsNB |>
 **Conclusions:**
 
 - the estimated mean (expected number of newly recruited barnacles) on the ALG1
-  surface is `r round(as.numeric(quinn.gather[1,2]),2)`.  This is the mean of the posterior distribution
+  surface is `r round(as.numeric(quinn_gather[1,2]),2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(quinn.gather[1, 2])),2)`.
-- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(quinn.gather[2,2]),2)`
-(median) with a standard error of `r round(as.numeric(quinn.gather[2,3]),2)`.
+  becomes `r round(exp(as.numeric(quinn_gather[1, 2])),2)`.
+- the estimated effect of ALG2 vs ALG1 is `r round(as.numeric(quinn_gather[2,2]),2)`
+(median) with a standard error of `r round(as.numeric(quinn_gather[2,3]),2)`.
   The 95% credibility intervals indicate that we are 95% confident that the effect is between 
-  `r round(as.numeric(quinn.gather[2,4]),2)` and `r round(as.numeric(quinn.gather[2,5]),2)` - e.g. there is a
+  `r round(as.numeric(quinn_gather[2,4]),2)` and `r round(as.numeric(quinn_gather[2,5]),2)` - e.g. there is a
   significant positive effect.  When back-transformed onto the response scale, we see
-  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(quinn.gather[2,2])),2)` times
+  that barnacle recruitment on ALG2 is `r round(exp(as.numeric(quinn_gather[2,2])),2)` times
   higher than that on ALG1.
-  This represents a `r round(100*(exp(as.numeric(quinn.gather[2, 2]))-1), 0)`% increase in
+  This represents a `r round(100*(exp(as.numeric(quinn_gather[2, 2]))-1), 0)`% increase in
   barnacle recruitment.
- - the estimated effect of NB and S are `r round(as.numeric(quinn.gather[3, 2]), 2)` and 
-  `r round(as.numeric(quinn.gather[4, 2]), 2)` respectively, which equate to 
-  `r round(1/exp(as.numeric(quinn.gather[3,2])),2)` and  `r round(1/exp(as.numeric(quinn.gather[4,2])),2)` fold
+ - the estimated effect of NB and S are `r round(as.numeric(quinn_gather[3, 2]), 2)` and 
+  `r round(as.numeric(quinn_gather[4, 2]), 2)` respectively, which equate to 
+  `r round(1/exp(as.numeric(quinn_gather[3,2])),2)` and  `r round(1/exp(as.numeric(quinn_gather[4,2])),2)` fold
   declines respectively. 
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
@@ -1739,14 +1759,14 @@ quinn.brmsNB |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB$fit |> plot(type='intervals') 
+quinn_brmsNB$fit |> plot(type='intervals') 
 ```
 
 ### slab (ggdist)
 
 ```{r summariseModel2d55, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
 ## Link scale
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     ggplot() +
     stat_slab(aes(x = .value, y = .variable,
@@ -1757,7 +1777,7 @@ quinn.brmsNB |>
     geom_vline(xintercept=0, linetype='dashed') +
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 ## Fractional scale
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     mutate(.value=exp(.value)) |>
     ggplot() +
@@ -1774,19 +1794,19 @@ quinn.brmsNB |>
 ### half-eye (ggdist)
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     facet_wrap(~.variable, scales='free')
 
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     ggplot() + 
     stat_halfeye(aes(x=exp(.value),  y=.variable)) +
@@ -1797,13 +1817,13 @@ quinn.brmsNB |>
 ### ggridges
 
 ```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     ggplot() + 
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or on a fractional scale
-quinn.brmsNB |>
+quinn_brmsNB |>
     gather_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`, regex=TRUE) |>
     ggplot() + 
     geom_density_ridges_gradient(aes(x=exp(.value),
@@ -1822,24 +1842,24 @@ quinn.brmsNB |>
 This is purely a graphical depiction on the posteriors.
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> tidy_draws()
+quinn_brmsNB |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> spread_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE)
+quinn_brmsNB |> spread_draws(`.Intercept.*|.*fSEASON.*|.*DENSITY.*`,  regex=TRUE)
 ```
 
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> posterior_samples() |> as_tibble()
+quinn_brmsNB |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-quinn.brmsNB |> bayes_R2(summary=FALSE) |> median_hdci()
+quinn_brmsNB |> bayes_R2(summary=FALSE) |> median_hdci()
 ```
 
 ### ROPE
@@ -1848,28 +1868,28 @@ Region of Practical Equivalence
 
 ```{r summariseModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 0.1 * log(sd(quinn$RECRUITS))
-quinn.brmsNB |> rope(range = c(-0.28, 0.28))
-rope(quinn.brmsNB, range = c(-0.28, 0.28)) |> plot()
+quinn_brmsNB |> rope(range = c(-0.28, 0.28))
+rope(quinn_brmsNB, range = c(-0.28, 0.28)) |> plot()
 
 ## Or based on fractional scale
-quinn.brmsNB |>
+quinn_brmsNB |>
     as_draws_df('^b_fSEASON.*|^b_DENSITY.*', regex = TRUE) |>
     exp() |> 
     ## equivalence_test(range = c(0.755, 1.32))
     rope(range = c(0.755, 1.32))
-quinn.mcmc <-
-    quinn.brmsNB |>
+quinn_mcmc <-
+    quinn_brmsNB |>
     as_draws_df('^b_fSEASON.*|^b_DENSITY.*', regex = TRUE) |>
     exp()
-quinn.mcmc |>
+quinn_mcmc |>
     rope(range = c(0.755, 1.32))
 ## note, the following is not quit correct, it does not get the CI correct
-quinn.mcmc |>
+quinn_mcmc |>
     rope(range = c(0.755, 1.32)) |>
-    plot(data = quinn.brmsNB)
+    plot(data = quinn_brmsNB)
 
 
-quinn.mcmc |>
+quinn_mcmc |>
     equivalence_test(range = c(0.755, 1.32)) 
 ```
 
@@ -1880,7 +1900,7 @@ quinn.mcmc |>
 #| eval: true
 #| echo: true
 #| cache: false
-quinn.brmsNB |> modelsummary(
+quinn_brmsNB |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = TRUE
@@ -1893,7 +1913,7 @@ quinn.brmsNB |> modelsummary(
 #| eval: true
 #| echo: true
 #| cache: false
-quinn.brmsNB |> modelplot(coef_omit = "shape", exponentiate = TRUE)
+quinn_brmsNB |> modelplot(coef_omit = "shape", exponentiate = TRUE)
 ```
 
 ::::
@@ -1912,11 +1932,11 @@ explore the effect of Density separately within each Season.
 
 ```{r mainEffects1a, results='markdown', eval=TRUE, mhidden=TRUE}
 ## fold scale
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     emmeans(~DENSITY|fSEASON, type='response') |>
     pairs()
 ## absolute response scale
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     emmeans(~DENSITY|fSEASON, type='link') |>
     regrid() |>
     pairs()
@@ -1925,14 +1945,14 @@ quinn.rstanarmNB |>
 ### Using full posteriors
 
 ```{r mainEffects1b, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.em <- quinn.rstanarmNB |>
+quinn_em <- quinn_rstanarmNB |>
     emmeans(~DENSITY|fSEASON, type='link') |>
     pairs() |>
     gather_emmeans_draws() |> 
     mutate(Fit=exp(.value))
-head(quinn.em)
+head(quinn_em)
 
-g2 <- quinn.em |>
+g2 <- quinn_em |>
   group_by(contrast, fSEASON) |>
   median_hdci() |>
   ggplot() +
@@ -1942,19 +1962,19 @@ g2 <- quinn.em |>
   theme_classic()
 g2
 
-ggplot(quinn.em, aes(x=Fit)) +
+ggplot(quinn_em, aes(x=Fit)) +
     geom_histogram() +
     geom_vline(xintercept = 1, linetype='dashed') +
     scale_x_continuous('Effect size (High/Low)', trans = scales::log2_trans(), breaks=unique(as.vector(2^(0:4 %o% c(-1,1))))) +
     facet_wrap(fSEASON~contrast, scales='free')
-quinn.em |> group_by(contrast, fSEASON) |> median_hdci(Fit)
+quinn_em |> group_by(contrast, fSEASON) |> median_hdci(Fit)
 # Probability of effect
-quinn.em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1))
+quinn_em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1))
 ##Probability of effect greater than 10%
-quinn.em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1.1))
+quinn_em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1.1))
 
 ## Using summarise_draws
-quinn.rstanarmNB |>
+quinn_rstanarmNB |>
     emmeans(~DENSITY|fSEASON, type='link') |>
     pairs() |>
     tidy_draws() |>
@@ -1971,9 +1991,9 @@ quinn.rstanarmNB |>
 newdata <- with(quinn, expand.grid(fSEASON = levels(fSEASON),
                                   DENSITY = levels(DENSITY)))
 Xmat<- model.matrix(~fSEASON*DENSITY, data = newdata)
-as.matrix(quinn.rstanarmNB) |> head()
-## coefs <- as.matrix(quinn.rstanarmNB)
-coefs <- as.matrix(as.data.frame(quinn.rstanarmNB) |>
+as.matrix(quinn_rstanarmNB) |> head()
+## coefs <- as.matrix(quinn_rstanarmNB)
+coefs <- as.matrix(as.data.frame(quinn_rstanarmNB) |>
                   dplyr:::select(-reciprocal_dispersion)) |>
     as.matrix()
 fit <- exp(coefs %*% t(Xmat))
@@ -1998,7 +2018,7 @@ Xmat.high <- Xmat[newdata$DENSITY=="High",]
 Xmat.low <- Xmat[newdata$DENSITY=="Low",]
 Xmat.density <- Xmat.high-Xmat.low
 rownames(Xmat.density) <- levels(quinn$fSEASON)
-coefs = as.matrix(as.data.frame(quinn.rstanarmNB) |> dplyr:::select(-reciprocal_dispersion))
+coefs = as.matrix(as.data.frame(quinn_rstanarmNB) |> dplyr:::select(-reciprocal_dispersion))
 fit = exp(coefs %*% t(Xmat.density))
 tidyMCMC(fit, conf.int=TRUE, conf.method='HPDinterval')
 ## or absolute
@@ -2014,11 +2034,11 @@ tidyMCMC(fit, conf.int=TRUE, conf.method='HPDinterval')
 :::: {.panel-tabset}
 ### Simple
 ```{r mainEffects2a, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.brmsNB |>
+quinn_brmsNB |>
     emmeans(~DENSITY|fSEASON, type='response') |>
     pairs()
 ## absolute response scale
-quinn.brmsNB |>
+quinn_brmsNB |>
     emmeans(~DENSITY|fSEASON, type='link') |>
     regrid() |>
     pairs()
@@ -2027,14 +2047,14 @@ quinn.brmsNB |>
 ### Using full posteriors
 
 ```{r mainEffects2b, results='markdown', eval=TRUE, mhidden=TRUE}
-quinn.em <- quinn.brmsNB |>
+quinn_em <- quinn_brmsNB |>
     emmeans(~DENSITY|fSEASON, type='link') |>
     pairs() |>
     gather_emmeans_draws() |> 
     mutate(Fit=exp(.value))
-head(quinn.em)
+head(quinn_em)
 
-g2 <- quinn.em |>
+g2 <- quinn_em |>
   group_by(contrast, fSEASON) |>
   median_hdci() |>
   ggplot() +
@@ -2044,16 +2064,16 @@ g2 <- quinn.em |>
   theme_classic()
 g2
 
-ggplot(quinn.em, aes(x=Fit)) +
+ggplot(quinn_em, aes(x=Fit)) +
     geom_histogram() +
     geom_vline(xintercept = 1, linetype='dashed') +
     scale_x_continuous('Effect size (High/Low)', trans = scales::log2_trans(), breaks=unique(as.vector(2^(0:4 %o% c(-1,1))))) +
     facet_wrap(fSEASON~contrast, scales='free')
-quinn.em |> group_by(contrast, fSEASON) |> median_hdci(Fit)
+quinn_em |> group_by(contrast, fSEASON) |> median_hdci(Fit)
 # Probability of effect
-quinn.em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1))
+quinn_em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1))
 ##Probability of effect greater than 10%
-quinn.em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1.1))
+quinn_em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1.1))
 
 ```
 
@@ -2067,7 +2087,7 @@ quinn.em |> group_by(contrast,fSEASON) |> summarize(P=mean(Fit>1.1))
 ## rmarkdown
 
 ```{r summaryFig1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=4}
-newdata <- quinn.rstanarmNB |>
+newdata <- quinn_rstanarmNB |>
     emmeans(~fSEASON|DENSITY, type='response') |>
     as.data.frame()
 head(newdata)
@@ -2081,7 +2101,7 @@ g1 + g2
 ## brms
 
 ```{r summaryFig2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=4}
-newdata <- quinn.brmsNB %>%
+newdata <- quinn_brmsNB %>%
     emmeans(~fSEASON|DENSITY, type='response') |>
     as.data.frame()
 head(newdata)
@@ -2105,10 +2125,10 @@ quinn <- quinn |>
   group_by(fSEASON, DENSITY) |>
   mutate(Obs = factor(1:n()))
 
-quinn.form <- bf(RECRUITS ~ fSEASON*DENSITY + (1|Obs),  family = poisson(link = 'log'))
-get_prior(quinn.form,  data = quinn)
+quinn_form <- bf(RECRUITS ~ fSEASON*DENSITY + (1|Obs),  family = poisson(link = 'log'))
+get_prior(quinn_form,  data = quinn)
 
-quinn.brmsU <- brm(quinn.form,
+quinn_brmsU <- brm(quinn_form,
                    data = quinn,
                    refresh = 0,
                    chains = 3,
@@ -2116,13 +2136,13 @@ quinn.brmsU <- brm(quinn.form,
                    thin = 5,
                    warmup = 2000)
 
-preds <- posterior_predict(quinn.brmsU,  nsamples=250,  summary=FALSE)
-quinn.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(quinn_brmsU,  nsamples=250,  summary=FALSE)
+quinn_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = quinn$RECRUITS,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(quinn.resids)
-newdata = emmeans(quinn.brmsU, ~fSEASON|DENSITY, type='response') |> as.data.frame()
+plot(quinn_resids)
+newdata = emmeans(quinn_brmsU, ~fSEASON|DENSITY, type='response') |> as.data.frame()
 newdata
 ggplot(newdata, aes(y=rate, x=fSEASON, color=DENSITY)) +
     geom_pointrange(aes(ymin=lower.HPD, ymax=upper.HPD),
@@ -2132,3 +2152,4 @@ ggplot(newdata, aes(y=rate, x=fSEASON, color=DENSITY)) +
 
 <!-- END_PRIVATE-->
 # References
+

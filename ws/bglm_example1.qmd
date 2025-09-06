@@ -52,7 +52,7 @@ monofont: DejaVu Sans Mono
 classoption: a4paper
 bibliography: ../resources/references.bib
 ---
-
+ 
 ```{r}
 #| label: setup
 #| include: false
@@ -195,15 +195,9 @@ $$
 \begin{align}
 y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
 \mu_i &= \beta_0 + \beta_1 x_i\\
-\beta_0 &\sim{} \mathcal{N}(164,65)\\
-\beta_1 &\sim{} \mathcal{N}(0,1)\\
-\sigma &\sim{} \mathcal{t}(3,0,65)\\
-OR\\
-\sigma &\sim{} \mathcal{cauchy}(0,65)\\
-OR\\
-\sigma &\sim{} \mathcal{Exp}(0.016)\\
-OR\\
-\sigma &\sim{} \mathcal{gamma}(2,0.05)\\
+\beta_0 &\sim{} \mathcal{N}(164, 90)\\
+\beta_1 &\sim{} \mathcal{N}(0, 90)\\
+\sigma &\sim{} \mathcal{t}(3,0,90)\\
 \end{align}
 $$
 
@@ -212,8 +206,8 @@ $$
 # Fit the model 
 
 Note, for routines that take more than a couple of seconds to perform
-(such as most Bayesian models), it is a good idea to cache the
-Rmarkdown chunks in which the routine is performed. That way, the
+(such as most Bayesian models), it is a good idea to cache the quarto
+or Rmarkdown chunks in which the routine is performed. That way, the
 routine will only be run the first time and any objects generated will
 be stored for future use. Thereafter, provided the code has not
 changed, the routine will not be re-run. Rather, `knitr` will just
@@ -276,13 +270,13 @@ summarising some approaches in a table.
   allowing all reasonable estimates).
 - for effects parameters on scaled data, an argument could be made for
   a normal distribution with a standard deviation of 1
-  (e.g. `normal(0,1)`), although klsome prefer a t distribution with 3
+  (e.g. `normal(0,1)`), although some prefer a t distribution with 3
   degrees of freedom and standard deviation of 1
   (e.g. `student_t(3,0,1)`) - apparently a flatter t is a more robust
   prior than a normal as an uninformative prior...
 - for unscaled data, the above priors can be scaled by using the
   standard deviation of the data as the prior standard deviation
-  (e.g. `student_t(3,0,sd(y))`, or `sudent_t(3,0,sd(y)/sd(x))`)
+  (e.g. `student_t(3,0,sd(y))`, or `student_t(3,0,sd(y)/sd(x))`)
 - for priors of hierachical standard deviations, priors should
   encourage shrinkage towards 0 (particularly if the number of groups
   is small, since otherwise, the sampler will tend to be more

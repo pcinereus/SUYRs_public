@@ -202,13 +202,13 @@ loyn <- loyn |> mutate(fGRAZE = factor(GRAZE))
 
 Model formula:
 $$
-y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
-log(\mu_i) = \boldsymbol{\beta} \bf{X_i}\\
-\beta_0 \sim{} \mathcal{N}(3,0.5)\\
-\beta_{1-9} \sim{} \mathcal{N}(0,2.5)\\
-\sigma \sim{} \mathcal{Gamma}(2,1)\\
-OR\\
-\sigma \sim{} \mathcal{t}(3,0,2.5)
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+log(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
+\beta_0 &\sim{} \mathcal{N}(3.4, 0.1)\\
+\beta_{1-9} &\sim{} \mathcal{N}(0, 2)\\
+\sigma &\sim{} \mathcal{t}(3,0, 1.5)
+\end{align}
 $$
 
 where $\boldsymbol{\beta}$ is a vector of effects parameters and $\bf{X}$ is a model matrix representing the additive effects of
@@ -243,11 +243,11 @@ scatterplotMatrix(~ABUND+log(DIST)+log(LDIST)+log(AREA)+GRAZE+ALT+YR.ISOL, data 
 ## frequentist 
 
 ```{r lm, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.glm <- glm(ABUND~scale(log(DIST))+scale(log(LDIST))+scale(log(AREA))+
+loyn_glm <- glm(ABUND~scale(log(DIST))+scale(log(LDIST))+scale(log(AREA))+
                     fGRAZE + scale(ALT) + scale(YR.ISOL),
                 data = loyn,
                 family = gaussian(link='log'))
-loyn.glm |> summary()
+loyn_glm |> summary()
 ```
 
 ## rstanarm 
@@ -260,7 +260,7 @@ are chosen to provide moderate regularisation (to help prevent over-fitting) and
 help stabilise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.rstanarm = stan_glm(ABUND ~ scale(log(DIST))+
+loyn_rstanarm = stan_glm(ABUND ~ scale(log(DIST))+
                               scale(log(LDIST))+
                               scale(log(AREA))+
                               fGRAZE+
@@ -293,7 +293,7 @@ loyn.rstanarm = stan_glm(ABUND ~ scale(log(DIST))+
     be issues with the priors.
 
 ```{r fitModel1a1, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.rstanarm = stan_glm(ABUND ~ scale(log(DIST))+
+loyn_rstanarm = stan_glm(ABUND ~ scale(log(DIST))+
                               scale(log(LDIST))+
                               scale(log(AREA))+
                               fGRAZE+
@@ -310,7 +310,7 @@ There are still a substantial number of divergent transitions.  It is
 possible that the priors are too vague.
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE}
-prior_summary(loyn.rstanarm)
+prior_summary(loyn_rstanarm)
 ```
 
 **Conclusions:**
@@ -320,11 +320,11 @@ prior_summary(loyn.rstanarm)
 ### Assessing priors
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.rstanarm1 <- update(loyn.rstanarm,  prior_PD=TRUE)
+loyn_rstanarm1 <- update(loyn_rstanarm,  prior_PD=TRUE)
 ```
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE}
-ggemmeans(loyn.rstanarm1,  ~AREA) |> plot(show_data=TRUE) + scale_y_log10()
-ggpredict(loyn.rstanarm1) |>
+ggemmeans(loyn_rstanarm1,  ~AREA) |> plot(show_data=TRUE) + scale_y_log10()
+ggpredict(loyn_rstanarm1) |>
     plot(show_data = TRUE) |>
     wrap_plots() &
     scale_y_log10()
@@ -352,7 +352,7 @@ ggpredict(loyn.rstanarm1) |>
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.rstanarm2 <- stan_glm(ABUND ~ scale(log(DIST))+
+loyn_rstanarm2 <- stan_glm(ABUND ~ scale(log(DIST))+
                              scale(log(LDIST))+
                               scale(log(AREA))+
                               fGRAZE+
@@ -374,9 +374,9 @@ loyn.rstanarm2 <- stan_glm(ABUND ~ scale(log(DIST))+
 
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE}
-ggemmeans(loyn.rstanarm2,  ~AREA) |>
+ggemmeans(loyn_rstanarm2,  ~AREA) |>
   plot(show_data=TRUE) + scale_y_log10()
-ggpredict(loyn.rstanarm2) |>
+ggpredict(loyn_rstanarm2) |>
     plot(show_data = TRUE) |>
     wrap_plots() &
     scale_y_log10()
@@ -385,13 +385,13 @@ ggpredict(loyn.rstanarm2) |>
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, dependson='fitModel1h'}
-loyn.rstanarm3= update(loyn.rstanarm2,  prior_PD=FALSE)
+loyn_rstanarm3= update(loyn_rstanarm2,  prior_PD=FALSE)
 ```
  
 ### Plotting prior and posterior
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-posterior_vs_prior(loyn.rstanarm3, color_by='vs', group_by=TRUE,
+posterior_vs_prior(loyn_rstanarm3, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
@@ -401,14 +401,14 @@ posterior_vs_prior(loyn.rstanarm3, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-#ggemmeans(loyn.rstanarm3,  ~AREA) |> plot(show_data=TRUE) + scale_y_log10()
-ggpredict(loyn.rstanarm3,  terms = "AREA[0:1000]") |>
+#ggemmeans(loyn_rstanarm3,  ~AREA) |> plot(show_data=TRUE) + scale_y_log10()
+ggpredict(loyn_rstanarm3,  terms = "AREA[0:1000]") |>
   plot(jitter = FALSE, show_data=TRUE) +
   scale_x_log10() +
   scale_x_log10()
-## ggpredict(loyn.rstanarm3,  terms = "AREA[0:1000]") |>
+## ggpredict(loyn_rstanarm3,  terms = "AREA[0:1000]") |>
 ##     plot(jitter = FALSE, residuals=TRUE, log.y = TRUE) + scale_x_log10()
-ggpredict(loyn.rstanarm3) |>
+ggpredict(loyn_rstanarm3) |>
     plot(show_data = TRUE) |>
     wrap_plots() &
     scale_y_log10()
@@ -431,14 +431,14 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.form <- bf(ABUND ~ scale(log(DIST))+
+loyn_form <- bf(ABUND ~ scale(log(DIST))+
                        scale(log(LDIST))+
                        scale(log(AREA))+
                        fGRAZE+
                        scale(ALT)+
                        scale(YR.ISOL),
                    family = gaussian(link = 'log'))
-loyn.brm <- brm(loyn.form,
+loyn_brm <- brm(loyn_form,
                 data = loyn,
                 iter = 5000,
                 warmup = 2500,
@@ -450,22 +450,26 @@ loyn.brm <- brm(loyn.form,
 
 ```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=2}
 options(width=100)  
-loyn.brm |> prior_summary()
+loyn_brm |> prior_summary()
 options(width=80)
 ```
 
 ### Assessing priors
 
 ```{r fitModel2d, results='markdown', eval=TRUE, mhidden=TRUE}
+loyn |> group_by(fGRAZE) |>
+  summarise(median(log(ABUND)),
+            mad(log(ABUND))
+            )
 priors <- prior(normal(0, 2.5), class = 'b')
-loyn.form <- bf(ABUND ~ scale(log(DIST))+
+loyn_form <- bf(ABUND ~ scale(log(DIST))+
                     scale(log(LDIST))+
                     scale(log(AREA))+
                     fGRAZE+
                     scale(ALT)+
                     scale(YR.ISOL),
                 family = gaussian(link = 'log'))
-loyn.brm1 <- brm(loyn.form,
+loyn_brm1 <- brm(loyn_form,
                  data = loyn, 
                  prior = priors,
                  sample_prior = 'only', 
@@ -480,20 +484,20 @@ loyn.brm1 <- brm(loyn.form,
 
 ```{r fitModel2e, results='markdown', eval=TRUE, mhidden=TRUE}
 ## Individual plots - the following seems to be broken??
-##loyn.brm1 |> ggemmeans(~AREA) |> plot(show_data = TRUE) + scale_y_log10()
-loyn.brm1 |> 
+##loyn_brm1 |> ggemmeans(~AREA) |> plot(show_data = TRUE) + scale_y_log10()
+loyn_brm1 |> 
     ggemmeans(~AREA) |>
     plot(show_data = TRUE) + scale_y_log10()
 ```
 ```{r fitModel2e2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 8}
 ## All effects 
-loyn.brm1 |>
+loyn_brm1 |>
     conditional_effects() |>
     plot(points = TRUE, ask = FALSE, plot = FALSE) |> 
     wrap_plots() &
     scale_y_log10()
 
-loyn.brm1 |>
+loyn_brm1 |>
     ggpredict() |>
     plot(show_data=TRUE, facet=TRUE) +
     scale_y_log10() 
@@ -511,30 +515,34 @@ loyn.brm1 |>
   respectively)
   - mean of 3: since `median(log(loyn$ABUND))`
   - sd of 0.5: since `mad(log(loyn$ABUND))`
-- $\beta_1$: normal centred at 0 with a standard deviation of 2.5
+- $\beta_1$: normal centred at 0 with a standard deviation of 2
   (again, consider what this would be on a response scale)
-  - sd of 1: since `mad(log(loyn$ABUND))/mad(scale(log(loyn$AREA)))`
+  - sd of 2: since `tapply(log(loyn$ABUND), loyn$fGRAZE, FUN = "median")`
     (and since each predictor is scaled, it will be the same for each
     predictor)
-- $\sigma$: half cauchy (flat Gaussian) prior with a scale of 1.
+- $\sigma$: half t distribution (flat Gaussian) prior with a scale of
+  1.5 since that would encapsulate the maximum mad of any group.
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE}
-mod.mat <- model.matrix(as.formula(loyn.form), data = loyn)
+mod.mat <- model.matrix(as.formula(loyn_form), data = loyn)
 mad(log(loyn$ABUND))/
     apply(mod.mat, 2, mad)
+
+loyn |> group_by(fGRAZE) |>
+  summarise(median = median(log(ABUND)),
+            mad = mad(log(ABUND))
+            )
 priors <- prior(normal(3.4, 0.1),  class = 'Intercept') +
-    prior(normal(0, 1.5), class = 'b') +
-    ## prior(gamma(1, 1), class = 'sigma')
+    prior(normal(0, 2), class = 'b') +
     prior(student_t(3, 0, 1.5), class = 'sigma')
-loyn.form <- bf(ABUND ~ scale(log(DIST))+
+loyn_form <- bf(ABUND ~ scale(log(DIST))+
                      scale(log(LDIST))+
                      scale(log(AREA))+
                      fGRAZE+
                      scale(ALT)+
                      scale(YR.ISOL),
                    family = gaussian(link = 'log'))
-                   ## family = lognormal())
-loyn.brm2 <- brm(loyn.form,
+loyn_brm2 <- brm(loyn_form,
                 data = loyn, 
                 prior = priors,
                 sample_prior = 'only', 
@@ -547,26 +555,26 @@ loyn.brm2 <- brm(loyn.form,
 ```
 
 ```{r fitModel2i, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.brm2 |> ggemmeans(~DIST) |>
+loyn_brm2 |> ggemmeans(~DIST) |>
     plot(show_data = TRUE) + 
     scale_y_log10()
 ``` 
 ```{r fitModel2i2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 8}
-loyn.brm2 |>
+loyn_brm2 |>
     conditional_effects() |>
     plot(points = TRUE, ask = FALSE, plot = FALSE) |>
     ## lapply(function(x) x + scale_y_log10()) |>
     wrap_plots() &
     scale_y_log10()
 
-loyn.brm2 |>
+loyn_brm2 |>
     ggpredict() |>
     plot(show_data=TRUE, facet=TRUE) +
     scale_y_log10() 
 ```
 
 ```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.brm3 <- update(loyn.brm2,  sample_prior = 'yes', refresh = 0)
+loyn_brm3 <- update(loyn_brm2,  sample_prior = 'yes', refresh = 0)
 ```
 
 ```{r fitModel2j2, results='markdown', eval=TRUE, echo = FALSE, mhidden=TRUE}
@@ -577,23 +585,23 @@ loyn.brm3 <- update(loyn.brm2,  sample_prior = 'yes', refresh = 0)
 
 
 ```{r fitModel2k, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.brm3 |> get_variables()
-## loyn.brm3 |> hypothesis('Intercept = 0', class = 'b') |> plot
-## loyn.brm3 |> hypothesis('Intercept = 0', class = 'prior') |> plot
-loyn.brm3 |> hypothesis('scalelogDIST = 0') |> plot()
-loyn.brm3 |> hypothesis('scalelogAREA = 0') |> plot()
-loyn.brm3 |> hypothesis('sigma = 0', class = '') |> plot()
+loyn_brm3 |> get_variables()
+## loyn_brm3 |> hypothesis('Intercept = 0', class = 'b') |> plot
+## loyn_brm3 |> hypothesis('Intercept = 0', class = 'prior') |> plot
+loyn_brm3 |> hypothesis('scalelogDIST = 0') |> plot()
+loyn_brm3 |> hypothesis('scalelogAREA = 0') |> plot()
+loyn_brm3 |> hypothesis('sigma = 0', class = '') |> plot()
 ```
 
 ```{r fitModel2k2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 8, fig.height = 4}
-loyn.brm3 |> SUYR_prior_and_posterior()
+loyn_brm3 |> SUYR_prior_and_posterior()
 ```
 
 ### Exploring the stan code
 
 ```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE}
-loyn.brm3 |> standata()
-loyn.brm3 |> stancode()
+loyn_brm3 |> standata()
+loyn_brm3 |> stancode()
 ```
 
 ::::
@@ -640,7 +648,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-plot(loyn.rstanarm3, plotfun='mcmc_trace')
+plot(loyn_rstanarm3, plotfun='mcmc_trace')
 ```
   
    The chains appear well mixed and very similar
@@ -649,7 +657,7 @@ plot(loyn.rstanarm3, plotfun='mcmc_trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-plot(loyn.rstanarm3, 'acf_bar')
+plot(loyn_rstanarm3, 'acf_bar')
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -660,7 +668,7 @@ plot(loyn.rstanarm3, 'acf_bar')
   parameter estimated.
 
 ```{r modelValidation1d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(loyn.rstanarm3, 'rhat_hist')
+plot(loyn_rstanarm3, 'rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -675,15 +683,15 @@ plot(loyn.rstanarm3, 'rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-plot(loyn.rstanarm3, 'neff_hist')
+plot(loyn_rstanarm3, 'neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r Validation1f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-plot(loyn.rstanarm3, 'combo')
-plot(loyn.rstanarm3, 'violin')
+plot(loyn_rstanarm3, 'combo')
+plot(loyn_rstanarm3, 'violin')
 ```
 </details>
 
@@ -703,7 +711,7 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation1g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_trace(loyn.rstanarm3)
+stan_trace(loyn_rstanarm3)
 ```
 
    The chains appear well mixed and very similar
@@ -712,7 +720,7 @@ stan_trace(loyn.rstanarm3)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ac(loyn.rstanarm3) 
+stan_ac(loyn_rstanarm3) 
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -723,7 +731,7 @@ stan_ac(loyn.rstanarm3)
   parameter estimated.
 
 ```{r modelValidation1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_rhat(loyn.rstanarm3) 
+stan_rhat(loyn_rstanarm3) 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -738,13 +746,13 @@ stan_rhat(loyn.rstanarm3)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_ess(loyn.rstanarm3)
+stan_ess(loyn_rstanarm3)
 ```
 
   Ratios all very high.
 
 ```{r modelValidation1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_dens(loyn.rstanarm3, separate_chains = TRUE)
+stan_dens(loyn_rstanarm3, separate_chains = TRUE)
 ```
 
 ### ggmcmc
@@ -762,8 +770,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=12}
-loyn.ggs <- ggs(loyn.rstanarm3)
-ggs_traceplot(loyn.ggs)
+loyn_ggs <- ggs(loyn_rstanarm3)
+ggs_traceplot(loyn_ggs)
 ```
 
    The chains appear well mixed and very similar
@@ -772,7 +780,7 @@ ggs_traceplot(loyn.ggs)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation1m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=12}
-ggs_autocorrelation(loyn.ggs)
+ggs_autocorrelation(loyn_ggs)
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -783,7 +791,7 @@ ggs_autocorrelation(loyn.ggs)
   parameter estimated.
 
 ```{r modelValidation1n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_Rhat(loyn.ggs)
+ggs_Rhat(loyn_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -798,18 +806,18 @@ ggs_Rhat(loyn.ggs)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation1o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_effective(loyn.ggs)
+ggs_effective(loyn_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation1p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_crosscorrelation(loyn.ggs)
+ggs_crosscorrelation(loyn_ggs)
 ```
 
 ```{r modelValidation1q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_grb(loyn.ggs)
+ggs_grb(loyn_ggs)
 ```
 </details>
 
@@ -839,7 +847,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-loyn.brm3 |> mcmc_plot(type = 'trace')
+loyn_brm3 |> mcmc_plot(type = 'trace')
 ```
   
    The chains appear well mixed and very similar
@@ -848,7 +856,7 @@ loyn.brm3 |> mcmc_plot(type = 'trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-loyn.brm3 |> mcmc_plot(type = 'acf_bar')
+loyn_brm3 |> mcmc_plot(type = 'acf_bar')
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -859,7 +867,7 @@ loyn.brm3 |> mcmc_plot(type = 'acf_bar')
   parameter estimated.
 
 ```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3 |> mcmc_plot(type = 'rhat_hist')
+loyn_brm3 |> mcmc_plot(type = 'rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -874,15 +882,15 @@ loyn.brm3 |> mcmc_plot(type = 'rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3 |> mcmc_plot(type = 'neff_hist')
+loyn_brm3 |> mcmc_plot(type = 'neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r Validation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-loyn.brm3 |> mcmc_plot(type = 'combo')
-loyn.brm3 |> mcmc_plot(type = 'violin')
+loyn_brm3 |> mcmc_plot(type = 'combo')
+loyn_brm3 |> mcmc_plot(type = 'violin')
 ```
 </details>
 
@@ -902,7 +910,7 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3$fit |> stan_trace()
+loyn_brm3$fit |> stan_trace()
 ```
 
    The chains appear well mixed and very similar
@@ -911,7 +919,7 @@ loyn.brm3$fit |> stan_trace()
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3$fit |> stan_ac() 
+loyn_brm3$fit |> stan_ac() 
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -922,7 +930,7 @@ loyn.brm3$fit |> stan_ac()
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3$fit |> stan_rhat() 
+loyn_brm3$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -937,13 +945,13 @@ loyn.brm3$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3$fit |> stan_ess()
+loyn_brm3$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3$fit |> stan_dens(separate_chains = TRUE)
+loyn_brm3$fit |> stan_dens(separate_chains = TRUE)
 ```
 
 ### ggmcmc
@@ -961,8 +969,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=12}
-loyn.ggs <- loyn.brm3 |> ggs(inc_warmup = FALSE, burnin = FALSE)
-loyn.ggs |> ggs_traceplot()
+loyn_ggs <- loyn_brm3 |> ggs(inc_warmup = FALSE, burnin = FALSE)
+loyn_ggs |> ggs_traceplot()
 ```
 
    The chains appear well mixed and very similar
@@ -971,7 +979,7 @@ loyn.ggs |> ggs_traceplot()
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=12}
-loyn.ggs |> ggs_autocorrelation()
+loyn_ggs |> ggs_autocorrelation()
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -982,7 +990,7 @@ loyn.ggs |> ggs_autocorrelation()
   parameter estimated.
 
 ```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.ggs |> ggs_Rhat()
+loyn_ggs |> ggs_Rhat()
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -997,18 +1005,18 @@ loyn.ggs |> ggs_Rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.ggs |> ggs_effective()
+loyn_ggs |> ggs_effective()
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.ggs |> ggs_crosscorrelation()
+loyn_ggs |> ggs_crosscorrelation()
 ```
 
 ```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.ggs |> ggs_grb()
+loyn_ggs |> ggs_grb()
 ```
 </details>
 
@@ -1041,7 +1049,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(loyn.rstanarm3,  plotfun='dens_overlay')
+pp_check(loyn_rstanarm3,  plotfun='dens_overlay')
 ```
 
 The model draws appear deviate from the observed data.
@@ -1051,7 +1059,7 @@ The model draws appear deviate from the observed data.
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation3c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(loyn.rstanarm3, plotfun='error_scatter_avg')
+pp_check(loyn_rstanarm3, plotfun='error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -1062,7 +1070,7 @@ poorest at higher mussel clump areas.
   should be interpreted as such.  Again, this is not interpretable for binary data.
 
 ```{r modelValidation3d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(loyn.rstanarm3, x=loyn$AREA, plotfun='error_scatter_avg_vs_x')
+pp_check(loyn_rstanarm3, x=loyn$AREA, plotfun='error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed on top of posterior predictions
@@ -1071,7 +1079,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation3e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(loyn.rstanarm3, x=loyn$AREA, plotfun='intervals')
+pp_check(loyn_rstanarm3, x=loyn$AREA, plotfun='intervals')
 ```
 
 The modelled predictions seem to underestimate the uncertainty with increasing
@@ -1080,7 +1088,7 @@ mussel clump area.
 - ribbon: this is just an alternative way of expressing the above plot.
 
 ```{r modelValidation3f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pp_check(loyn.rstanarm3, x=loyn$AREA, plotfun='ribbon')
+pp_check(loyn_rstanarm3, x=loyn$AREA, plotfun='ribbon')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -1088,7 +1096,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation3g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(loyn.rstanarm3)
+#launch_shinystan(loyn_rstanarm3)
 ```
 
 ### DHARMa residuals
@@ -1105,12 +1113,12 @@ We need to supply:
 - fitted (predicted) responses (averaged) associated with each observation
 
 ```{r modelValidation4a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- posterior_predict(loyn.rstanarm3,  ndraws=250,  summary=FALSE)
-loyn.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(loyn_rstanarm3,  ndraws=250,  summary=FALSE)
+loyn_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = loyn$ABUND,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = FALSE)
-plot(loyn.resids)
+plot(loyn_resids)
 ```
 
 **Conclusions:**
@@ -1140,7 +1148,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100)
+loyn_brm3 |> pp_check(type = 'dens_overlay', ndraws = 100)
 ```
 
 The model draws appear deviate from the observed data.
@@ -1150,7 +1158,7 @@ The model draws appear deviate from the observed data.
   this plot.  There is some pattern remaining in these residuals.
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3 |> pp_check(type = 'error_scatter_avg')
+loyn_brm3 |> pp_check(type = 'error_scatter_avg')
 ```
 
 The predictive error seems to be related to the predictor - the model performs
@@ -1161,7 +1169,7 @@ poorest at higher mussel clump areas.
   should be interpreted as such.  Again, this is not interpretable for binary data.
 
 ```{r modelValidation5d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3 |> pp_check(x = 'AREA', type = 'error_scatter_avg_vs_x')
+loyn_brm3 |> pp_check(x = 'AREA', type = 'error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed on top of posterior predictions
@@ -1170,7 +1178,7 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3 |> pp_check(x = 'AREA', type = 'intervals')
+loyn_brm3 |> pp_check(x = 'AREA', type = 'intervals')
 ```
 
 The modelled predictions seem to underestimate the uncertainty with increasing
@@ -1179,7 +1187,7 @@ mussel clump area.
 - ribbon: this is just an alternative way of expressing the above plot.
 
 ```{r modelValidation5f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-loyn.brm3 |> pp_check(x = 'AREA', type = 'ribbon')
+loyn_brm3 |> pp_check(x = 'AREA', type = 'ribbon')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -1187,7 +1195,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(loyn.brm3)
+#launch_shinystan(loyn_brm3)
 ```
 
 ### DHARMa residuals
@@ -1204,20 +1212,20 @@ We need to supply:
 - fitted (predicted) responses (averaged) associated with each observation
 
 ```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- loyn.brm3 |> posterior_predict(ndraws = 250,  summary = FALSE)
-loyn.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- loyn_brm3 |> posterior_predict(ndraws = 250,  summary = FALSE)
+loyn_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = loyn$ABUND,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = FALSE)
-loyn.resids |> plot()
+loyn_resids |> plot()
 ```
 
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-loyn.resids <- make_brms_dharma_res(loyn.brm3, integerResponse = FALSE)
-wrap_elements(~testUniformity(loyn.resids)) +
-               wrap_elements(~plotResiduals(loyn.resids, form = factor(rep(1, nrow(loyn))))) +
-               wrap_elements(~plotResiduals(loyn.resids, quantreg = TRUE)) +
-               wrap_elements(~testDispersion(loyn.resids))
+loyn_resids <- make_brms_dharma_res(loyn_brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(loyn_resids)) +
+               wrap_elements(~plotResiduals(loyn_resids, form = factor(rep(1, nrow(loyn))))) +
+               wrap_elements(~plotResiduals(loyn_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(loyn_resids))
 
 ```
 **Conclusions:**
@@ -1242,20 +1250,20 @@ and outliers
 ### ggpredict
 
 ```{r partialPlot1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=7}
-loyn.rstanarm3 |> ggpredict() |> plot(show_data=TRUE, facet=TRUE) 
+loyn_rstanarm3 |> ggpredict() |> plot(show_data=TRUE, facet=TRUE) 
 ```
 
 
 ### ggemmeans
 
 ```{r partialPlot1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-#loyn.rstanarm3 |> ggemmeans(~AREA,  type='fixed') |> plot(show_data=TRUE) + scale_y_log10()
+#loyn_rstanarm3 |> ggemmeans(~AREA,  type='fixed') |> plot(show_data=TRUE) + scale_y_log10()
 ```
 
 ### fitted_draws
 
 ```{r partialPlot1c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.rstanarm3 |> fitted_draws(newdata=loyn) |>
+loyn_rstanarm3 |> fitted_draws(newdata=loyn) |>
   median_hdci() |>
   ggplot(aes(x=AREA, y=.value)) +
   geom_ribbon(aes(ymin=.lower, ymax=.upper), fill='blue', alpha=0.3) + 
@@ -1270,18 +1278,18 @@ loyn.rstanarm3 |> fitted_draws(newdata=loyn) |>
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-loyn.brm3 |>
+loyn_brm3 |>
   conditional_effects() |>
   plot(ask = FALSE, points = TRUE, plot = FALSE) |>
   wrap_plots()
 
-loyn.brm3 |>
+loyn_brm3 |>
     conditional_effects() |>
     plot(ask = FALSE, points = TRUE, plot = FALSE) |>
     wrap_plots() &
     scale_y_log10()
 
-g <- loyn.brm3 |>
+g <- loyn_brm3 |>
   conditional_effects() |>
   plot(ask = FALSE, points = TRUE, plot = FALSE) 
 library(patchwork)
@@ -1297,11 +1305,11 @@ length(g)
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-loyn.brm3 |>
+loyn_brm3 |>
     ggpredict() |>
     plot(show_data=TRUE) |>
     wrap_plots()
-loyn.brm3 |>
+loyn_brm3 |>
     ggpredict() |>
     plot(show_data=TRUE) |>
     wrap_plots() &
@@ -1314,7 +1322,7 @@ loyn.brm3 |>
 This will be slow ...
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8, cache = TRUE}
-loyn.brm3 |>
+loyn_brm3 |>
     ggemmeans("AREA[0:1000]") |>
     plot(show_data=TRUE) |>
     wrap_plots() &
@@ -1325,7 +1333,7 @@ loyn.brm3 |>
 ### fitted_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.brm3 |>
+loyn_brm3 |>
     epred_draws(newdata = loyn) |>
     median_hdci(.epred) |>
     ggplot(aes(x = AREA, y = .epred, colour = fGRAZE, fill = fGRAZE)) +
@@ -1360,38 +1368,38 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-summary(loyn.rstanarm3)
+summary(loyn_rstanarm3)
 ```
 
 ```{r summariseModel1a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-loyn.sum <- summary(loyn.rstanarm3)
+loyn_sum <- summary(loyn_rstanarm3)
 ```
 
 **Conclusions:**
 
 - in the Model Info, we are informed that the total MCMC posterior sample size
-  is `r nrow(as.matrix(loyn.rstanarm3))` and that there were 56 raw observations.
+  is `r nrow(as.matrix(loyn_rstanarm3))` and that there were 56 raw observations.
 - the estimated intercept (expected bird abundance when grazing intensity is
   equal to 1 and all of the continuous
   predictors are at their respective averages) is
-  `r round(loyn.sum[1,1],2)`.  This is the mean of the posterior distribution
+  `r round(loyn_sum[1,1],2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(loyn.sum[1, 1]),2)`.  
+  becomes `r round(exp(loyn_sum[1, 1]),2)`.  
 - the estimated slope associated with `DIST` (rate at which the abundance of
   birds changes per 1 unit change in
   log-transformed Distance to nearest patch holding other continuous predictors constant
-  and grazing intensity at level 1), is `r round(loyn.sum[2,1],2)` (mean) or 
-  `r round(loyn.sum[2,4],2)` (median) with a standard deviation of `r round(loyn.sum[2,2],2)`.
+  and grazing intensity at level 1), is `r round(loyn_sum[2,1],2)` (mean) or 
+  `r round(loyn_sum[2,4],2)` (median) with a standard deviation of `r round(loyn_sum[2,2],2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(loyn.sum[2,1],2)` and `r round(loyn.sum[2,5],2)` - e.g. there is no
+  `r round(loyn_sum[2,1],2)` and `r round(loyn_sum[2,5],2)` - e.g. there is no
   evidence of a
   significant trend.  
 - associated with each of the continuous predictors is a partial slope. Each
 partial slope is the rate of change between bird abundance and the associated
 predictor (on the log scale due to the link and based on 1 unit change in the
 predictor on the scale of the predictor). For example, for every one unit change
-in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(loyn.sum[4, 1]),2)`. 
-- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(loyn.sum[4, 1]),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(loyn.sum[4, 1]),2)` fold. That is, there is a `r round(100*(exp(loyn.sum[4, 1])-1),2)` percent increase per 1 unit increase in centred log Area.
+in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(loyn_sum[4, 1]),2)`. 
+- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(loyn_sum[4, 1]),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(loyn_sum[4, 1]),2)` fold. That is, there is a `r round(100*(exp(loyn_sum[4, 1])-1),2)` percent increase per 1 unit increase in centred log Area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
 
@@ -1399,7 +1407,7 @@ in centred log patch Area, bird abundance is expected to increase by (log) `r ro
 ### summarise_draws (posterior)
 
 ```{r summariseModel1dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.rstanarm3$stanfit |>
+loyn_rstanarm3$stanfit |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
@@ -1408,7 +1416,7 @@ loyn.rstanarm3$stanfit |>
 We can also alter the CI level.
 
 ```{r summariseModel1d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.rstanarm3$stanfit |>
+loyn_rstanarm3$stanfit |>
     summarise_draws(median,
                     ~HDInterval::hdi(.x, credMass = 0.9),
                     rhat, length, ess_bulk, ess_tail)
@@ -1417,7 +1425,7 @@ loyn.rstanarm3$stanfit |>
 And on a ratio scale
 
 ```{r summariseModel1d3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.rstanarm3$stanfit |>
+loyn_rstanarm3$stanfit |>
     summarise_draws(
         ~ median(exp(.x)),
         ~HDInterval::hdi(exp(.x)),
@@ -1427,14 +1435,14 @@ loyn.rstanarm3$stanfit |>
 ### tidy_draws
 
 ```{r summariseModel1e1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> tidy_draws() 
+loyn_rstanarm3 |> tidy_draws() 
 ```
 
 ### as_draws_df (posteriors)
 
 ```{r summariseModel1i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.rstanarm3$stanfit |> as_draws_df()
-loyn.rstanarm3$stanfit |>
+loyn_rstanarm3$stanfit |> as_draws_df()
+loyn_rstanarm3$stanfit |>
   as_draws_df() |>
   summarise_draws(
     "median",
@@ -1447,11 +1455,11 @@ loyn.rstanarm3$stanfit |>
 ### tidyMCMC
 
 ```{r summariseModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tidyMCMC(loyn.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,
+tidyMCMC(loyn_rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,
          conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 ```{r summariseModel1b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-loyn.tidy <- tidyMCMC(loyn.rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+loyn_tidy <- tidyMCMC(loyn_rstanarm3$stanfit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
@@ -1459,54 +1467,54 @@ loyn.tidy <- tidyMCMC(loyn.rstanarm3$stanfit, estimate.method='median',  conf.in
 - the estimated intercept (expected bird abundance when grazing intensity is
   equal to 1 and all of the continuous
   predictors are at their respective averages) is
-  `r round(as.numeric(loyn.tidy[1,1]),2)`.  This is the mean of the posterior distribution
+  `r round(as.numeric(loyn_tidy[1,1]),2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(loyn.tidy[1, 1])),2)`.  
+  becomes `r round(exp(as.numeric(loyn_tidy[1, 1])),2)`.  
 - the estimated slope associated with `DIST` (rate at which the abundance of
   birds changes per 1 unit change in
   log-transformed Distance to nearest patch holding other continuous predictors constant
-  and grazing intensity at level 1), is `r round(as.numeric(loyn.tidy[2,1]),2)` (mean) or 
-  `r round(as.numeric(loyn.tidy[2,4]),2)` with a standard deviation of `r round(as.numeric(loyn.tidy[2,2]),2)`.
+  and grazing intensity at level 1), is `r round(as.numeric(loyn_tidy[2,1]),2)` (mean) or 
+  `r round(as.numeric(loyn_tidy[2,4]),2)` with a standard deviation of `r round(as.numeric(loyn_tidy[2,2]),2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(as.numeric(loyn.tidy[2,1]),2)` and `r round(as.numeric(loyn.tidy[2,5]),2)` - e.g. there is no
+  `r round(as.numeric(loyn_tidy[2,1]),2)` and `r round(as.numeric(loyn_tidy[2,5]),2)` - e.g. there is no
   evidence of a
   significant trend.  
 - associated with each of the continuous predictors is a partial slope. Each
 partial slope is the rate of change between bird abundance and the associated
 predictor (on the log scale due to the link and based on 1 unit change in the
 predictor on the scale of the predictor). For example, for every one unit change
-in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(as.numeric(loyn.tidy[4, 1])),2)`. 
-- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(as.numeric(loyn.tidy[4, 1])),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(as.numeric(loyn.tidy[4, 1])),2)` fold. That is, there is a `r round(100*(exp(as.numeric(loyn.tidy[4, 1]))-1),2)` percent increase per 1 unit increase in centred log Area.
+in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(as.numeric(loyn_tidy[4, 1])),2)`. 
+- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(as.numeric(loyn_tidy[4, 1])),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(as.numeric(loyn_tidy[4, 1])),2)` fold. That is, there is a `r round(100*(exp(as.numeric(loyn_tidy[4, 1]))-1),2)` percent increase per 1 unit increase in centred log Area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
 
 ### gather_draws
 
 ```{r summariseModel1c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> get_variables()
+loyn_rstanarm3 |> get_variables()
 ```
 
 ```{r summariseModel1c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.draw <- loyn.rstanarm3 |> gather_draws(`.Intercept.*|.*AREA.*|.*DIST.*|.*GRAZE.*|.*ALT.*|.*YR.*`,  regex=TRUE)
-loyn.draw
+loyn_draw <- loyn_rstanarm3 |> gather_draws(`.Intercept.*|.*AREA.*|.*DIST.*|.*GRAZE.*|.*ALT.*|.*YR.*`,  regex=TRUE)
+loyn_draw
 ```
 
 ### bayesplot
 
 ```{r summariseModel1d1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> plot(plotfun='mcmc_intervals') 
+loyn_rstanarm3 |> plot(plotfun='mcmc_intervals') 
 ```
 
 ### half-eye (ggdist)
 
 ```{r summariseModel1c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> 
+loyn_rstanarm3 |> 
   gather_draws(`.*AREA.*|.*DIST.*|.*GRAZE.*|.*ALT.*|.*YR.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
   facet_wrap(~.variable, scales='free')
 
-loyn.rstanarm3 |> 
+loyn_rstanarm3 |> 
   gather_draws(`.*AREA.*|.*DIST.*|.*GRAZE.*|.*ALT.*|.*YR.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
@@ -1516,13 +1524,13 @@ loyn.rstanarm3 |>
 ### density ridges (ggridges)
 
 ```{r summariseModel1c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> 
+loyn_rstanarm3 |> 
   gather_draws(`.*AREA.*|.*DIST.*|.*GRAZE.*|.*ALT.*|.*YR.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or on a fractional scale
-loyn.rstanarm3 |> 
+loyn_rstanarm3 |> 
   gather_draws(`.*AREA.*|.*DIST.*|.*GRAZE.*|.*ALT.*|.*YR.*`, regex=TRUE) |> 
   ggplot() + 
     geom_density_ridges_gradient(aes(x=exp(.value),
@@ -1539,19 +1547,19 @@ loyn.rstanarm3 |>
 ### spread_draws
 
 ```{r summariseModel1f1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> spread_draws(`.Intercept.*|.*DIST.*|.*AREA.*|.*GRAZE.*|.*ALT.*|.*YR.*`,  regex=TRUE) 
+loyn_rstanarm3 |> spread_draws(`.Intercept.*|.*DIST.*|.*AREA.*|.*GRAZE.*|.*ALT.*|.*YR.*`,  regex=TRUE) 
 ```
 
 ### posterior_samples
 
 ```{r summariseModel1g1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> posterior_samples() |> as.tibble() 
+loyn_rstanarm3 |> posterior_samples() |> as.tibble() 
 ```
 
 ### $R^2$
 
 ```{r summariseModel1h1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm3 |> bayes_R2() |> median_hdci()
+loyn_rstanarm3 |> bayes_R2() |> median_hdci()
 ```
 ::::
 
@@ -1569,46 +1577,46 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.brm3 |> summary()
+loyn_brm3 |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-loyn.sum <- summary(loyn.brm3)
+loyn_sum <- summary(loyn_brm3)
 ```
 
 **Conclusions:**
 
 - in the Model Info, we are informed that the total MCMC posterior sample size
-  is `r nrow(as.matrix(loyn.rstanarm3))` and that there were 56 raw observations.
+  is `r nrow(as.matrix(loyn_rstanarm3))` and that there were 56 raw observations.
 - the estimated intercept (expected bird abundance when grazing intensity is
   equal to 1 and all of the continuous
   predictors are at their respective averages) is
-  `r round(loyn.sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
+  `r round(loyn_sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(loyn.sum$fixed[1, 1]),2)`.  
+  becomes `r round(exp(loyn_sum$fixed[1, 1]),2)`.  
 - the estimated slope associated with `DIST` (rate at which the abundance of
   birds changes per 1 unit change in
   log-transformed Distance to nearest patch holding other continuous predictors constant
-  and grazing intensity at level 1), is `r round(loyn.sum$fixed[2,1],2)` (mean) or 
-  `r round(loyn.sum$fixed[2,4],2)` (median) with a standard deviation of `r round(loyn.sum$fixed[2,2],2)`.
+  and grazing intensity at level 1), is `r round(loyn_sum$fixed[2,1],2)` (mean) or 
+  `r round(loyn_sum$fixed[2,4],2)` (median) with a standard deviation of `r round(loyn_sum$fixed[2,2],2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(loyn.sum$fixed[2,1],2)` and `r round(loyn.sum$fixed[2,5],2)` - e.g. there is no
+  `r round(loyn_sum$fixed[2,1],2)` and `r round(loyn_sum$fixed[2,5],2)` - e.g. there is no
   evidence of a
   significant trend.  
 - associated with each of the continuous predictors is a partial slope. Each
 partial slope is the rate of change between bird abundance and the associated
 predictor (on the log scale due to the link and based on 1 unit change in the
 predictor on the scale of the predictor). For example, for every one unit change
-in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(loyn.sum$fixed[4, 1]),2)`. 
-- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(loyn.sum$fixed[4, 1]),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(loyn.sum$fixed[4, 1]),2)` fold. That is, there is a `r round(100*(exp(loyn.sum$fixed[4, 1])-1),2)` percent increase per 1 unit increase in centred log Area.
+in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(loyn_sum$fixed[4, 1]),2)`. 
+- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(loyn_sum$fixed[4, 1]),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(loyn_sum$fixed[4, 1]),2)` fold. That is, there is a `r round(100*(exp(loyn_sum$fixed[4, 1])-1),2)` percent increase per 1 unit increase in centred log Area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
 
 ### tidy_draws
 
 ```{r summariseModel2e1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> tidy_draws() 
-loyn.brm3 |>
+loyn_brm3 |> tidy_draws() 
+loyn_brm3 |>
     tidy_draws() |>
     dplyr::select(starts_with("b_")) |>
     exp() |>
@@ -1619,7 +1627,7 @@ loyn.brm3 |>
                     ess_bulk, ess_tail)
 
 
-loyn.brm3 |>
+loyn_brm3 |>
     spread_draws(`^b_.*|sigma`, regex = TRUE) |>
     exp() |>
     summarise_draws(median,
@@ -1627,13 +1635,21 @@ loyn.brm3 |>
                     rhat,
                     length,
                     ess_bulk, ess_tail)
+
+## we can also attempt to provide the slopes back on the scale of the unscaled predictors
+loyn_brm3 |>
+  emtrends(~1, var = "log(AREA)") |>
+  tidy_draws() |>
+  mutate(.value = exp(`1 overall`)) |>
+  summarise_draws(median,
+                  HDInterval::hdi)
 ```
 
 ### as_draws_df (posteriors)
 
 ```{r summariseModel2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.brm3 |> as_draws_df()
-loyn.brm3 |>
+loyn_brm3 |> as_draws_df()
+loyn_brm3 |>
   as_draws_df() |>
   dplyr::select(matches("^b_.*|^sigma$")) |>
   mutate(across(everything(), exp)) |> 
@@ -1643,18 +1659,19 @@ loyn.brm3 |>
     "rhat",
     "ess_bulk"
   )
+
 ```
 
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-loyn.brm3$fit |>
+loyn_brm3$fit |>
     tidyMCMC(estimate.method = 'median',
              conf.int = TRUE,  conf.method = 'HPDinterval',
              rhat = TRUE, ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-loyn.tidy <- tidyMCMC(loyn.brm3$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
+loyn_tidy <- tidyMCMC(loyn_brm3$fit, estimate.method='median',  conf.int=TRUE,  conf.method='HPDinterval',  rhat=TRUE, ess=TRUE)
 ```
 
 **Conclusions:**
@@ -1662,55 +1679,55 @@ loyn.tidy <- tidyMCMC(loyn.brm3$fit, estimate.method='median',  conf.int=TRUE,  
 - the estimated intercept (expected bird abundance when grazing intensity is
   equal to 1 and all of the continuous
   predictors are at their respective averages) is
-  `r round(as.numeric(loyn.tidy[1,1]),2)`.  This is the mean of the posterior distribution
+  `r round(as.numeric(loyn_tidy[1,1]),2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the response scale, this
-  becomes `r round(exp(as.numeric(loyn.tidy[1, 1])),2)`.  
+  becomes `r round(exp(as.numeric(loyn_tidy[1, 1])),2)`.  
 - the estimated slope associated with `DIST` (rate at which the abundance of
   birds changes per 1 unit change in
   log-transformed Distance to nearest patch holding other continuous predictors constant
-  and grazing intensity at level 1), is `r round(as.numeric(loyn.tidy[2,1]),2)` (mean) or 
-  `r round(as.numeric(loyn.tidy[2,4]),2)` with a standard deviation of `r round(as.numeric(loyn.tidy[2,2]),2)`.
+  and grazing intensity at level 1), is `r round(as.numeric(loyn_tidy[2,1]),2)` (mean) or 
+  `r round(as.numeric(loyn_tidy[2,4]),2)` with a standard deviation of `r round(as.numeric(loyn_tidy[2,2]),2)`.
   The 90% credibility intervals indicate that we are 90% confident that the slope is between 
-  `r round(as.numeric(loyn.tidy[2,1]),2)` and `r round(as.numeric(loyn.tidy[2,5]),2)` - e.g. there is no
+  `r round(as.numeric(loyn_tidy[2,1]),2)` and `r round(as.numeric(loyn_tidy[2,5]),2)` - e.g. there is no
   evidence of a
   significant trend.  
 - associated with each of the continuous predictors is a partial slope. Each
 partial slope is the rate of change between bird abundance and the associated
 predictor (on the log scale due to the link and based on 1 unit change in the
 predictor on the scale of the predictor). For example, for every one unit change
-in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(as.numeric(loyn.tidy[4, 1])),2)`. 
-- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(as.numeric(loyn.tidy[4, 1])),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(as.numeric(loyn.tidy[4, 1])),2)` fold. That is, there is a `r round(100*(exp(as.numeric(loyn.tidy[4, 1]))-1),2)` percent increase per 1 unit increase in centred log Area.
+in centred log patch Area, bird abundance is expected to increase by (log) `r round(I(as.numeric(loyn_tidy[4, 1])),2)`. 
+- if we back transform this slope (by exponentiation), we get a partial slope for centred log Area of `r round(exp(as.numeric(loyn_tidy[4, 1])),2)`. This is interpreted as - for every 1 unit increase in (scaled log) Area, the bird abundance is expected to increase `r round(exp(as.numeric(loyn_tidy[4, 1])),2)` fold. That is, there is a `r round(100*(exp(as.numeric(loyn_tidy[4, 1]))-1),2)` percent increase per 1 unit increase in centred log Area.
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
 
 ### gather_draws
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> get_variables()
+loyn_brm3 |> get_variables()
 ```
 
 ```{r summariseModel2c2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.draw <- loyn.brm3 |> gather_draws(`^b_.*`,  regex = TRUE)
-loyn.draw
+loyn_draw <- loyn_brm3 |> gather_draws(`^b_.*`,  regex = TRUE)
+loyn_draw
 ```
 
 ### bayesplot
 
 ```{r summariseModel2d1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> mcmc_plot(type = 'intervals') 
+loyn_brm3 |> mcmc_plot(type = 'intervals') 
 ```
 
 ### half-eye (ggdist)
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> 
+loyn_brm3 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     facet_wrap(~.variable, scales='free')
 
-loyn.brm3 |> 
+loyn_brm3 |> 
   gather_draws(`^b_.*`, regex=TRUE) |> 
   mutate(.value = exp(.value)) |> 
   filter(.variable != 'b_Intercept') |>
@@ -1724,14 +1741,14 @@ loyn.brm3 |>
 ### density ridges (ggridges)
 
 ```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> 
+loyn_brm3 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() +  
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or on a fractional scale
-loyn.brm3 |> 
+loyn_brm3 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1749,19 +1766,19 @@ loyn.brm3 |>
 ### spread_draws
 
 ```{r summariseModel2f1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> spread_draws(`^b_.*`,  regex = TRUE) 
+loyn_brm3 |> spread_draws(`^b_.*`,  regex = TRUE) 
 ```
 
 ### posterior_samples
 
 ```{r summariseModel2g1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> posterior_samples() |> as_tibble() 
+loyn_brm3 |> posterior_samples() |> as_tibble() 
 ```
 
 ### $R^2$
 
 ```{r summariseModel2h1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm3 |> bayes_R2(summary = FALSE) |> median_hdci()
+loyn_brm3 |> bayes_R2(summary = FALSE) |> median_hdci()
 ```
 
 
@@ -1772,10 +1789,10 @@ For standardised parameter (negligible effect)
 
 ```{r ROP, results='markdown', eval=TRUE}
 0.1 * sd(log(loyn$ABUND))
-loyn.brm3 |> bayestestR::rope_range()
-loyn.brm3 |> bayestestR::rope(range = c(-0.09, 0.09))
-loyn.brm3 |> bayestestR::rope(range = c(-0.09, 0.09)) |>
-    plot(data = loyn.brm3)
+loyn_brm3 |> bayestestR::rope_range()
+loyn_brm3 |> bayestestR::rope(range = c(-0.09, 0.09))
+loyn_brm3 |> bayestestR::rope(range = c(-0.09, 0.09)) |>
+    plot(data = loyn_brm3)
 ```
 
 ::::
@@ -1866,72 +1883,72 @@ distribution's shape parameter (`k`):
 ### rstanarm 
 
 ```{r furtherModel1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.rstanarm4a <- update(loyn.rstanarm3,  .~scale(log(DIST))*scale(log(LDIST)),
+loyn_rstanarm4a <- update(loyn_rstanarm3,  .~scale(log(DIST))*scale(log(LDIST)),
                           diagnostic_file = file.path(tempdir(), "dfa.csv"))
-loyn.rstanarm4b <- update(loyn.rstanarm3,  .~scale(log(AREA)) * fGRAZE,
+loyn_rstanarm4b <- update(loyn_rstanarm3,  .~scale(log(AREA)) * fGRAZE,
                           diagnostic_file = file.path(tempdir(), "dfb.csv"))
-loyn.rstanarm4c <- update(loyn.rstanarm3,  .~scale(log(AREA)) * fGRAZE * scale(YR.ISOL),
+loyn_rstanarm4c <- update(loyn_rstanarm3,  .~scale(log(AREA)) * fGRAZE * scale(YR.ISOL),
                           diagnostic_file = file.path(tempdir(), "dfc.csv"))
-loyn.rstanarm4d <- update(loyn.rstanarm3,  .~scale(ALT),
+loyn_rstanarm4d <- update(loyn_rstanarm3,  .~scale(ALT),
                           diagnostic_file = file.path(tempdir(), "dfd.csv"))
-loyn.rstanarm4e <- update(loyn.rstanarm3,  .~1,
+loyn_rstanarm4e <- update(loyn_rstanarm3,  .~1,
                           diagnostic_file = file.path(tempdir(), "dfe.csv"))
-loo_compare(loo(loyn.rstanarm4a),
-            loo(loyn.rstanarm4e)
+loo_compare(loo(loyn_rstanarm4a),
+            loo(loyn_rstanarm4e)
             )
-loo_compare(loo(loyn.rstanarm4b),
-            loo(loyn.rstanarm4e)
+loo_compare(loo(loyn_rstanarm4b),
+            loo(loyn_rstanarm4e)
             )
-loo_compare(loo(loyn.rstanarm4c),
-            loo(loyn.rstanarm4e)
+loo_compare(loo(loyn_rstanarm4c),
+            loo(loyn_rstanarm4e)
             )
-loo_compare(loo(loyn.rstanarm4d),
-            loo(loyn.rstanarm4e)
+loo_compare(loo(loyn_rstanarm4d),
+            loo(loyn_rstanarm4e)
             )
 ```
 
 
 ```{r furtherModel1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-bayes_factor(bridge_sampler(loyn.rstanarm4a),
-             bridge_sampler(loyn.rstanarm4e))
-bayes_factor(bridge_sampler(loyn.rstanarm4b),
-             bridge_sampler(loyn.rstanarm4e))
-bayes_factor(bridge_sampler(loyn.rstanarm4c),
-             bridge_sampler(loyn.rstanarm4e))
-bayes_factor(bridge_sampler(loyn.rstanarm4d),
-             bridge_sampler(loyn.rstanarm4e))
+bayes_factor(bridge_sampler(loyn_rstanarm4a),
+             bridge_sampler(loyn_rstanarm4e))
+bayes_factor(bridge_sampler(loyn_rstanarm4b),
+             bridge_sampler(loyn_rstanarm4e))
+bayes_factor(bridge_sampler(loyn_rstanarm4c),
+             bridge_sampler(loyn_rstanarm4e))
+bayes_factor(bridge_sampler(loyn_rstanarm4d),
+             bridge_sampler(loyn_rstanarm4e))
 ```
 
 ### brm 
 
 ```{r furtherModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.brm4a <- update(loyn.brm3,  .~scale(log(DIST))*scale(log(LDIST)),
+loyn_brm4a <- update(loyn_brm3,  .~scale(log(DIST))*scale(log(LDIST)),
                      save_pars = save_pars(all = TRUE), refresh = 0)
-loyn.brm4b <- update(loyn.brm3,  .~scale(log(AREA)) * fGRAZE,
+loyn_brm4b <- update(loyn_brm3,  .~scale(log(AREA)) * fGRAZE,
                      save_pars = save_pars(all = TRUE), refresh = 0)
-loyn.brm4c <- update(loyn.brm3,  .~scale(log(AREA)) * fGRAZE * scale(YR.ISOL),
+loyn_brm4c <- update(loyn_brm3,  .~scale(log(AREA)) * fGRAZE * scale(YR.ISOL),
                      save_pars = save_pars(all = TRUE), refresh = 0)
-loyn.brm4d <- update(loyn.brm3,  .~scale(ALT),
+loyn_brm4d <- update(loyn_brm3,  .~scale(ALT),
                      save_pars = save_pars(all = TRUE), refresh = 0)
-loyn.brm4e <- update(loyn.brm3,  .~1,
+loyn_brm4e <- update(loyn_brm3,  .~1,
                      save_pars = save_pars(all = TRUE), refresh = 0)
-waic(loyn.brm4a)
-loo(loyn.brm4a)
-loo(loyn.brm4e)
-loo_compare(loo(loyn.brm4a),
-            loo(loyn.brm4e)
+waic(loyn_brm4a)
+loo(loyn_brm4a)
+loo(loyn_brm4e)
+loo_compare(loo(loyn_brm4a),
+            loo(loyn_brm4e)
             )
-loo_compare(loo(loyn.brm4b),
-            loo(loyn.brm4e)
+loo_compare(loo(loyn_brm4b),
+            loo(loyn_brm4e)
             )
-loo_compare(loo(loyn.brm4b, moment_match = TRUE),
-            loo(loyn.brm4e)
+loo_compare(loo(loyn_brm4b, moment_match = TRUE),
+            loo(loyn_brm4e)
             )
-loo_compare(loo(loyn.brm4c, moment_match = TRUE),
-            loo(loyn.brm4e)
+loo_compare(loo(loyn_brm4c, moment_match = TRUE),
+            loo(loyn_brm4e)
             )
-loo_compare(loo(loyn.brm4d),
-            loo(loyn.brm4e)
+loo_compare(loo(loyn_brm4d),
+            loo(loyn_brm4e)
             )
 ```
 
@@ -1945,29 +1962,29 @@ another.  The larger the value, the more evidence there is of one
 model over the other.
 
 ```{r furtherModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE, cache = TRUE}
-bayes_factor(loyn.brm4a,
-            loyn.brm4e)
+bayes_factor(loyn_brm4a,
+            loyn_brm4e)
 #OR
-bayes_factor(loyn.brm4e,
-            loyn.brm4a)
+bayes_factor(loyn_brm4e,
+            loyn_brm4a)
 
-bayes_factor(loyn.brm4b,
-             loyn.brm4e)
+bayes_factor(loyn_brm4b,
+             loyn_brm4e)
 #OR
-bayes_factor(loyn.brm4e,
-             loyn.brm4b)
+bayes_factor(loyn_brm4e,
+             loyn_brm4b)
 
-bayes_factor(loyn.brm4c,
-             loyn.brm4e)
+bayes_factor(loyn_brm4c,
+             loyn_brm4e)
 #OR
-bayes_factor(loyn.brm4e,
-             loyn.brm4c)
+bayes_factor(loyn_brm4e,
+             loyn_brm4c)
 
-bayes_factor(loyn.brm4d,
-             loyn.brm4e)
+bayes_factor(loyn_brm4d,
+             loyn_brm4e)
 #OR
-bayes_factor(loyn.brm4e,
-             loyn.brm4d)
+bayes_factor(loyn_brm4e,
+             loyn_brm4d)
 ```
 
 ::::
@@ -1981,22 +1998,22 @@ bayes_factor(loyn.brm4e,
 Compare effect of grazing at different patch areas
 
 ```{r furtherModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-loyn.list <- with(loyn, list(AREA = c(min(AREA), mean(AREA), max(AREA))))
+loyn_list <- with(loyn, list(AREA = c(min(AREA), mean(AREA), max(AREA))))
  
-loyn.brm4b |>
-    emmeans(~fGRAZE|AREA, at = loyn.list, type = "response") |>
+loyn_brm4b |>
+    emmeans(~fGRAZE|AREA, at = loyn_list, type = "response") |>
     pairs(reverse = FALSE)
 
-newdata <- loyn.brm4b |>
-    emmeans(~fGRAZE|AREA, at = loyn.list, type = 'response') |>
+newdata <- loyn_brm4b |>
+    emmeans(~fGRAZE|AREA, at = loyn_list, type = 'response') |>
     pairs() |>
     as.data.frame()
 
 head(newdata)
 
 
-newdata <- loyn.brm4b |> 
-    emmeans(~fGRAZE|AREA, at = loyn.list, type = 'response') |>
+newdata <- loyn_brm4b |> 
+    emmeans(~fGRAZE|AREA, at = loyn_list, type = 'response') |>
     pairs() |>
     gather_emmeans_draws()
 
@@ -2007,8 +2024,8 @@ newdata |> median_hdci() |>
     facet_wrap(~AREA) +
     coord_flip()
 
-loyn.brm4b |>
-    emmeans(~fGRAZE|AREA, at = loyn.list, type = 'response') |>
+loyn_brm4b |>
+    emmeans(~fGRAZE|AREA, at = loyn_list, type = 'response') |>
     gather_emmeans_draws() 
 newdata.p <- newdata |> summarise(P = mean(.value>1))
 g <- newdata |>
@@ -2043,9 +2060,9 @@ g + geom_text(data = newdata.p, aes(y = contrast, x = 1, label = paste('P = ',ro
 ### From the full model
 
 ```{r summaryFigure1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=TRUE}
-loyn.list <- with(loyn, list(AREA = modelr::seq_range(AREA, n=100)))
+loyn_list <- with(loyn, list(AREA = modelr::seq_range(AREA, n=100)))
  
-newdata <- emmeans(loyn.brm3, ~AREA|fGRAZE, at = loyn.list, type='response') |>
+newdata <- emmeans(loyn_brm3, ~AREA|fGRAZE, at = loyn_list, type='response') |>
     as.data.frame()
 head(newdata)
 
@@ -2056,7 +2073,7 @@ ggplot(newdata, aes(y=response, x=AREA)) +
   scale_x_log10() + 
   scale_y_log10()
 
-spaghetti = emmeans(loyn.rstanarm3, ~AREA|fGRAZE, at = loyn.list, type='response') |>
+spaghetti = emmeans(loyn_rstanarm3, ~AREA|fGRAZE, at = loyn_list, type='response') |>
   gather_emmeans_draws() |>
   mutate(Fit=exp(.value))
 wch = sample(1:max(spaghetti$.draw), 100,replace=FALSE)
@@ -2070,12 +2087,12 @@ ggplot(newdata) +
   scale_x_log10() + scale_y_log10()
 
 ## or honouring the data range
-loyn.nd <- loyn |>
+loyn_nd <- loyn |>
     group_by(fGRAZE) |>
     tidyr::expand(AREA = modelr::seq_range(AREA, n=100),
            DIST = mean(DIST), LDIST = mean(LDIST), ALT = mean(ALT), YR.ISOL = mean(YR.ISOL))
-loyn.rstanarm3 |>
-    epred_draws(newdata = loyn.nd, value = '.value') |>
+loyn_rstanarm3 |>
+    epred_draws(newdata = loyn_nd, value = '.value') |>
     median_hdci() |>
     ggplot(aes(x = AREA, y = .value, colour = fGRAZE, fill = fGRAZE)) +
     geom_ribbon(aes(ymin = .lower, ymax = .upper), colour = NA, alpha = 0.3) +
@@ -2090,9 +2107,9 @@ loyn.rstanarm3 |>
 ### From the "habitat" model
 
 ```{r summaryFigure1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=TRUE}
-loyn.list = with(loyn, list(AREA = seq(min(AREA), max(AREA), len=100)))
+loyn_list = with(loyn, list(AREA = seq(min(AREA), max(AREA), len=100)))
 
-newdata = emmeans(loyn.rstanarm4b, ~AREA|fGRAZE, at = loyn.list, type='response') |>
+newdata = emmeans(loyn_rstanarm4b, ~AREA|fGRAZE, at = loyn_list, type='response') |>
     as.data.frame()
 head(newdata)
 
@@ -2103,7 +2120,7 @@ ggplot(newdata, aes(y=response, x=AREA)) +
   scale_x_log10() + 
   scale_y_log10()
 
-spaghetti = emmeans(loyn.rstanarm4b, ~AREA|fGRAZE, at = loyn.list, type='response') |>
+spaghetti = emmeans(loyn_rstanarm4b, ~AREA|fGRAZE, at = loyn_list, type='response') |>
   gather_emmeans_draws() |> mutate(Fit=exp(.value))
 wch = sample(1:max(spaghetti$.draw), 100,replace=FALSE)
 spaghetti = spaghetti |> filter(.draw %in% wch)
@@ -2115,11 +2132,11 @@ ggplot(newdata) +
   scale_x_log10() + scale_y_log10()
 
 ## or honouring the data range
-loyn.nd <- loyn |>
+loyn_nd <- loyn |>
     group_by(fGRAZE) |>
     tidyr::expand(AREA = modelr::seq_range(AREA, n=100))
-loyn.rstanarm4b |>
-    epred_draws(newdata = loyn.nd, value = '.value') |>
+loyn_rstanarm4b |>
+    epred_draws(newdata = loyn_nd, value = '.value') |>
     median_hdci() |>
     ggplot(aes(x = AREA, y = .value, colour = fGRAZE, fill = fGRAZE)) +
     geom_ribbon(aes(ymin = .lower, ymax = .upper), colour = NA, alpha = 0.3) +
@@ -2137,9 +2154,9 @@ loyn.rstanarm4b |>
 ### From the full model
 
 ```{r summaryFigure2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=TRUE}
-loyn.list <- with(loyn, list(AREA = modelr::seq_range(AREA, n=100)))
+loyn_list <- with(loyn, list(AREA = modelr::seq_range(AREA, n=100)))
 
-newdata <- emmeans(loyn.brm3, ~AREA|fGRAZE, at = loyn.list, type='response') |>
+newdata <- emmeans(loyn_brm3, ~AREA|fGRAZE, at = loyn_list, type='response') |>
     as.data.frame() 
 head(newdata)
 
@@ -2150,7 +2167,7 @@ ggplot(newdata, aes(y = response, x = AREA)) +
   scale_x_log10() + 
   scale_y_log10()
 
-spaghetti = emmeans(loyn.brm3, ~AREA|fGRAZE, at = loyn.list, type = 'response') |>
+spaghetti = emmeans(loyn_brm3, ~AREA|fGRAZE, at = loyn_list, type = 'response') |>
   gather_emmeans_draws() |> mutate(Fit = exp(.value))
 wch <- sample(1:max(spaghetti$.draw), 100,replace = FALSE)
 spaghetti <- spaghetti |> filter(.draw %in% wch)
@@ -2162,12 +2179,12 @@ ggplot(newdata) +
   scale_x_log10() + scale_y_log10()
 
 # or honouring the data range
-loyn.nd <- loyn |>
+loyn_nd <- loyn |>
     group_by(fGRAZE) |>
     tidyr::expand(AREA = modelr::seq_range(AREA, n=100),
            DIST = mean(DIST), LDIST = mean(LDIST), ALT = mean(ALT), YR.ISOL = mean(YR.ISOL))
-loyn.brm3 |>
-    epred_draws(newdata = loyn.nd, value = '.value') |>
+loyn_brm3 |>
+    epred_draws(newdata = loyn_nd, value = '.value') |>
     median_hdci() |>
     ggplot(aes(x = AREA, y = .value, colour = fGRAZE, fill = fGRAZE)) +
     geom_ribbon(aes(ymin = .lower, ymax = .upper), colour = NA, alpha = 0.3) +
@@ -2185,9 +2202,9 @@ Lets explore the relationship between bird abundance and patch area
 for each grazing intensity separately.
 
 ```{r summaryFigure2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=TRUE}
-loyn.list <- with(loyn, list(AREA = modelr::seq_range(AREA, n = 100)))
+loyn_list <- with(loyn, list(AREA = modelr::seq_range(AREA, n = 100)))
 
-newdata <- emmeans(loyn.brm4b, ~AREA|fGRAZE, at = loyn.list, type='response') |>
+newdata <- emmeans(loyn_brm4b, ~AREA|fGRAZE, at = loyn_list, type='response') |>
     as.data.frame()
 head(newdata)
 
@@ -2198,7 +2215,7 @@ ggplot(newdata, aes(y = response, x = AREA)) +
   scale_x_log10() + 
   scale_y_log10()
 
-spaghetti = emmeans(loyn.brm4b, ~AREA|fGRAZE, at = loyn.list, type = 'response') |>
+spaghetti = emmeans(loyn_brm4b, ~AREA|fGRAZE, at = loyn_list, type = 'response') |>
   gather_emmeans_draws() |> mutate(Fit = exp(.value))
 wch <- sample(1:max(spaghetti$.draw), 100,replace = FALSE)
 spaghetti <- spaghetti |> filter(.draw %in% wch)
@@ -2210,11 +2227,11 @@ ggplot(newdata) +
   scale_x_log10() + scale_y_log10()
 
 ## or honouring the data range
-loyn.nd <- loyn |>
+loyn_nd <- loyn |>
     group_by(fGRAZE) |>
     tidyr::expand(AREA = modelr::seq_range(AREA, n=100))
-loyn.brm4b |>
-    epred_draws(newdata = loyn.nd, value = '.value') |>
+loyn_brm4b |>
+    epred_draws(newdata = loyn_nd, value = '.value') |>
     median_hdci() |>
     ggplot(aes(x = AREA, y = .value, colour = fGRAZE, fill = fGRAZE)) +
     geom_ribbon(aes(ymin = .lower, ymax = .upper), colour = NA, alpha = 0.3) +

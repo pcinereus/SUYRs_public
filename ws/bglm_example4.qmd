@@ -139,13 +139,13 @@ loyn <- read_csv('../data/loyn.csv', trim_ws=TRUE)
 
 Model formula:
 $$
-y_i \sim{} \mathcal{N}(\mu_i, \sigma^2)\\
-log(\mu_i) = \boldsymbol{\beta} \bf{X_i}\\
-\beta_0 \sim{} \mathcal{N}(3,0.5)\\
-\beta_{1-9} \sim{} \mathcal{N}(0,2.5)\\
-\sigma \sim{} \mathcal{Gamma}(2,1)\\
-OR\\
-\sigma \sim{} \mathcal{t}(3,0,2.5)
+\begin{align}
+y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
+log(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
+\beta_0 &\sim{} \mathcal{N}(3.4, 0.1)\\
+\beta_{1-9} &\sim{} \mathcal{N}(0, 2)\\
+\sigma &\sim{} \mathcal{t}(3,0, 1.5)
+\end{align}
 $$
 
 where $\boldsymbol{\beta}$ is a vector of effects parameters and $\bf{X}$ is a model matrix representing the additive effects of

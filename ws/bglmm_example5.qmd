@@ -93,6 +93,7 @@ library(DHARMa)
 library(ggridges)
 library(easystats)     #framework for stats, modelling and visualisation
 library(patchwork)
+library(geoR) 
 source('helperFunctions.R')
 ```
 
@@ -132,11 +133,26 @@ owls <- read_csv("../data/owls.csv", trim_ws = TRUE)
 
 # Exploratory data analysis
 
-Model formula:
+
+
+Random intercept/slope model formula:
+
 $$
-y_i \sim{} \mathcal{Pois}(\lambda_i)\\
-ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\begin{align}
+y_i &\sim{} \mathcal{NB}(\mu_{ij}, \phi)\\
+ln\left(\mu_{ij}\right) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 &\sim{} \mathcal{N}(0.4, 0.7)\\
+\beta_1 &\sim{} \mathcal{N}(0, 1)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_n^2})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_n^2})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_n^2 &\sim{} \mathcal{t}(3,0,0.7)\\
+\phi &\sim{} \mathcal{\Gamma}(0.01, 0.01)\\
+\end{align}
 $$
+
+
+
 
 where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed
 and random effects parameters respectively and $\bf{X}$ is the model matrix
@@ -148,15 +164,168 @@ model matrix for the random intercepts associated with individual nests.
 
 # Fit the model 
 
+This model has the potential to be more complex than most of the
+models in previous worksheets. Therefore, we will use the current
+example to illustrate the process of building a model up gradually
+rather than attempting to fit a more complex model from the start. The
+benifit of gradually building a model is that it becomes much easier
+to construct more sensible and appropriate models that perform nicely
+and meet all the various assumptions.
 
-# MCMC sampling diagnostics 
+As we intend to build a number of models, we will nest the MCMC
+sampling diagnostics and Model validation sections under the Fit the
+model section since each model will have its own associated diagnostic
+testing.
+
+Typically, when we are building up models, we start by constructing a
+model that only contains the hierarchical (random effects) structure.
 
 
-# Model validation 
 
-# Model refit and validation 
+### Model 2
 
- 
+**Zero-inflated vs hurdle models**
+
+- zero-inflated models: are a mixture of Bernoulli and Poisson (or negative
+  binomial) distributions to model situations where it is believed that the
+  observed data are the result of two combined processes (a count process that
+  governs how many items there are to count and a Bernoulli process that governs
+  whether the items are detectable).  In this way, zero-inflated models are
+  useful in situations where we believe that some of the zeros are false zeros
+  (recorded as zeros when they should not have been).
+- hurdle models: are for situations where the response itself is thought to be
+  the result of two processes: one that governs whether there is a response and
+  then another that governs the value of the response (must be positive).
+
+:::: {.panel-tabset}
+
+#### Fit model
+
+
+```{r posterior2h_2c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+owls_brm2b |> SUYR_prior_and_posterior()
+```
+
+
+#### MCMC sampling diagnostics 
+
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+
+
+
+##### DHARMa residuals
+
+
+:::::
+
+::::
+
+### Model 3
+
+:::: {.panel-tabset}
+#### Fit model
+
+```{r posterior2h_3c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+owls_brm3b |> SUYR_prior_and_posterior()
+```
+
+#### MCMC sampling diagnostics 
+
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+
+
+
+##### DHARMa residuals
+
+
+:::::
+
+::::
+
+### Model 4
+
+:::: {.panel-tabset}
+#### Fit model
+
+
+```{r posterior2h_4c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+owls_brm4b |> SUYR_prior_and_posterior()
+```
+
+#### MCMC sampling diagnostics 
+
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+
+
+
+##### DHARMa residuals
+
+
+:::::
+
+::::
+
+### Model 5
+
+:::: {.panel-tabset}
+#### Fit model
+
+```{r posterior2h_5c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+## owls_brm5b |> SUYR_prior_and_posterior() 
+```
+
+#### MCMC sampling diagnostics 
+
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+
+
+
+##### DHARMa residuals
+
+
+:::::
+
+::::
+
+### Comparisons
+
+
+Conclusions:
+- evidently, the zero-inflated negative binomial model with random
+  intercepts/slopes (owls_brm5b) is the best model...
+
+:::
+<!-- END_PRIVATE-->
+
+
 # Partial effects plots 
 
 

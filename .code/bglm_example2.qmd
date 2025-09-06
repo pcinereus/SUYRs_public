@@ -220,10 +220,12 @@ identity.
 Model formula:
 $$
 \begin{align}
-y_i &\sim{} \mathcal{Bin}(n, p_i)\\
-ln\left(\frac{p_i}{1-p_i}\right) &= \beta_0 + \beta_1 x_i\\
-\beta_0 &\sim{} \mathcal{N}(0,2.5)\\
-\beta_1 &\sim{} \mathcal{N}(0,1)\\
+y_i &\sim{} \mathcal{Bin}(n, \pi_i)\\
+OR \\
+y_i &\sim{} \mathcal{Bernoulli}(\pi_i)\\
+ln\left(\frac{\pi_i}{1-\pi_i}\right) &= \beta_0 + \beta_1 x_i\\
+\beta_0 &\sim{} \mathcal{N}(0, 1)\\
+\beta_1 &\sim{} \mathcal{N}(0, 1)\\
 \end{align}
 $$
 
@@ -445,7 +447,9 @@ For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
 form <- bf(PA|trials(1) ~ RATIO, family = binomial())
-polis.brm <- brm(form,
+#OR
+form <- bf(PA ~ RATIO, family = bernoulli())
+polis_brm <- brm(form,
                 data = polis,
                 iter = 5000,
                 warmup = 1000,
@@ -501,7 +505,7 @@ into the future.
 
 ```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE, paged.print=FALSE,tidy.opts = list(width.cutoff = 80), echo=2}
 options(width=100)
-polis.brm |> prior_summary()
+polis_brm |> prior_summary()
 options(width=80)
 ```
 
@@ -561,9 +565,11 @@ to use them).
 
 ```{r fitModel2d, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
 form <- bf(PA|trials(1) ~ RATIO, family = binomial())
+#OR
+polis_form <- bf(PA ~ RATIO, family = bernoulli())
 priors <- prior(normal(0, 2.5), class = 'Intercept') +
     prior(normal(0, 1), class = 'b')
-polis.brm1 = brm(form,
+polis_brm1 = brm(polis_form,
                  data = polis,
                  prior = priors, 
                  sample_prior = 'only', 
@@ -580,8 +586,8 @@ be bound to the range of [0,1].  Hence, it will be difficult to assess
 whether the priors could result in very large or small predictions.
 
 ```{r fitModel2e, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-polis.brm1 |> ggemmeans(~RATIO) |> plot(show_data=TRUE)
-polis.brm1 |> conditional_effects() |>  plot(points=TRUE)
+polis_brm1 |> ggemmeans(~RATIO) |> plot(show_data=TRUE)
+polis_brm1 |> conditional_effects() |>  plot(points=TRUE)
 ```
 
 **Conclusions:**
@@ -618,7 +624,7 @@ the link (logit) scale, it is hard to appreciate how this relates to
 the response (real values) scale.  To explore this, we must simulate sampling from a normal distribution, transform the normal and plot that density distribution
 
 ```{r normal2h2, results='markdown', eval=TRUE}
-dat <- data.frame(sigma = c(2.5, 1.5, 1))
+dat <- data.frame(sigma = c(2.5, 2, 1.5, 1))
 dat <- dat |>
   group_by(sigma) |>
   reframe(r = rnorm(10000, 0, sigma),
@@ -629,21 +635,30 @@ ggplot(dat, aes(x =  p)) +
 
 Hence, it appears that a prior with a standard deviation of 2.5 would
 indicate that we believe that probabilities close to either 0 or 1 are
-the most likely. Given that priors are applied to the centered
-predictors (which means that the intercept is supposed to represent
-the midpoint - and thus presumably close to the switch point), this
-would seem inappropriate. Surely we should expect a probability of
-close to 0.5 at this intercept?
+the most likely. 
 
-If this logic holds, then a prior standard deviation of 1.5 or even 1
-would seem more sensible.
+So if the predictors are centered (or scaled), we might expect the
+intercept to represent a probability of approximately 0.5 (and thus
+presumably close to the switch point). This would seem inappropriate.
+When this is the case, we want to use a standard deviation of the
+intercept prior of 1.
+
+On the other hand, if we do not scale the predictor, we might expect
+the intercept to represent a probability close to either 0 or 1. When
+this is the case, we want to use a standard deviation of the intercept
+prior of 2.5.
+
+When we want to obtain a ED50 (or LD50), it is easier to not have
+scaled the predictor.  So in this instance we will not scale the predictor and thus use a standard devation for the intercept prior of 1.
 
 ```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE}
-form <- bf(PA|trials(1) ~ RATIO, family = binomial())
+polis_form <- bf(PA|trials(1) ~ RATIO, family = binomial())
+#OR
+polis_form <- bf(PA ~ RATIO, family = bernoulli())
 priors <- prior(normal(0, 1),  class = 'Intercept') +
     prior(normal(0, 0.1), class = 'b') 
 
-polis.brm2 = brm(form,
+polis_brm2 <- brm(polis_form,
                  data = polis,
                  prior = priors,
                  sample_prior = 'only', 
@@ -656,12 +671,16 @@ polis.brm2 = brm(form,
 ```
 
 ```{r fitModel2i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-ggemmeans(polis.brm2,  ~RATIO) |>
+polis_brm2 |> conditional_effects() |> 
+  plot(points = TRUE)
+
+ggemmeans(polis_brm2,  ~RATIO) |>
   plot(show_data = TRUE) 
+
 ```
 
 ```{r fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE}
-polis.brm3 <- polis.brm2 |> update(sample_prior = 'yes', refresh = 0)
+polis_brm3 <- polis_brm2 |> update(sample_prior = 'yes', refresh = 0)
 ```
 
 ```{r fitModel2j1, results='markdown', eval=TRUE, echo = FALSE, mhidden=TRUE}
@@ -670,32 +689,39 @@ polis.brm3 <- polis.brm2 |> update(sample_prior = 'yes', refresh = 0)
 
 
 ```{r fitModel2j2, results='markdown', eval=TRUE, mhidden=TRUE}
-ggemmeans(polis.brm3,  ~RATIO) |>
+polis_brm3 |>
+  conditional_effects() |> 
+  plot(points = TRUE)
+
+## To see the fitted trend on the scale of the link function
+## E.g. to see that it is a straight line
+polis_brm3 |> conditional_effects(method = "posterior_linpred")
+
+ggemmeans(polis_brm3,  ~RATIO) |>
   plot(show_data = TRUE)
-ggemmeans(polis.brm3,  terms = "RATIO[0:63]") |>
+ggemmeans(polis_brm3,  terms = "RATIO[0:63]") |>
     plot(show_data = TRUE) 
 
-polis.brm3 |> conditional_effects()
 ```
 
 ### Plotting prior and posterior
 
 ```{r posterior2k, results='markdown', eval=TRUE}
-polis.brm3 |> get_variables()
-## polis.brm3 |> hypothesis('Intercept=0', class='b') |> plot
-polis.brm3 |> hypothesis('RATIO=0') |> plot()
+polis_brm3 |> get_variables()
+## polis_brm3 |> hypothesis('Intercept=0', class='b') |> plot()
+polis_brm3 |> hypothesis('RATIO=0') |> plot()
 ```
 
 ```{r fitModel2k, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-polis.brm3 |> get_variables()
-polis.brm3 |> SUYR_prior_and_posterior() 
+polis_brm3 |> get_variables()
+polis_brm3 |> SUYR_prior_and_posterior() 
 ```
 
 ### Exploring the stan code
 
 ```{r fitModel2l, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-polis.brm3 |> standata()
-polis.brm3 |> stancode()
+polis_brm3 |> standata()
+polis_brm3 |> stancode()
 ```
 ::::
 ## INLA 
@@ -1115,7 +1141,7 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> mcmc_plot(type = 'trace')
+polis_brm3 |> mcmc_plot(type = 'trace')
 ```
   
    The chains appear well mixed and very similar
@@ -1124,7 +1150,7 @@ polis.brm3 |> mcmc_plot(type = 'trace')
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> mcmc_plot(type = 'acf_bar')
+polis_brm3 |> mcmc_plot(type = 'acf_bar')
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -1135,7 +1161,7 @@ polis.brm3 |> mcmc_plot(type = 'acf_bar')
   parameter estimated.
 
 ```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> mcmc_plot(type = 'rhat_hist')
+polis_brm3 |> mcmc_plot(type = 'rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -1150,15 +1176,15 @@ polis.brm3 |> mcmc_plot(type = 'rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> mcmc_plot(type = 'neff_hist')
+polis_brm3 |> mcmc_plot(type = 'neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> mcmc_plot(type = 'combo')
-polis.brm3 |> mcmc_plot(type = 'violin')
+polis_brm3 |> mcmc_plot(type = 'combo')
+polis_brm3 |> mcmc_plot(type = 'violin')
 ```
 </details>
 
@@ -1177,7 +1203,7 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3$fit |> stan_trace()
+polis_brm3$fit |> stan_trace()
 ```
 
    The chains appear well mixed and very similar
@@ -1186,7 +1212,7 @@ polis.brm3$fit |> stan_trace()
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3$fit |> stan_ac() 
+polis_brm3$fit |> stan_ac() 
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -1197,7 +1223,7 @@ polis.brm3$fit |> stan_ac()
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3$fit |> stan_rhat() 
+polis_brm3$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -1212,13 +1238,13 @@ polis.brm3$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3$fit |> stan_ess()
+polis_brm3$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-stan_dens(polis.brm3$fit, separate_chains = TRUE)
+stan_dens(polis_brm3$fit, separate_chains = TRUE)
 ```
 
 ### ggmcmc
@@ -1236,7 +1262,7 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-polis.ggs <- polis.brm3 |> ggs(inc_warmup = FALSE, burnin = FALSE)
+polis.ggs <- polis_brm3 |> ggs(inc_warmup = FALSE, burnin = FALSE)
 polis.ggs |> ggs_traceplot()
 ```
 
@@ -1296,7 +1322,7 @@ polis.ggs |> ggs_grb()
 
 <!-- START_PRIVATE-->
 ::: {.panel-tabset}
-
+ 
 ## rstanarm 
 :::: {.panel-tabset}
 
@@ -1417,7 +1443,7 @@ overlayed on top of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> pp_check(type = 'dens_overlay', ndraws=100)
+polis_brm3 |> pp_check(type = 'dens_overlay', ndraws=100)
 ```
 The model draws appear to be consistent with the observed data.
 
@@ -1427,7 +1453,7 @@ The model draws appear to be consistent with the observed data.
   binomial response
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> pp_check(type = 'error_scatter_avg')
+polis_brm3 |> pp_check(type = 'error_scatter_avg')
 ```
 
 This is not really interpretable
@@ -1436,7 +1462,7 @@ This is not really interpretable
   should be interpreted as such.  This is not easy to interpret for binomial responses.
 
 ```{r modelValidation5d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> pp_check(x = 'RATIO', type = 'error_scatter_avg_vs_x')
+polis_brm3 |> pp_check(x = 'RATIO', type = 'error_scatter_avg_vs_x')
 ```
 
 - intervals:  plots the observed data overlayed on top of posterior predictions
@@ -1445,13 +1471,13 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> pp_check(x = 'RATIO', type = 'intervals')
+polis_brm3 |> pp_check(x = 'RATIO', type = 'intervals')
 ```
 
 - ribbon: this is just an alternative way of expressing the above plot.
 
 ```{r modelValidation5f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-polis.brm3 |> pp_check(x = 'RATIO', type = 'ribbon')
+polis_brm3 |> pp_check(x = 'RATIO', type = 'ribbon')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -1459,7 +1485,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(polis.brm3)
+#launch_shinystan(polis_brm3)
 ```
 
 ### DHARMa residuals
@@ -1475,17 +1501,8 @@ We need to supply:
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
 
-```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- polis.brm3 |> posterior_predict(ndraws = 250,  summary = FALSE)
-polis.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = polis$PA,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = TRUE)
-polis.resids |> plot()
-
-```
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-polis.resids <- make_brms_dharma_res(polis.brm3, integerResponse = FALSE)
+polis.resids <- make_brms_dharma_res(polis_brm3, integerResponse = FALSE)
 wrap_elements(~testUniformity(polis.resids)) +
                wrap_elements(~plotResiduals(polis.resids, form = factor(rep(1, nrow(polis))))) +
                wrap_elements(~plotResiduals(polis.resids, quantreg = FALSE)) +
@@ -1498,6 +1515,17 @@ wrap_elements(~testUniformity(polis.resids)) +
 - the simulated residuals do not suggest any issues with the residuals
 - there is no evidence of a lack of fit.
 
+Here is the old (and now incorrect) way...
+
+```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+preds <- polis_brm3 |> posterior_predict(ndraws = 250,  summary = FALSE)
+polis.resids <- createDHARMa(simulatedResponse = t(preds),
+                            observedResponse = polis$PA,
+                            fittedPredictedResponse = apply(preds, 2, median),
+                            integerResponse = TRUE)
+polis.resids |> plot()
+
+```
 ::::
 :::
 <!-- END_PRIVATE-->
@@ -1540,18 +1568,18 @@ polis.rstanarm3 |> epred_draws(newdata=polis) |>
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |>
+polis_brm3 |>
     conditional_effects() |>
     plot(points = TRUE)
-polis.brm3 |>
-    conditional_effects(spaghetti = TRUE,nsamples = 500) |>
+polis_brm3 |>
+    conditional_effects(spaghetti = TRUE,ndraws = 500) |>
     plot(points = TRUE)
 ```
 
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |>
+polis_brm3 |>
     ggpredict() |>
     plot(show_data = TRUE, jitter = FALSE)
 ```
@@ -1559,7 +1587,7 @@ polis.brm3 |>
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |>
+polis_brm3 |>
     ggemmeans(~RATIO) |>
     plot(show_data = TRUE)
 ```
@@ -1567,18 +1595,18 @@ polis.brm3 |>
 ### epred_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> epred_draws(newdata = polis) |>
+polis_brm3 |> epred_draws(newdata = polis) |>
  median_hdci() |>
  ggplot(aes(x = RATIO, y = .epred)) +
  geom_ribbon(aes(ymin = .lower, ymax = .upper), fill = 'blue', alpha = 0.3) + 
  geom_line()
 
 partial.obs <- polis |>
-    mutate(fit = fitted(polis.brm3, newdata = polis)[,'Estimate'],
-           resid = resid(polis.brm3)[,'Estimate'],
+    mutate(fit = fitted(polis_brm3, newdata = polis)[,'Estimate'],
+           resid = resid(polis_brm3)[,'Estimate'],
            Obs = fit + resid)
 
-polis.brm3 |>
+polis_brm3 |>
     epred_draws(newdata = polis) |>
     median_hdci() |>
     ggplot(aes(x = RATIO, y = .epred)) +
@@ -1828,18 +1856,18 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> summary()
+polis_brm3 |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-polis.sum <- polis.brm3 |> summary()
+polis.sum <- polis_brm3 |> summary()
 ```
 
 **Conclusions:**
 
 
 - in the Model Info, we are informed that the total MCMC posterior sample size
-  is `r nrow(as.matrix(polis.brm3))` and that there were 19 raw observations.
+  is `r nrow(as.matrix(polis_brm3))` and that there were 19 raw observations.
 - the estimated intercept (expected presence/absence when perimeter to area ratio is 0) is
   `r round(polis.sum$fixed[1,1],2)`.  This is the mean of the posterior distribution
   for this parameter.  If we back-transform this to the odds-ratio scale, this
@@ -1862,14 +1890,14 @@ polis.sum <- polis.brm3 |> summary()
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3$fit |>
+polis_brm3$fit |>
     tidyMCMC(
       estimate.method = "median", conf.int = TRUE,
       conf.method = "HPDinterval", rhat = TRUE, ess = TRUE
     )
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-polis.tidy <- polis.brm3$fit |> tidyMCMC(estimate.method = 'median',  conf.int = TRUE,  conf.method = 'HPDinterval',  rhat = TRUE, ess = TRUE)
+polis.tidy <- polis_brm3$fit |> tidyMCMC(estimate.method = 'median',  conf.int = TRUE,  conf.method = 'HPDinterval',  rhat = TRUE, ess = TRUE)
 ```
 
 **Conclusions:**
@@ -1893,7 +1921,7 @@ polis.tidy <- polis.brm3$fit |> tidyMCMC(estimate.method = 'median',  conf.int =
 ### summarise_draws (posterior)
 
 ```{r summariseModel2dd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |>
+polis_brm3 |>
     summarise_draws(median,
                     HDInterval::hdi,
                     rhat, length, ess_bulk, ess_tail)
@@ -1902,7 +1930,7 @@ polis.brm3 |>
 We can also alter the CI level.
 
 ```{r summariseModel2d2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |>
+polis_brm3 |>
     summarise_draws(median,
                     ~HDInterval::hdi(.x, credMass = 0.9),
                     rhat, length, ess_bulk, ess_tail)
@@ -1913,9 +1941,9 @@ To narrow down to just the parameters of interest, see the code under the **tidy
 ### as_draws_df (posterior)
 
 ```{r summariseModel2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> as_draws_df()
+polis_brm3 |> as_draws_df()
 ## summarised 
-polis.brm3 |>
+polis_brm3 |>
   as_draws_df() |>
   summarise_draws(
     "median",
@@ -1925,7 +1953,7 @@ polis.brm3 |>
   )
 
 ## summarised on fractional scale
-polis.brm3 |>
+polis_brm3 |>
     as_draws_df() |>
     dplyr::select(starts_with("b_")) |> 
     mutate(across(everything(), exp)) |> 
@@ -1938,9 +1966,9 @@ polis.brm3 |>
 ### gather_draws
 
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.draw <- polis.brm3 |> gather_draws(b_Intercept, b_RATIO)
+polis.draw <- polis_brm3 |> gather_draws(b_Intercept, b_RATIO)
 ## OR via regex
-polis.draw <- polis.brm3 |> gather_draws(`b_.*`,  regex=TRUE)
+polis.draw <- polis_brm3 |> gather_draws(`b_.*`,  regex=TRUE)
 polis.draw
 ```
 
@@ -1951,13 +1979,13 @@ polis.draw |> median_hdci()
 ```
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-polis.gather <- polis.brm3 |>
+polis.gather <- polis_brm3 |>
     gather_draws(b_Intercept, b_RATIO) |>
     median_hdci()
 ```
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-polis.brm3 |> 
+polis_brm3 |> 
   gather_draws(b_Intercept, b_RATIO) |> 
   ggplot() + 
   stat_halfeye(aes(x = .value,  y = .variable)) +
@@ -1984,7 +2012,7 @@ polis.draw |>
 
 We could alternatively express the parameters on the odds (odds ratio) scale.
 ```{r summariseModel2c5, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-polis.brm3 |> 
+polis_brm3 |> 
   gather_draws(b_Intercept, b_RATIO) |>
   group_by(.variable) |>
   mutate(.value = exp(.value)) |>
@@ -2012,7 +2040,7 @@ polis.brm3 |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> mcmc_plot(type = 'intervals') 
+polis_brm3 |> mcmc_plot(type = 'intervals') 
 ```
 
 ### tidy_draws
@@ -2020,18 +2048,18 @@ polis.brm3 |> mcmc_plot(type = 'intervals')
 This is purely a graphical depiction on the posteriors.
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> tidy_draws()
+polis_brm3 |> tidy_draws()
 ```
 
 ### spread_draws
 	
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> spread_draws(b_Intercept, b_RATIO)
+polis_brm3 |> spread_draws(b_Intercept, b_RATIO)
 # OR via regex
-polis.brm3 |> spread_draws(`b_.*`,  regex=TRUE)
+polis_brm3 |> spread_draws(`b_.*`,  regex=TRUE)
 
 ## summarised
-polis.brm3 |>
+polis_brm3 |>
     as_draws_df() |>
     dplyr::select(starts_with("b_")) |> 
     summarise_draws("median",
@@ -2039,7 +2067,7 @@ polis.brm3 |>
                     "rhat",
                     "ess_bulk")
 ## summarised on fractional scale
-polis.brm3 |>
+polis_brm3 |>
     as_draws_df() |>
     dplyr::select(starts_with("b_")) |> 
     mutate(across(everything(), exp)) |> 
@@ -2049,14 +2077,14 @@ polis.brm3 |>
                     "ess_bulk")
 
 
-polis.brm3 |>
+polis_brm3 |>
     tidy_draws() |>
     exp() |>
     summarise_draws(median,HDInterval::hdi, rhat, ess_bulk, ess_tail) |>
     filter(variable %in% c('b_Intercept', 'b_RATIO'))
 
 
-polis.brm3 |>
+polis_brm3 |>
     tidy_draws() |>
     exp() |>
     dplyr::select(starts_with("b_")) |> 
@@ -2067,16 +2095,16 @@ The above is on a odd ratio scale.
 
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> posterior_samples() |> as_tibble()
+polis_brm3 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |>
+polis_brm3 |>
     bayes_R2() 
 ## OR as median and hdci
-polis.brm3 |>
+polis_brm3 |>
     bayes_R2(summary = FALSE) |>
     median_hdci()
 ```
@@ -2088,18 +2116,18 @@ polis.brm3 |>
 #| eval: true
 #| echo: true
 #| cache: false
-polis.brm3 |> modelsummary(
+polis_brm3 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic
 )
 
-polis.brm3 |> modelsummary(
+polis_brm3 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = TRUE
 )
 
-modelsummary(list("Raw" = polis.brm3, "Exponentiated" = polis.brm3),
+modelsummary(list("Raw" = polis_brm3, "Exponentiated" = polis_brm3),
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = c(FALSE, TRUE)
@@ -2112,8 +2140,8 @@ modelsummary(list("Raw" = polis.brm3, "Exponentiated" = polis.brm3),
 #| eval: true
 #| echo: true
 #| cache: false
-polis.brm3 |> modelplot()
-polis.brm3 |> modelplot(exponentiate = TRUE)
+polis_brm3 |> modelplot()
+polis_brm3 |> modelplot(exponentiate = TRUE)
 ```
 
 
@@ -2151,9 +2179,9 @@ polis.rstanarm3 |> tidy_draws() |>
 ## brms
 
 ```{r LD502a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-polis.brm3 |> tidy_draws() |>
-  mutate(LD50 = -1*b_Intercept/b_RATIO) |>
-  pull(LD50) |>
+polis_brm3 |> tidy_draws() |>
+  mutate(ED50 = -1*b_Intercept/b_RATIO) |>
+  pull(ED50) |>
   median_hdci()
 ```
 
@@ -2234,16 +2262,16 @@ ggplot(newdata,  aes(y=.value,  x=RATIO)) +
 
 ```{r figureModel2a, results='markdown', eval=TRUE, mhidden=TRUE}
 ## Using emmeans
-polis.grid <- with(polis, list(RATIO = modelr::seq_range(RATIO, n = 100)))
+polis_grid <- with(polis, list(RATIO = modelr::seq_range(RATIO, n = 100)))
 
-newdata <- polis.brm3 |>
-    emmeans(~RATIO, at = polis.grid, type = 'response') |>
+newdata <- polis_brm3 |>
+    emmeans(~RATIO, at = polis_grid, type = 'response') |>
     as.data.frame()
 head(newdata)
 
 ## Using raw data for points
 newdata |> 
-    ggplot(aes(y = prob, x = RATIO)) + 
+    ggplot(aes(y = response, x = RATIO)) + 
     geom_point(data = polis, aes(y = PA)) +
     geom_line() + 
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), fill = 'blue', alpha = 0.3) +
@@ -2255,14 +2283,14 @@ newdata |>
 ## Using partial residuals for points
 
 partial.obs <- polis |>
-    bind_cols(Pred = predict(polis.brm3)[,'Estimate'],
-              Resid = residuals(polis.brm3)[,'Estimate']) |>
+    bind_cols(Pred = predict(polis_brm3)[,'Estimate'],
+              Resid = residuals(polis_brm3)[,'Estimate']) |>
     mutate(
         Obs = round(Pred + Resid, 0)
     )
 
 newdata |> 
-    ggplot(aes(y = prob, x = RATIO)) + 
+    ggplot(aes(y = response, x = RATIO)) + 
     geom_point(data = partial.obs, aes(y = Obs)) +
     geom_line() + 
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), fill = 'blue', alpha = 0.3) +
@@ -2271,7 +2299,7 @@ newdata |>
     theme_classic()
 
 ## spaghetti plot
-newdata = emmeans(polis.brm3, ~RATIO, at=polis.grid) |>
+newdata = emmeans(polis_brm3, ~RATIO, at=polis_grid) |>
     gather_emmeans_draws() |>
     mutate(.value = plogis(.value)) 
 newdata |> head()
@@ -2285,12 +2313,14 @@ ggplot(newdata,  aes(y=.value,  x=RATIO)) +
 
 ```{r figureModel2b, results='markdown', eval=TRUE, mhidden=TRUE}
 ## Using emmeans
-polis.grid = with(polis, list(RATIO = seq(min(RATIO), max(RATIO), len=100)))
+polis_grid <- with(polis, list(RATIO = seq(min(RATIO), max(RATIO), len=100)))
 
-newdata = emmeans(polis.brm3, ~RATIO, at=polis.grid, type='response') |> as.data.frame()
+newdata <- polis_brm3 |>
+  emmeans(~RATIO, at=polis_grid, type='response') |>
+  as.data.frame()
 head(newdata)
 
-ggplot(newdata, aes(y=prob, x=RATIO)) + 
+ggplot(newdata, aes(y=response, x=RATIO)) + 
     geom_point(data=polis, aes(y=PA)) +
     geom_line() + 
     geom_ribbon(aes(ymin=lower.HPD, ymax=upper.HPD), fill='blue', alpha=0.3) +
@@ -2299,7 +2329,8 @@ ggplot(newdata, aes(y=prob, x=RATIO)) +
     theme_classic()
 
 ## spaghetti plot
-newdata = emmeans(polis.brm3, ~RATIO, at=polis.grid) |>
+newdata <- polis_brm3 |>
+  emmeans(~RATIO, at = polis_grid) |>
     gather_emmeans_draws() |>
     mutate(.value = plogis(.value)) 
 newdata |> head()

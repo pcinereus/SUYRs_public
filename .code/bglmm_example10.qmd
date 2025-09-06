@@ -381,6 +381,10 @@ ltmp_sub.brm2 <- brm(ltmp_sub.form,
 ```
 
 ```{r partialPlot2h1a, results='markdown', eval=TRUE, fig.width=8, fig.height=5}
+
+ltmp_sub.brm2 |>
+  conditional_effects() |>
+  plot(points = TRUE)
 ltmp_sub.brm2 |>
   conditional_effects(conditions = data.frame(total.points = 200)) |>
   plot(points = TRUE)
@@ -412,7 +416,7 @@ ltmp_sub.brm3 |>
 ```
 
 ### Plotting prior and posterior
-
+    
 ```{r posterior2h2, results='markdown', eval=TRUE}
 ltmp_sub.brm3 |> get_variables()
 ltmp_sub.brm3 |> hypothesis('fREPORT_YEAR2021=0') %>% plot
@@ -906,4 +910,24 @@ gratia::basis(s(REPORT_YEAR),  data = ltmp_sub) |> gratia::draw()
 gratia::basis(s(REPORT_YEAR, bs='cr'),  data = ltmp_sub) |> gratia::draw()
 gratia::basis(s(REPORT_YEAR, bs='cr', k = 3),  data = ltmp_sub) |> gratia::draw()
 
+
+ltmp_glmm <- ltmp_sub.brm3 |>
+    emmeans(~fREPORT_YEAR, type = "response") |>
+    as.data.frame() |>
+    mutate(
+        fREPORT_YEAR = factor(fREPORT_YEAR, levels = rev(levels(fREPORT_YEAR))),
+        REPORT_YEAR = as.numeric(as.character(fREPORT_YEAR))
+    )
+
+ltmp_sub.brm4 |>
+  conditional_effects() |>
+  plot() |> 
+  _[[1]] +
+  geom_line(data = ltmp_glmm, inherit.aes = FALSE,
+    aes(y = prob, x = REPORT_YEAR), colour = "blue") +
+  geom_ribbon(data = ltmp_glmm, inherit.aes = FALSE,
+    aes(y = prob, x = REPORT_YEAR,
+      min = lower.HPD, ymax = upper.HPD), fill = "orange", alpha = 0.3) +
+  theme_classic() +
+  scale_y_continuous("Live hard coral cover", label = scales::percent_format())
 ```

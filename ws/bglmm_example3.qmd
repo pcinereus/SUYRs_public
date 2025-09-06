@@ -101,119 +101,6 @@ source('helperFunctions.R')
 
 ![Starlings](../resources/starlings.jpg){#fig-starlings width="200" height="274"}
 
-```{tikz}
-%| label: fig-starling_design
-%| engine: tikz
-%| echo: false
-%| fig-cap: Sampling design for the starling data set
-%| fig-width: 13
-%| fig-height: 6
-%| cache: true
-%| class: tikz
-%| engine-opts:
-%|   template: "../resources/tikz-minimal.tex"
-\tikzstyle{HandLabel} = [font={\fontspec[Scale=1.1]{xkcd}}]
-\tikzstyle{Messy} = [decorate,decoration={random steps,segment length=3pt, amplitude=0.5pt}]
-\tikzset{%
-every node/.style={%
-draw=black,
-inner sep=1mm,
-outer sep=0,
-Messy, HandLabel,
-minimum size=1cm,
-minimum height=8mm,
-align=center,
-anchor=north,
-},
-Rnd/.style={%
-draw=black!90,
-fill=black!30,
-},
-Trt/.style={%
-%rounded corners,
-%Messy, 
-draw=black,
-fill=none,
-%top color=blue!10,
-%bottom color=blue!30
-},
-Latent/.style={%
-%rounded corners,
-%Messy, 
-draw=black!40,
-text=black!40,
-fill=none,
-%top color=blue!10,
-%bottom color=blue!30
-},
-Th/.style={%
-%rounded corners,
-draw=black!90
-},
-Control/.style={%
-rounded corners,
-draw=green!90,
-top color=green!10,
-bottom color=green!30,
-},
-Comment/.style={%
-draw=none,
-inner sep=0mm,
-outer sep=0mm,
-minimum height=5mm,
-align=right
-},
-}
-
-\forestset{myst/.style={%
-for tree={%
-parent anchor=south, 
-child anchor=north,
-l sep=1cm,
-s sep=0.5cm,
-edge path={\noexpand\path[\forestoption{edge},-{latex}] 
-(!u.parent anchor) |- ($(!u.parent anchor)!.5!(.child anchor)$) -| (.child anchor)
-\forestoption{edge label};}
-}
-}
-}
-
-\begin{forest} myst,
-[,phantom, s=1cm
-[Tree, Trt, name=Situation
-[{tree1}, Rnd, name=Bird
-[Nov, Trt, name=Month]
-[Jan, Trt]
-]
-[{tree2}, Rnd
-[Nov, Trt]
-[Jan, Trt]
-]
-[{tree ...}, Rnd
-[Nov, Trt]
-[Jan, Trt]
-]
-]
-[Nest-box, Trt, name=NB
-[nest-box1, Rnd [Nov, Trt][Jan, Trt]]
-[nest-box2, Rnd [Nov, Trt][Jan, Trt]]
-[{nest-box ...}, Rnd [Nov, Trt][Jan, Trt]]
-]
-[Other, Trt, name=Ot
-[other1, Rnd [Nov, Trt][Jan, Trt]]
-[other2, Rnd [Nov, Trt][Jan, Trt]]
-[{other ...}, Rnd [Nov, Trt][Jan, Trt]]
-]
-]
-\node[left=1cm of Month.west, Comment,anchor=east] (lMonth) {Month};
-\node[Comment,anchor=east] at (lMonth.east |- Bird.west) (lBird) {Bird};
-\node[Comment,anchor=east] at (lMonth.east |- Situation.west) (lSituation) {Situation};
-\node [Comment] at ($(NB) !0.5! (Ot)$) {....};
-\end{forest}
-
-
-```
-
 
 SITUATION   MONTH   MASS   BIRD
 ----------- ------- ------ -----------
@@ -248,24 +135,71 @@ starling <- read_csv('../data/starling_full.csv', trim_ws = TRUE)
 
 # Exploratory data analysis
 
-Model formula:
+::: {.columns}
+:::: {.column width="50%"}
+Random intercepts model formula:
 $$
 \begin{align}
 y_i &\sim{} \mathcal{N}(\mu_i, \sigma^2)\\
 \mu_i &= \beta_0 + \boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
 \boldsymbol{\gamma} &= \gamma_0\\
-\beta_0 &\sim{} \mathcal{N}(0, 100)\\
+\beta_0 &\sim{} \mathcal{N}(80, 2.5)\\
 \beta &\sim{} \mathcal{N}(0, 10)\\
 \gamma_0 &\sim{} \mathcal{N}(0, \sigma_1^2)\\
-\sigma &\sim{} \mathcal{cauchy}(0, 2)\\
-\sigma_1 &\sim{} \mathcal{cauchy}(0, 2)\\
+\sigma &\sim{} \mathcal{t}(3, 0, 6)\\
+\sigma_1 &\sim{} \mathcal{t}(3, 0, 6)\\
+\end{align}
+$$
+::::
+:::: {.column width="50%"}
+
+Random intercept/slope model formula:
+$$
+\begin{align}
+y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
+\mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
+\beta_0 &\sim{} \mathcal{N}(80, 2)\\
+\beta_1 &\sim{} \mathcal{N}(0, 10)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l^2})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_l^2 &\sim{} \mathcal{t}(3,0,3)\\
+\sigma^2 &\sim{} \mathcal{t}(3, 0, 3)\
+\end{align}
+$$
+::::
+:::
+
+
+- $\bf{X}$ is the model matrix representing the effects of the situation and month on the mass of birds.
+- $\boldsymbol{\beta}$ is a vector of the population-level effects
+  parameters to be estimated.
+- $\boldsymbol{\gamma}$ is a vector of the group-level effect parameters
+- $\bf{Z}$ represents a cell means model matrix for the random intercepts (and
+  possibly random slopes) associated with indivual birds.
+- the population-level intercept ($\beta_0$) has a gaussian prior with location
+  of 80 and scale of 2.5
+- the population-level effect ($\beta_1$) has a gaussian prior with location of
+  0 and scale of 10
+- the group-level effects are assumed to sum-to-zero and be drawn from a
+  gaussian distribution with mean of 0 and covariance of $\Sigma$  
+- $\boldsymbol{\Sigma}$ is the variance-covariance matrix between the
+  groups (individual leaves).  It turns out that it is difficult to
+  apply a prior on this covariance matrix, so instead, the covariance
+  matrix is decomposed into a correlation matrix
+  ($\boldsymbol{\Omega}$) and a vector of variances
+  ($\boldsymbol{\sigma_l^2}$) which are the diagonals ($\boldsymbol{D}$)
+  of the covariance matrix.
+- $\boldsymbol{\Omega}$ 
+
+$$
+\begin{align}
+\gamma &\sim{} N(0,\Sigma)\\
+\Sigma &-> \Omega, \tau\\
 \end{align}
 $$
 
-where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
-and $\bf{X}$ is the model matrix representing the overall intercept and effects of roosting situation and month on starling mass.
-$\bf{Z}$ represents a cell means model matrix for the random intercepts associated with individual birds.
-
+where $\Sigma$ is a covariance matrix.
 
 
 

@@ -94,7 +94,6 @@ measured.
 The data are in the file
 **king.csv** in the **data** folder.
 
-
 | Time | Light | Diuron | Block | t0       | celld     | lncelld     | PI          |
 |------|-------|--------|-------|----------|-----------|-------------|-------------|
 | 72   | 20    | 0.11   | 2     | 35.24612 | 125.94344 | 4.835832917 | 1.012390192 |

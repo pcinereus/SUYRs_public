@@ -95,6 +95,7 @@ library(ggridges)
 library(easystats)     #framework for stats, modelling and visualisation
 library(patchwork)
 library(modelsummary)
+library(geoR) 
 source('helperFunctions.R')
 ```
 
@@ -199,11 +200,26 @@ they are assumed to be 1 (on the link scale).  This means that since Poisson
 uses a log link, then the offset should be of a logged version of the brood size.
 
 <!-- END_PRIVATE-->
-Model formula:
+
+
+Random intercept/slope model formula:
+
 $$
-y_i \sim{} \mathcal{Pois}(\lambda_i)\\
-ln(\lambda_i) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\begin{align}
+y_i &\sim{} \mathcal{NB}(\mu_{ij}, \phi)\\
+ln\left(\mu_{ij}\right) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 &\sim{} \mathcal{N}(0.4, 0.7)\\
+\beta_1 &\sim{} \mathcal{N}(0, 1)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_n^2})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_n^2})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_n^2 &\sim{} \mathcal{t}(3,0,0.7)\\
+\phi &\sim{} \mathcal{\Gamma}(0.01, 0.01)\\
+\end{align}
 $$
+
+
+
 
 where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed
 and random effects parameters respectively and $\bf{X}$ is the model matrix
@@ -262,6 +278,22 @@ ggplot(data = owls,aes(y = NCalls, x = BroodSize, color=SexParent)) +
 
 # Fit the model 
 
+This model has the potential to be more complex than most of the
+models in previous worksheets. Therefore, we will use the current
+example to illustrate the process of building a model up gradually
+rather than attempting to fit a more complex model from the start. The
+benifit of gradually building a model is that it becomes much easier
+to construct more sensible and appropriate models that perform nicely
+and meet all the various assumptions.
+
+As we intend to build a number of models, we will nest the MCMC
+sampling diagnostics and Model validation sections under the Fit the
+model section since each model will have its own associated diagnostic
+testing.
+
+Typically, when we are building up models, we start by constructing a
+model that only contains the hierarchical (random effects) structure.
+
 <!-- START_PRIVATE-->
 ::: {.panel-tabset}
 ## rstanarm 
@@ -272,7 +304,7 @@ are chosen to provide moderate regularisation (to help prevent over-fitting) and
 help stabilise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE}
-owls.rstanP <- stan_glmer(NCalls ~ FoodTreatment*SexParent +
+owls_rstanP <- stan_glmer(NCalls ~ FoodTreatment*SexParent +
                            offset(log(BroodSize)) + (1|Nest),
                           data = owls,
                           family = poisson(link = 'log'),
@@ -285,7 +317,7 @@ owls.rstanP <- stan_glmer(NCalls ~ FoodTreatment*SexParent +
 ```
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-owls.rstanP |> prior_summary()
+owls_rstanP |> prior_summary()
 ```
 This tells us:
 
@@ -315,11 +347,11 @@ Lets now run with priors only so that we can explore the range of values they
 allow in the posteriors.
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE}
-owls.rstanarmP1 <- update(owls.rstanP,  prior_PD=TRUE)
+owls_rstanarmP1 <- update(owls_rstanP,  prior_PD=TRUE)
 ```
 
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-owls.rstanarmP1 |>
+owls_rstanarmP1 |>
     ggpredict(~FoodTreatment*SexParent) |>
     plot(show_data=TRUE, jitter=c(0.25,0)) + 
     scale_y_continuous('', trans=scales::pseudo_log_trans())
@@ -365,7 +397,7 @@ thin air):
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE}
-owls.rstanarmP2 <- stan_glmer(NCalls ~ FoodTreatment*SexParent +
+owls_rstanarmP2 <- stan_glmer(NCalls ~ FoodTreatment*SexParent +
                                offset(log(BroodSize)) + (1|Nest),
                            data = owls,
                            family = poisson(link = 'log'),
@@ -383,7 +415,7 @@ owls.rstanarmP2 <- stan_glmer(NCalls ~ FoodTreatment*SexParent +
 ```
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-owls.rstanarmP2 |>
+owls_rstanarmP2 |>
     ggpredict(~FoodTreatment*SexParent) |>
     plot(show_data = TRUE, jitter = c(0.25, 0)) +
     scale_y_continuous('', trans=scales::pseudo_log_trans())
@@ -392,13 +424,13 @@ owls.rstanarmP2 |>
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, dependson='fitModel1h'}
-owls.rstanarmP3 <- update(owls.rstanarmP2,  prior_PD=FALSE)
+owls_rstanarmP3 <- update(owls_rstanarmP2,  prior_PD=FALSE)
 ```
  
 ### Plotting prior and posterior
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-posterior_vs_prior(owls.rstanarmP3, color_by='vs', group_by=TRUE,
+posterior_vs_prior(owls_rstanarmP3, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
@@ -426,11 +458,11 @@ For most models, the compilation of the stan code takes around 45 seconds.
 #| echo: false
 #| cache: false
 
-owls.form <- bf(NCalls ~ 
+owls_form <- bf(NCalls ~ 
                     offset(log(BroodSize)) + (1|Nest),
                 family=poisson(link='log'))
 options(width = 150)
-get_prior(owls.form, data = owls)
+get_prior(owls_form, data = owls)
 ## owls |> 
 ##     group_by(FoodTreatment, SexParent) |>
 ##     summarise(Mean = log(median(NCalls/BroodSize)),
@@ -439,7 +471,7 @@ get_prior(owls.form, data = owls)
 ## priors <- prior(normal(0.2, 0.6), class = 'Intercept') +
 ##     prior(student_t(3, 0, 0.6), class = 'sd') 
 
-## owls.brm2 <- brm(owls.form, 
+## owls_brm2 <- brm(owls_form, 
 ##                  data = owls,
 ##                  prior = priors,
 ##                  sample_prior = 'only',
@@ -454,13 +486,13 @@ get_prior(owls.form, data = owls)
 ##                  backend = "cmdstanr"
 ##                  )
 
-## owls.brm2 |>
+## owls_brm2 |>
 ##     conditional_effects("FoodTreatment:SexParent") |>
 ##   plot(points = TRUE) |>
 ##   _[[1]] +
 ##   scale_y_continuous(trans = scales::pseudo_log_trans())
 
-## owls.form <- bf(NCalls ~ 
+## owls_form <- bf(NCalls ~ 
 ##                     offset(log(BroodSize)) +
 ##                     (1|Nest),
 ##                 zi ~ 1,
@@ -469,7 +501,7 @@ get_prior(owls.form, data = owls)
 ##   prior(student_t(3, 0, 0.6), class = "sd") +
 ## prior(logistic(0,1), class = "Intercept", dpar = "zi")
 
-## owls.brm3 <- update(owls.brm2,  
+## owls_brm3 <- update(owls_brm2,  
 ##                        sample_prior = 'yes',
 ##                        iter =  5000,
 ##                        warmup =  2500,
@@ -477,25 +509,25 @@ get_prior(owls.form, data = owls)
 ##                        backend =  "cmdstanr",
 ##                        refresh = 0)
 
-## owls.brm3 |> SUYR_prior_and_posterior()
+## owls_brm3 |> SUYR_prior_and_posterior()
 
 
-## owls.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) 
-## owls.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) +
+## owls_brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) 
+## owls_brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) +
 ##   scale_x_log10()
 
-## owls.resids <- make_brms_dharma_res(owls.brm3, integerResponse = TRUE)
-## wrap_elements(~testUniformity(owls.resids)) +
-##                wrap_elements(~plotResiduals(owls.resids, form = factor(rep(1, nrow(owls))))) +
-##                wrap_elements(~plotResiduals(owls.resids, quantreg = TRUE)) +
-##                wrap_elements(~testDispersion(owls.resids))
-## preds <- owls.brm3 |> posterior_predict(nsamples = 250,  summary = FALSE)
+## owls_resids <- make_brms_dharma_res(owls_brm3, integerResponse = TRUE)
+## wrap_elements(~testUniformity(owls_resids)) +
+##                wrap_elements(~plotResiduals(owls_resids, form = factor(rep(1, nrow(owls))))) +
+##                wrap_elements(~plotResiduals(owls_resids, quantreg = TRUE)) +
+##                wrap_elements(~testDispersion(owls_resids))
+## preds <- owls_brm3 |> posterior_predict(nsamples = 250,  summary = FALSE)
 
-## owls.resids |> testZeroInflation()
-## owls.resids |> testDispersion()
-## owls.resids |> testUniformity()
-## owls.resids |> testQuantiles()
-## owls.resids |> testResiduals()
+## owls_resids |> testZeroInflation()
+## owls_resids |> testDispersion()
+## owls_resids |> testUniformity()
+## owls_resids |> testQuantiles()
+## owls_resids |> testResiduals()
 
 
 
@@ -504,7 +536,7 @@ get_prior(owls.form, data = owls)
 ##     summarise(Mean = log(median(NCalls/BroodSize)),
 ##               SD = log(sd(NCalls/BroodSize)),
 ##               MAD = log(mad(NCalls/BroodSize)))
-## owls.form <- bf(NCalls ~ 
+## owls_form <- bf(NCalls ~ 
 ##                     offset(log(BroodSize)) +
 ##                     (FoodTreatment*SexParent|Nest),
 ##                 zi ~ FoodTreatment*SexParent,
@@ -514,7 +546,7 @@ get_prior(owls.form, data = owls)
 ## prior(logistic(0,1), class = "Intercept", dpar = "zi") +
 ##     prior(normal(0,1), class='b', dpar='zi')
 
-## owls.brm3 <- brm(owls.form,
+## owls_brm3 <- brm(owls_form,
 ##                  data=owls,
 ##                  prior = priors,
 ##                  sample_prior = 'yes',
@@ -525,25 +557,25 @@ get_prior(owls.form, data = owls)
 ##                  refresh=0,
 ##                  backend = "cmdstanr",
 ##                  cores=3)
-## owls.brm3 |> SUYR_prior_and_posterior()
+## owls_brm3 |> SUYR_prior_and_posterior()
 
 
-## owls.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) 
-## owls.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) +
+## owls_brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) 
+## owls_brm3 |> pp_check(type = 'dens_overlay', ndraws = 100) +
 ##   scale_x_log10()
 
-## owls.resids <- make_brms_dharma_res(owls.brm3, integerResponse = TRUE)
-## wrap_elements(~testUniformity(owls.resids)) +
-##                wrap_elements(~plotResiduals(owls.resids, form = factor(rep(1, nrow(owls))))) +
-##                wrap_elements(~plotResiduals(owls.resids, quantreg = TRUE)) +
-##                wrap_elements(~testDispersion(owls.resids))
-## preds <- owls.brm3 |> posterior_predict(nsamples = 250,  summary = FALSE)
+## owls_resids <- make_brms_dharma_res(owls_brm3, integerResponse = TRUE)
+## wrap_elements(~testUniformity(owls_resids)) +
+##                wrap_elements(~plotResiduals(owls_resids, form = factor(rep(1, nrow(owls))))) +
+##                wrap_elements(~plotResiduals(owls_resids, quantreg = TRUE)) +
+##                wrap_elements(~testDispersion(owls_resids))
+## preds <- owls_brm3 |> posterior_predict(nsamples = 250,  summary = FALSE)
 
-## owls.resids |> testZeroInflation()
-## owls.resids |> testDispersion()
-## owls.resids |> testUniformity()
-## owls.resids |> testQuantiles()
-## owls.resids |> testResiduals()
+## owls_resids |> testZeroInflation()
+## owls_resids |> testDispersion()
+## owls_resids |> testUniformity()
+## owls_resids |> testQuantiles()
+## owls_resids |> testResiduals()
 
 ## priors <- prior(normal(0.4,0.7), class = 'Intercept') +
 ##     ## prior(normal(0, 2.2), class = 'b', coef = 'FoodTreatmentSatiated') +
@@ -553,13 +585,13 @@ get_prior(owls.form, data = owls)
 ##     prior(lkj_corr_cholesky(1), class = 'cor') +
 ##     prior(logistic(0,1), class='Intercept', dpar='zi') +
 ##     prior(normal(0,1), class='b', dpar='zi')
-## owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+## owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
 ##                     offset(log(BroodSize)) +
 ##                     (FoodTreatment*SexParent|Nest),
 ##                 zi ~ FoodTreatment*SexParent,
 ##                 family=zero_inflated_poisson(link='log'))
 
-## owls.brm6 <- brm(owls.form,
+## owls_brm6 <- brm(owls_form,
 ##                  data=owls,
 ##                  prior = priors,
 ##                  sample_prior = 'yes',
@@ -575,15 +607,19 @@ get_prior(owls.form, data = owls)
 
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80)}
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
                     offset(log(BroodSize)) + (1|Nest),
                 family=poisson(link='log'))
 options(width=150)
-owls.form |> get_prior(data = owls)
+owls_form |> get_prior(data = owls)
 options(width=80)
 ```
 
-### Defining priors
+### Model 1
+
+:::: {.panel-tabset}
+
+#### Fit model
 
 The following link provides some guidance about defining priors.
 [https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations]
@@ -625,35 +661,20 @@ around zero.  Suitable candidates include:
 
 I will also overlay the raw data for comparison.
 
-```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+```{r fitModel2h_1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_form <- bf(NCalls ~ +
+                    offset(log(BroodSize)) + (1|Nest),
+                family=poisson(link='log'))
+options(width=150)
+owls_form |> get_prior(data = owls)
+options(width=80)
 owls |> 
-    group_by(FoodTreatment, SexParent) |>
     summarise(Mean = log(median(NCalls/BroodSize)),
               SD = log(sd(NCalls/BroodSize)),
               MAD = log(mad(NCalls/BroodSize)))
-standist::visualize("normal(0.4, 0.5)", xlim=c(0,20))
-standist::visualize("student_t(3, 0, 2.5)",
-                    "cauchy(0,1)",
-                    xlim=c(-10,25))
-```
-
-```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE}
-priors <- prior(normal(0.4, 0.7), class = 'Intercept') +
-    ## prior(normal(0, 2), class = 'b', coef = 'FoodTreatmentSatiated') +
-    ## prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
-    prior(normal(0, 2), class = 'b') +
-    prior(student_t(3, 0, 0.7), class = 'sd') 
-    ## prior(cauchy(0,0.7), class = 'sd') 
-
-## priors <- prior(normal(1.8, 2), class = 'Intercept') +
-##     prior(normal(0, 2.2), class = 'b', coef = 'FoodTreatmentSatiated') +
-##     prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
-##     prior(normal(0, 1), class = 'b') +
-##     prior(cauchy(0,2), class = 'sd') 
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
-                    offset(log(BroodSize)) + (1|Nest),
-                family=poisson(link='log'))
-owls.brm2 <- brm(owls.form, 
+priors <- prior(normal(0.2, 0.6), class = 'Intercept') +
+    prior(student_t(3, 0, 0.6), class = 'sd') 
+owls_brm1a <- brm(owls_form, 
                  data = owls,
                  prior = priors,
                  sample_prior = 'only',
@@ -667,171 +688,51 @@ owls.brm2 <- brm(owls.form,
                  control =  list(adapt_delta = 0.99),
                  backend = "cmdstanr"
                  )
-
+owls_brm1a |> 
+  emmeans(~1, type = "response") |>
+  as.data.frame() |>
+  ggplot(aes(x = 1, y = rate)) +
+  geom_pointrange(aes(ymin = lower.HPD, ymax = upper.HPD)) +
+  geom_point(data = owls, aes(y = NCalls/BroodSize),
+    position = position_jitter(width = 0.2))
 ```
 
-```{r partialPlot2h1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm2 |>
-    ggpredict(~FoodTreatment*SexParent) |>
-    plot(show_data = TRUE)
-owls.brm2 |>
-    conditional_effects("FoodTreatment:SexParent") |>
-    plot(points = TRUE)
-owls.brm2 |>
-    conditional_effects("FoodTreatment:SexParent") |>
-  plot(points = TRUE) |>
-  _[[1]] +
-  scale_y_continuous(trans = scales::pseudo_log_trans())
-```
-
-The above seem sufficiently wide whilst at the same time not providing any encouragement for the sampler
-to wander off into very unsupported areas.
-
-```{r fitModel2h1b, results='markdown', eval=TRUE, mhidden=TRUE}
-owls.brm3 <- update(owls.brm2,  
+```{r fitModel2h_1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_brm1b <- update(owls_brm1a,  
                        sample_prior = 'yes',
                        iter =  5000,
                        warmup =  2500,
                        control = list(adapt_delta = 0.99, max_treedepth = 20),
                        backend =  "cmdstanr",
                        refresh = 0)
-
+owls_brm1b |> 
+  emmeans(~1, type = "response") |>
+  as.data.frame() |>
+  ggplot(aes(x = 1, y = rate)) +
+  geom_pointrange(aes(ymin = lower.HPD, ymax = upper.HPD)) +
+  geom_point(data = owls, aes(y = NCalls/BroodSize),
+    position = position_jitter(width = 0.2))
 ```
-
-```{r partialPlot2h1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm3 |>  
-    ggpredict(~FoodTreatment*SexParent) |>
-    plot(show_data = TRUE)
-owls.brm3 |>  
-    conditional_effects("FoodTreatment:SexParent") |>
-    plot(points = TRUE) |> 
-  _[[1]] +
-  scale_y_continuous(trans = scales::pseudo_log_trans())
-```
-
-### Plotting prior and posterior
-
-```{r posterior2h2, results='markdown', eval=TRUE}
-owls.brm3 |> get_variables()
-owls.brm3 |> hypothesis('FoodTreatmentSatiated=0') |> plot()
-owls.brm3 |> hypothesis('SexParentMale=0') |> plot()
-```
-
-```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-owls.brm3 |> SUYR_prior_and_posterior()
-owls.brm3 |> 
-  posterior_samples() |>
-  dplyr::select(-`lp__`) |>
-  pivot_longer(everything(), names_to = 'key') |> 
-  filter(!str_detect(key, '^r')) |>
-  mutate(Type = ifelse(str_detect(key, 'prior'), 'Prior', 'Posterior'),
-         ## Class = ifelse(str_detect(key, 'Intercept'),  'Intercept',
-         ##         ifelse(str_detect(key, 'b'),  'b', 'sigma')),
-         Class = case_when(
-             str_detect(key, '(^b|^prior).*Intercept$') ~ 'Intercept',
-             str_detect(key, 'b_FoodTreatment.*|b_SexParent.*|prior_b') ~ 'TREATMENT',
-             str_detect(key, 'sd') ~ 'sd',
-             str_detect(key, '^cor|prior_cor') ~ 'cor',
-             str_detect(key, 'sigma') ~ 'sigma'),
-         Par = str_replace(key, 'b_', '')) |>
-  ggplot(aes(x = Type,  y = value, color = Par)) +
-  stat_pointinterval(position = position_dodge(), show.legend = FALSE)+
-  facet_wrap(~Class,  scales = 'free')
-```
-
-### Random intercept/slope model
-
-While we are here, we might like to explore a random intercept/slope model
-
-```{r fitModel2h3, results='markdown', eval=TRUE, mhidden=TRUE}
-priors <- prior(normal(0.4, 0.7), class = 'Intercept') +
-    ## prior(normal(0, 2.2), class = 'b', coef = 'FoodTreatmentSatiated') +
-    ## prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
-    prior(normal(0, 2), class = 'b') +
-    prior(cauchy(0,0.7), class = 'sd') +
-    prior(cauchy(0,0.7), class = 'sd', coef = 'Intercept', group = 'Nest') +
-    prior(lkj_corr_cholesky(1), class = 'cor')
-
-##130 seconds
-
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
-                    offset(log(BroodSize)) +
-                    (FoodTreatment*SexParent|Nest),
-                family=poisson(link='log'))
-owls.brm4 <-  brm(owls.form, 
-                  data = owls,
-                  prior = priors,
-                  sample_prior = 'yes',
-                  ##sample_prior = 'only',
-                  iter = 5000,
-                  warmup = 2500,
-                  chains = 3,
-                  cores = 3,
-                  thin = 10,
-                  refresh = 100,
-                  seed = 123, 
-                  control = list(adapt_delta=0.99, max_treedepth = 20),
-                  backend = "cmdstanr"
-                  )
-
-```
-
-```{r posterior2k, results='markdown', eval=TRUE}
-owls.brm4 |> get_variables()
-owls.brm4 |> hypothesis('FoodTreatmentSatiated=0') |> plot()
-owls.brm4 |> hypothesis('SexParentMale=0') |> plot()
-```
-
-```{r posterior2k1, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-owls.brm4 |> SUYR_prior_and_posterior()
-```
-
-```{r posterior2k2, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
-owls.brm4 |>
-  posterior_samples() |>
-  dplyr::select(-`lp__`) |>
-  pivot_longer(everything(), names_to = 'key') |> 
-  filter(!str_detect(key, '^r')) |>
-  mutate(Type = ifelse(str_detect(key, 'prior'), 'Prior', 'Posterior'),
-         ## Class = ifelse(str_detect(key, 'Intercept'),  'Intercept',
-         ##         ifelse(str_detect(key, 'b'),  'b', 'sigma')),
-         Class = case_when(
-               str_detect(key, '(^b|^prior).*Intercept$') ~ 'Intercept',
-               str_detect(key, 'b_FoodTreatment.*|prior_b_FoodTreatment.*') &
-               !str_detect(key, '.*:.*') ~ 'FoodTreatment',
-               str_detect(key, 'b_SexParent.*|prior_b_SexParent.*') &
-               !str_detect(key, '.*\\:.*') ~ 'SexParent',
-               str_detect(key, '.*\\:.*|prior_b_.*\\:.*') ~ 'Interaction',
-               str_detect(key, 'sd') ~ 'sd',
-               str_detect(key, '^cor|prior_cor') ~ 'cor',
-             str_detect(key, 'sigma') ~ 'sigma'
-             ),
-         Par = str_replace(key, 'b_', '')) |>
-  ggplot(aes(x = Type,  y = value, color = Par)) +
-  stat_pointinterval(position = position_dodge())+
-  facet_wrap(~Class,  scales = 'free')
+```{r posterior2h_1c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+owls_brm1b |> SUYR_prior_and_posterior()
 ```
 
 
-### Compare models
-
-We can compare the two models using LOO
-
-```{r fitModel2h3a, results='markdown', eval=TRUE, mhidden=TRUE}
-(l.1 <- owls.brm3 |> loo::loo())
-(l.2 <- owls.brm4 |> loo::loo())
-loo::loo_compare(l.1, l.2)
+```{r fitModel2h, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
+owls |> 
+    group_by(FoodTreatment, SexParent) |>
+    summarise(Mean = log(median(NCalls/BroodSize)),
+              SD = log(sd(NCalls/BroodSize)),
+              MAD = log(mad(NCalls/BroodSize)))
+standist::visualize("normal(0.4, 0.5)", xlim=c(0,20))
+standist::visualize("student_t(3, 0, 2.5)",
+                    "cauchy(0,1)",
+                    xlim=c(-10,25))
 ```
 
-Although there is not substantially more support for the more complex
-random intercept/slope model over the simpler random intercept only
-model, we might go with the more complex model anyway.
 
-::::
-:::
-<!-- END_PRIVATE-->
 
-# MCMC sampling diagnostics 
+#### MCMC sampling diagnostics 
 
 <!-- START_PRIVATE-->
 ::: {.panel-tabset}
@@ -845,15 +746,14 @@ modeller to drill down to the very fine details of the chain behaviour.
 Furthermore, there are a multitude of packages and approaches for exploring
 these diagnostics.
 
-## brms 
-:::: {.panel-tabset}
-### bayesplot
+
+##### bayesplot
 
 The `bayesplot` package offers a range of MCMC diagnostics as well as Posterior
 Probability Checks (PPC), all of which have a convenient `plot()` interface.
 Lets start with the MCMC diagnostics.
 
-```{r modelValidation2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+```{r modelValidation1c_a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 available_mcmc()
 ```
 
@@ -866,14 +766,14 @@ Of these, we will focus on:
   a specific parameter should look the same (i.e, should not be displaced above
   or below any other trace for that parameter).
 
-```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-pars <- owls.brm4 |> get_variables()
+```{r modelValidation1c_b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+pars <- owls_brm1b |> get_variables()
 pars <- pars |> str_extract('^b.Intercept|^b_FoodTreatment.*|^b_SexParent.*|[sS]igma|^sd.*') |>
     na.omit()
 pars
-owls.brm4 |> mcmc_plot(type='trace', variable = pars)
+owls_brm1b |> mcmc_plot(type='trace', variable = pars)
 ##OR
-owls.brm4 |> mcmc_plot(type='trace',
+owls_brm1b |> mcmc_plot(type='trace',
                         variable = '^b.Intercept|^b_FoodTreatment.*|^b_SexParent.*|[sS]igma|^sd.*',
                         regex = TRUE)
 
@@ -884,10 +784,10 @@ owls.brm4 |> mcmc_plot(type='trace',
 - acf_bar (auto-correlation function): plots the auto-correlation between successive
   MCMC sample lags for each parameter and each chain
   
-```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> mcmc_plot(type='acf_bar', variable = pars)
+```{r modelValidation1c_c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> mcmc_plot(type='acf_bar', variable = pars)
 ##OR
-owls.brm4 |> mcmc_plot(type='acf_bar',
+owls_brm1b |> mcmc_plot(type='acf_bar',
                         variable = '^b.Intercept|^b_FoodTreatment.*|^b_SexParent.*|[sS]igma|^sd.*',
                         regex = TRUE)
 ```
@@ -899,8 +799,8 @@ owls.brm4 |> mcmc_plot(type='acf_bar',
   indicate a lack of convergence.  There will be an Rhat value for each
   parameter estimated.
 
-```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> mcmc_plot(type='rhat_hist')
+```{r modelValidation1c_d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> mcmc_plot(type='rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -914,20 +814,20 @@ owls.brm4 |> mcmc_plot(type='rhat_hist')
   
   If the ratios are low, tightening the priors may help.
   
-```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> mcmc_plot(type='neff_hist')
+```{r modelValidation1c_e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> mcmc_plot(type='neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
-```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> mcmc_plot(type='combo', pars = pars)
-owls.brm4 |> mcmc_plot(type='violin', pars = pars)
+```{r modelValidation1c_f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> mcmc_plot(type='combo', pars = pars)
+owls_brm1b |> mcmc_plot(type='violin', pars = pars)
 ```
 </details>
 
-### stan plots
+##### stan plots
 
 The `rstan` package offers a range of MCMC diagnostics.
 Lets start with the MCMC diagnostics.
@@ -941,12 +841,12 @@ Of these, we will focus on:
   parameter should look the same (i.e, should not be displaced above or below
   any other trace for that parameter).
   
-```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> get_variables()
-pars <- owls.brm4 |> get_variables()
+```{r modelValidation1c_g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> get_variables()
+pars <- owls_brm1b |> get_variables()
 pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
 
-owls.brm4$fit |>
+owls_brm1b$fit |>
     stan_trace(pars = pars)
 ```
 
@@ -955,8 +855,8 @@ owls.brm4$fit |>
 - stan_acf (auto-correlation function): plots the auto-correlation between successive
   MCMC sample lags for each parameter and each chain
   
-```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4$fit |>
+```{r modelValidation1c_h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b$fit |>
     stan_ac(pars = pars)
 ```
 
@@ -967,8 +867,8 @@ owls.brm4$fit |>
   indicate a lack of convergence.  There will be an Rhat value for each
   parameter estimated.
 
-```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4$fit |> stan_rhat() 
+```{r modelValidation1c_i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -982,18 +882,18 @@ owls.brm4$fit |> stan_rhat()
   
   If the ratios are low, tightening the priors may help.
   
-```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4$fit |> stan_ess()
+```{r modelValidation1c_j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
-```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4$fit |>
+```{r modelValidation1c_k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b$fit |>
     stan_dens(separate_chains = TRUE, pars = pars)
 ```
 
-### ggmcmc
+##### ggmcmc
 
 The `ggmean` package also as a set of MCMC diagnostic functions.
 Lets start with the MCMC diagnostics.
@@ -1007,9 +907,9 @@ Of these, we will focus on:
   parameter should look the same (i.e, should not be displaced above or below
   any other trace for that parameter).
 
-```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-## owls.ggs <- owls.brm3 |> ggs(burnin = FALSE, inc_warmup = FALSE)
-## owls.ggs |> ggs_traceplot()
+```{r modelValidation1c_l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+## owls_ggs <- owls_brm3 |> ggs(burnin = FALSE, inc_warmup = FALSE)
+## owls_ggs |> ggs_traceplot()
 ``` 
 
    The chains appear well mixed and very similar
@@ -1017,8 +917,8 @@ Of these, we will focus on:
 - gss_autocorrelation (autocorrelation function): plots the autocorrelation between successive
   MCMC sample lags for each parameter and each chain
   
-```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-## ggs_autocorrelation(owls.ggs)
+```{r modelValidation1c_m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
+## ggs_autocorrelation(owls_ggs)
 ```
 
    There is no evidence of auto-correlation in the MCMC samples
@@ -1028,8 +928,8 @@ Of these, we will focus on:
   indicate a lack of convergence.  There will be an Rhat value for each
   parameter estimated.
 
-```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_Rhat(owls.ggs)
+```{r modelValidation1c_n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_Rhat(owls_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -1043,38 +943,33 @@ Of these, we will focus on:
   
   If the ratios are low, tightening the priors may help.
   
-```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_effective(owls.ggs)
+```{r modelValidation1c_o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_effective(owls_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
-```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_crosscorrelation(owls.ggs)
+```{r modelValidation1c_p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_crosscorrelation(owls_ggs)
 ```
 
-```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-## ggs_grb(owls.ggs)
+```{r modelValidation1c_q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+## ggs_grb(owls_ggs)
 ```
 </details>
 
-
-::::
 :::
-<!-- END_PRIVATE-->
 
-# Model validation 
-<!-- START_PRIVATE-->
-::: {.panel-tabset}
-## brms 
-:::: {.panel-tabset}
-### pp check
+#### Model validation
+
+::::: {.panel-tabset}
+##### pp check
 Post predictive checks provide additional diagnostics about the fit of the
 model.  Specifically, they provide a comparison between predictions drawn from
 the model and the observed data used to train the model.
 
-```{r modelValidation5a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+```{r modelValidation1c_r, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 available_ppc()
 ```
 
@@ -1083,8 +978,8 @@ overlayed on top of 50 density distributions generated from draws from the model
 (light blue).  Ideally, the 50 realisations should be roughly consistent with
 the observed data.
 
-```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> pp_check(type = 'dens_overlay', ndraws = 100)
+```{r modelValidation1c_s, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> pp_check(type = 'dens_overlay', ndraws = 100)
 ```
 
 The model draws appear to differ substantially from the observed data.
@@ -1094,8 +989,8 @@ The model draws appear to differ substantially from the observed data.
   this plot.  Note, this is not really that useful for models that involve a
   binomial response
 
-```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> pp_check(type = 'error_scatter_avg')
+```{r modelValidation1c_t, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> pp_check(type = 'error_scatter_avg')
 ```
 
 This is not really interpretable
@@ -1105,19 +1000,19 @@ associated with each level of the predictor.  Ideally, the observed data should
 all fall within the predictive intervals.
 
 
-```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-owls.brm4 |> pp_check(group = 'Nest', type = 'intervals')
+```{r modelValidation1c_u, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm1b |> pp_check(group = 'Nest', type = 'intervals')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
 predictive checks to be accessed via a web interface.
 
-```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+```{r modelValidation1c_v, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(owls.brm2)
+#launch_shinystan(owls_brm2)
 ```
 
-### DHARMa residuals
+##### DHARMa residuals
 
 DHARMa residuals provide very useful diagnostics.  Unfortunately, we cannot
 directly use the `simulateResiduals()` function to generate the simulated
@@ -1130,19 +1025,12 @@ We need to supply:
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
 
-```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-## preds <- owls.brm4 |> posterior_predict(nsamples = 250,  summary = FALSE)
-## owls.resids <- createDHARMa(simulatedResponse = t(preds),
-##                             observedResponse = owls$NCalls,
-##                             fittedPredictedResponse = apply(preds, 2, median),
-##                             integerResponse = TRUE)
-## plot(owls.resids)
-
-owls.resids <- make_brms_dharma_res(owls.brm4, integerResponse = TRUE)
-wrap_elements(~testUniformity(owls.resids)) +
-               wrap_elements(~plotResiduals(owls.resids, form = factor(rep(1, nrow(owls))))) +
-               wrap_elements(~plotResiduals(owls.resids, quantreg = TRUE)) +
-               wrap_elements(~testDispersion(owls.resids))
+```{r modelValidation1c_w, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+owls_resids <- make_brms_dharma_res(owls_brm1b, integerResponse = TRUE)
+wrap_elements(~testUniformity(owls_resids)) +
+               wrap_elements(~plotResiduals(owls_resids, form = factor(rep(1, nrow(owls))))) +
+               wrap_elements(~plotResiduals(owls_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(owls_resids))
 ```
 
 **Conclusions:**
@@ -1154,8 +1042,8 @@ wrap_elements(~testUniformity(owls.resids)) +
 
 Perhaps we should specifically explore zero-inflation.
 
-```{r validation2g, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=FALSE, message=FALSE, warning=FALSE}
-owls.resids |> testZeroInflation()
+```{r validation1c_x, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=FALSE, message=FALSE, warning=FALSE}
+owls_resids |> testZeroInflation()
 ```
 
 **Conclusions:**
@@ -1170,16 +1058,15 @@ the night (within a given nest) have more similar residuals than those at very
 different time of the night.  We can explore whether there are any temporal
 auto-correlation patterns.
 
-```{r validation2h, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=FALSE, message=FALSE, warning=FALSE}
-owls.resids |> testTemporalAutocorrelation(time=owls$ArrivalTime)
-## owls.resid1 <- owls.resids |> recalculateResiduals(group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = mean)
-## owls.resid1 <- owls.resids |> recalculateResiduals(group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = sum)
-## resids1 <- owls.resids |> recalculateResiduals(group = interaction(owls$ArrivalTime), aggregateBy = sum)
-resids1 <- owls.resids |> recalculateResiduals(group = interaction(owls$ArrivalTime), aggregateBy = mean)
+```{r validation1c_y, results='markdown', eval=TRUE, error=TRUE,mhidden=TRUE, fig.width=7, fig.height=5, cache=TRUE, message=FALSE, warning=FALSE}
+owls_resids |> testTemporalAutocorrelation(time=owls$ArrivalTime)
+## owls_resid1 <- owls_resids |> recalculateResiduals(group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = mean)
+## owls_resid1 <- owls_resids |> recalculateResiduals(group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = sum)
+## resids1 <- owls_resids |> recalculateResiduals(group = interaction(owls$ArrivalTime), aggregateBy = sum)
+resids1 <- owls_resids |> recalculateResiduals(group = interaction(owls$ArrivalTime), aggregateBy = mean)
 resids1 |> testTemporalAutocorrelation(time=unique(owls$ArrivalTime))
-
-library(geoR)
-autocor_check(owls, owls.brm4,
+ 
+autocor_check(owls, owls_brm1b,
               variable =  "ArrivalTime",
               grouping = "Nest",
               n.sim =  250)
@@ -1190,7 +1077,7 @@ autocor_check(owls, owls.brm4,
 - there is no evidence of temporal auto-correlation
 
 
-::::
+:::::
 
 
 **Conclusions:**
@@ -1202,13 +1089,12 @@ autocor_check(owls, owls.brm4,
 - zero-inflated models cannot be fit in `glmer()`, so we will proceed with
 `glmmTMB()` only.
 
-:::
+::::
+
 <!-- END_PRIVATE-->
 
-# Model refit and validation 
 
-<!-- START_PRIVATE-->
-::: {.panel-tabset}
+### Model 2
 
 **Zero-inflated vs hurdle models**
 
@@ -1223,235 +1109,486 @@ autocor_check(owls, owls.brm4,
   the result of two processes: one that governs whether there is a response and
   then another that governs the value of the response (must be positive).
 
-## Fit model 1 (Poisson) 
 :::: {.panel-tabset}
-### Fit
-```{r fitModel3a, results='markdown', eval=TRUE, mhidden=TRUE}
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
-                    offset(log(BroodSize)) +
-                    (FoodTreatment*SexParent|Nest),
-                zi ~ 1,
-                family=zero_inflated_poisson(link='log'))
+
+#### Fit model
+
+```{r fitModel2h_2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_form <- bf(NCalls ~ +
+                  offset(log(BroodSize)) + (1|Nest),
+  zi = ~ 1,
+  family=zero_inflated_poisson(link='log'))
+options(width=150)
+owls_form |> get_prior(data = owls)
+options(width=80)
+owls |> 
+    summarise(Mean = log(median(NCalls/BroodSize)),
+              SD = log(sd(NCalls/BroodSize)),
+              MAD = log(mad(NCalls/BroodSize)))
+priors <- prior(normal(0.2, 0.6), class = 'Intercept') +
+  prior(student_t(3, 0, 0.6), class = 'sd') +
+  prior(normal(0, 1), class = 'Intercept', dpar = 'zi') 
+owls_brm2a <- brm(owls_form, 
+                 data = owls,
+                 prior = priors,
+                 sample_prior = 'only',
+                 iter = 5000,
+                 warmup =2500,
+                 chains = 3,  
+                 cores = 3,
+                 thin = 10,
+                 refresh = 0,
+                 seed = 123,
+                 control =  list(adapt_delta = 0.99),
+                 backend = "cmdstanr"
+                 )
+owls_brm2a |> 
+  emmeans(~1, type = "response") |>
+  as.data.frame() |>
+  ggplot(aes(x = 1, y = rate)) +
+  geom_pointrange(aes(ymin = lower.HPD, ymax = upper.HPD)) +
+  geom_point(data = owls, aes(y = NCalls/BroodSize),
+    position = position_jitter(width = 0.2))
+```
+
+```{r fitModel2h_2b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_brm2b <- update(owls_brm2a,  
+                       sample_prior = 'yes',
+                       iter =  5000,
+                       warmup =  2500,
+                       control = list(adapt_delta = 0.99, max_treedepth = 20),
+                       backend =  "cmdstanr",
+                       refresh = 0)
+owls_brm2b |> 
+  emmeans(~1, type = "response") |>
+  as.data.frame() |>
+  ggplot(aes(x = 1, y = rate)) +
+  geom_pointrange(aes(ymin = lower.HPD, ymax = upper.HPD)) +
+  geom_point(data = owls, aes(y = NCalls/BroodSize),
+    position = position_jitter(width = 0.2))
+```
+```{r posterior2h_2c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+owls_brm2b |> SUYR_prior_and_posterior()
+```
+
+
+#### MCMC sampling diagnostics 
+
+```{r modelValidation2c_g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b |> get_variables()
+pars <- owls_brm2b |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
+
+owls_brm2b$fit |>
+    stan_trace(pars = pars)
+```
+```{r modelValidation2c_h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b$fit |>
+    stan_ac(pars = pars)
+```
+```{r modelValidation2c_i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b$fit |> stan_rhat() 
+```
+```{r modelValidation2c_j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b$fit |> stan_ess()
+```
+```{r modelValidation2c_k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+```{r modelValidation2c_s, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+
+```{r modelValidation2c_t, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b |> pp_check(type = 'error_scatter_avg')
+```
+
+```{r modelValidation2c_u, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm2b |> pp_check(group = 'Nest', type = 'intervals')
+```
+
+##### DHARMa residuals
+
+```{r modelValidation2c_w, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+owls_resids <- make_brms_dharma_res(owls_brm2b, integerResponse = TRUE)
+wrap_elements(~testUniformity(owls_resids)) +
+               wrap_elements(~plotResiduals(owls_resids, form = factor(rep(1, nrow(owls))))) +
+               wrap_elements(~plotResiduals(owls_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(owls_resids))
+```
+
+:::::
+
+::::
+
+### Model 3
+
+:::: {.panel-tabset}
+#### Fit model
+```{r fitModel2h_3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_form <- bf(NCalls ~ +
+                  offset(log(BroodSize)) + (1|Nest),
+  zi = ~ 1,
+  family=zero_inflated_negbinomial(link='log'))
+options(width=150)
+owls_form |> get_prior(data = owls)
+options(width=80)
+owls |> 
+    summarise(Mean = log(median(NCalls/BroodSize)),
+              SD = log(sd(NCalls/BroodSize)),
+              MAD = log(mad(NCalls/BroodSize)))
+priors <- prior(normal(0.2, 0.6), class = 'Intercept') +
+  prior(student_t(3, 0, 0.6), class = 'sd') +
+  prior(normal(0, 1), class = 'Intercept', dpar = 'zi') +
+  prior(gamma(0.01, 0.01), class = "shape")
+owls_brm3a <- brm(owls_form, 
+                 data = owls,
+                 prior = priors,
+                 sample_prior = 'only',
+                 iter = 5000,
+                 warmup =2500,
+                 chains = 3,  
+                 cores = 3,
+                 thin = 10,
+                 refresh = 0,
+                 seed = 123,
+                 control =  list(adapt_delta = 0.99),
+                 backend = "cmdstanr"
+                 )
+```
+
+```{r fitModel2h_3b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_brm3b <- update(owls_brm3a,  
+                       sample_prior = 'yes',
+                       iter =  5000,
+                       warmup =  2500,
+                       control = list(adapt_delta = 0.99, max_treedepth = 20),
+                       backend =  "cmdstanr",
+                       refresh = 0)
+owls_brm3b |> 
+  emmeans(~1, type = "response") |>
+  as.data.frame() |>
+  ggplot(aes(x = 1, y = prob)) +
+  geom_pointrange(aes(ymin = lower.HPD, ymax = upper.HPD)) +
+  geom_point(data = owls, aes(y = NCalls/BroodSize),
+    position = position_jitter(width = 0.2))
+```
+```{r posterior2h_3c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+owls_brm3b |> SUYR_prior_and_posterior()
+```
+
+#### MCMC sampling diagnostics 
+
+```{r modelValidation3c_g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b |> get_variables()
+pars <- owls_brm3b |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
+
+owls_brm3b$fit |>
+    stan_trace(pars = pars)
+```
+```{r modelValidation3c_h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b$fit |>
+    stan_ac(pars = pars)
+```
+```{r modelValidation3c_i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b$fit |> stan_rhat() 
+```
+```{r modelValidation3c_j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b$fit |> stan_ess()
+```
+```{r modelValidation3c_k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+```{r modelValidation3c_s, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+
+```{r modelValidation3c_t, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b |> pp_check(type = 'error_scatter_avg')
+```
+
+```{r modelValidation3c_u, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm3b |> pp_check(group = 'Nest', type = 'intervals')
+```
+
+##### DHARMa residuals
+
+```{r modelValidation3c_w, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+owls_resids <- make_brms_dharma_res(owls_brm3b, integerResponse = TRUE)
+wrap_elements(~testUniformity(owls_resids)) +
+               wrap_elements(~plotResiduals(owls_resids, form = factor(rep(1, nrow(owls))))) +
+               wrap_elements(~plotResiduals(owls_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(owls_resids))
+```
+
+:::::
+
+::::
+
+### Model 4
+
+:::: {.panel-tabset}
+#### Fit model
+
+```{r fitModel2h_4a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
+                  offset(log(BroodSize)) + (1|Nest),
+  zi = ~ 1,
+  family=zero_inflated_negbinomial(link='log'))
+options(width=150)
+owls_form |> get_prior(data = owls)
+options(width=80)
+owls |> 
+  group_by(FoodTreatment, SexParent) |> 
+    summarise(Mean = log(median(NCalls/BroodSize)),
+              SD = log(sd(NCalls/BroodSize)),
+              MAD = log(mad(NCalls/BroodSize)))
 priors <- prior(normal(0.4, 0.7), class = 'Intercept') +
-    ## prior(normal(0, 2.2), class = 'b', coef = 'FoodTreatmentSatiated') +
-    ## prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
-    prior(normal(0, 2), class = 'b') +
-    prior(student_t(3,0,0.7), class = 'sd') +
-    prior(student_t(3,0,0.7), class = 'sd', coef = 'Intercept', group = 'Nest') +
-    prior(lkj_corr_cholesky(1), class = 'cor') +
-    prior(logistic(0,1), class='Intercept', dpar='zi') 
-
-## 600 seconds
-
-owls.brm5 <- brm(owls.form,
-                 data=owls,
+  prior(normal(0, 1), class = "b") +
+  prior(student_t(3, 0, 0.7), class = 'sd') +
+  prior(normal(0, 1), class = 'Intercept', dpar = 'zi') +
+  prior(gamma(0.01, 0.01), class = "shape")
+owls_brm4a <- brm(owls_form, 
+                 data = owls,
                  prior = priors,
-                 sample_prior = 'yes',
-                 iter=10000,
-                 warmup=5000,
-                 thin=10,
-                 chains=3, cores = 3,
-                 refresh=0,
-                 control = list(adapt_delta = 0.99, max_treedepth = 20),
-                 backend = "cmdstanr")
+                 sample_prior = 'only',
+                 iter = 5000,
+                 warmup =2500,
+                 chains = 3,  
+                 cores = 3,
+                 thin = 10,
+                 refresh = 0,
+                 seed = 123,
+                 control =  list(adapt_delta = 0.99),
+                 backend = "cmdstanr"
+                 )
 ```
 
-### Model validation
-
-```{r fitModel3b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
-owls.brm5 |> SUYR_prior_and_posterior()
-
-
-owls.brm5 |> pp_check(type = 'dens_overlay', ndraws = 100) 
-owls.brm5 |> pp_check(type = 'dens_overlay', ndraws = 100) +
-  scale_x_log10()
-
-owls.resids <- make_brms_dharma_res(owls.brm5, integerResponse = TRUE)
-wrap_elements(~testUniformity(owls.resids)) +
-               wrap_elements(~plotResiduals(owls.resids, form = factor(rep(1, nrow(owls))))) +
-               wrap_elements(~plotResiduals(owls.resids, quantreg = TRUE)) +
-               wrap_elements(~testDispersion(owls.resids))
-preds <- owls.brm5 |> posterior_predict(nsamples = 250,  summary = FALSE)
-
-owls.resids |> testZeroInflation()
-owls.resids |> testDispersion()
-owls.resids |> testUniformity()
-owls.resids |> testQuantiles()
-owls.resids |> testResiduals()
+```{r fitModel2h_4b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_brm4b <- update(owls_brm4a,  
+                       sample_prior = 'yes',
+                       iter =  5000,
+                       warmup =  2500,
+                       control = list(adapt_delta = 0.99, max_treedepth = 20),
+                       backend =  "cmdstanr",
+                       refresh = 0)
+owls_brm4b |>
+  conditional_effects("FoodTreatment:SexParent") |>
+  plot(points = TRUE)
 ```
-::::
-
-## Fit model 2 (Poisson)
-:::: {.panel-tabset}
-### Fit
-```{r fitModel4a, results='markdown', eval=TRUE, mhidden=TRUE}
-priors <- prior(normal(1.5,1.5), class = 'Intercept') +
-    prior(normal(0, 2.2), class = 'b', coef = 'FoodTreatmentSatiated') +
-    prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
-    prior(normal(0, 2.5), class = 'b') +
-    prior(cauchy(0,1), class = 'sd') +
-    prior(lkj_corr_cholesky(1), class = 'L') +
-    prior(logistic(0,1), class='Intercept', dpar='zi') +
-    prior(normal(0,1), class='b', dpar='zi')
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
-                    offset(log(BroodSize)) +
-                    (FoodTreatment*SexParent|Nest),
-                zi ~ FoodTreatment*SexParent,
-                family=zero_inflated_poisson(link='log'))
-
-owls.brm6 <- brm(owls.form,
-                 data=owls,
-                 prior = priors,
-                 sample_prior = 'yes',
-                 iter=5000,
-                 warmup=2500,
-                 thin=10,
-                 chains=3,
-                 refresh=0,
-                 backend = "cmdstanr",
-                 cores=3)
-
+```{r posterior2h_4c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+owls_brm4b |> SUYR_prior_and_posterior()
 ```
 
-### Model validation
+#### MCMC sampling diagnostics 
 
-```{r fitModel4b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
-preds <- owls.brm6 |> posterior_predict(ndraws = 250,  summary = FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = owls$NCalls, 
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = TRUE)
-plot(owls.resids, quantreg = TRUE)
+```{r modelValidation4c_g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b |> get_variables()
+pars <- owls_brm4b |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
 
-owls.resids |> testZeroInflation()
-owls.resids |> testDispersion()
-owls.resids |> testUniformity()
-owls.resids |> testQuantiles()
-owls.resids |> testResiduals()
+owls_brm4b$fit |>
+    stan_trace(pars = pars)
 ```
+```{r modelValidation4c_h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b$fit |>
+    stan_ac(pars = pars)
+```
+```{r modelValidation4c_i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b$fit |> stan_rhat() 
+```
+```{r modelValidation4c_j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b$fit |> stan_ess()
+```
+```{r modelValidation4c_k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+```{r modelValidation4c_s, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+
+```{r modelValidation4c_t, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b |> pp_check(type = 'error_scatter_avg')
+```
+
+```{r modelValidation4c_u, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm4b |> pp_check(group = 'Nest', type = 'intervals')
+```
+
+##### DHARMa residuals
+
+```{r modelValidation4c_w, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+owls_resids <- make_brms_dharma_res(owls_brm4b, integerResponse = TRUE)
+wrap_elements(~testUniformity(owls_resids)) +
+               wrap_elements(~plotResiduals(owls_resids, form = factor(rep(1, nrow(owls))))) +
+               wrap_elements(~plotResiduals(owls_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(owls_resids))
+```
+
+:::::
 
 ::::
 
-## Fit model 3 (Negative Binomial)
+### Model 5
+
 :::: {.panel-tabset}
-### Fit
-```{r fitModel6, results='markdown', eval=TRUE, mhidden=TRUE}
-priors <- prior(normal(1.5,1.5), class = 'Intercept') +
-    prior(normal(0, 2.2), class = 'b', coef = 'FoodTreatmentSatiated') +
-    prior(normal(0, 2.2), class = 'b', coef = 'SexParentMale') +
-    prior(normal(0, 2.5), class = 'b') +
-    prior(cauchy(0,1), class = 'sd') +
-    prior(lkj_corr_cholesky(1), class = 'L') +
-    prior(logistic(0,1), class='Intercept', dpar='zi') +
-    ## prior(normal(0,1), class='b', dpar='zi') +
-    prior(gamma(0.01, 0.01), class='shape')
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
-                    offset(log(BroodSize)) +
-                    (FoodTreatment*SexParent|Nest),
-                zi ~ 1,
-                family=zero_inflated_negbinomial(link='log'))
-
-owls.brm7 <- brm(owls.form,
-                 data=owls,
-                 prior = priors,
-                 sample_prior = 'yes',
-                 iter=5000,
-                 warmup=2500,
-                 thin=10,
-                 chains=3,
-                 refresh=0,
-                 backend = "cmdstanr",
-                 cores=3)
-```
-
-### Model validation
-
-```{r fitModel6b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
-preds <- owls.brm7 |> posterior_predict(ndraws = 250,  summary = FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
-                            observedResponse = owls$NCalls,
-                            fittedPredictedResponse = apply(preds, 2, median),
-                            integerResponse = TRUE)
-plot(owls.resids, quantreg = TRUE)
-
-owls.resids |> testZeroInflation()
-owls.resids |> testDispersion()
-owls.resids |> testUniformity()
-owls.resids |> testQuantiles() 
-owls.resids |> testResiduals()
-```
-::::
-
-## Fit model 4 (Negative Binomial)
-:::: {.panel-tabset}
-### Fit
-```{r fitModel5, results='markdown', eval=TRUE, mhidden=TRUE}
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
-                    offset(log(BroodSize)) +
-                    (FoodTreatment*SexParent|Nest),
-                zi ~ FoodTreatment*SexParent,
-                family=zero_inflated_negbinomial(link='log'))
+#### Fit model
+```{r fitModel2h_5a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
+                  offset(log(BroodSize)) +
+                  (FoodTreatment*SexParent|Nest),
+  zi = ~ FoodTreatment*SexParent,
+  family=zero_inflated_negbinomial(link='log'))
+options(width=150)
+owls_form |> get_prior(data = owls)
+options(width=80)
+owls |> 
+  group_by(FoodTreatment, SexParent) |> 
+    summarise(Mean = log(median(NCalls/BroodSize)),
+              SD = log(sd(NCalls/BroodSize)),
+              MAD = log(mad(NCalls/BroodSize)))
 priors <- prior(normal(0.4, 0.7), class = 'Intercept') +
-    ## prior(normal(0, 2), class = 'b', coef = 'FoodTreatmentSatiated') +
-    ## prior(normal(0, 2), class = 'b', coef = 'SexParentMale') +
-    prior(normal(0, 2), class = 'b') +
-    #prior(cauchy(0,2), class = 'sd') +
-    prior(student_t(3, 0, 0.7), class = 'sd') +
-    prior(lkj_corr_cholesky(1), class = 'L') +
-    prior(logistic(0,1), class='Intercept', dpar='zi') +
-    prior(normal(0,1), class='b', dpar='zi') +
-    prior(gamma(0.01, 0.01), class='shape')
-## 424
-owls.brm8 <- brm(owls.form,
-                 data=owls,
+  prior(normal(0, 1), class = "b") +
+  prior(student_t(3, 0, 0.7), class = 'sd') +
+  prior(normal(0, 1), class = 'Intercept', dpar = 'zi') +
+  prior(normal(0, 1), class = "b", dpar = 'zi') +
+  prior(gamma(0.01, 0.01), class = "shape")
+owls_brm5a <- brm(owls_form, 
+                 data = owls,
                  prior = priors,
-                 sample_prior = 'yes',
-                 iter=10000,
-                 warmup=5000,
-                 thin=10,
-                 chains=3, cores =  3,
-                 refresh=0,
-                 backend = "cmdstanr",
-                 control = list(adapt_delta = 0.99))
+                 sample_prior = 'only',
+                 iter = 5000,
+                 warmup =2500,
+                 chains = 3,  
+                 cores = 3,
+                 thin = 10,
+                 refresh = 0,
+                 seed = 123,
+                 control =  list(adapt_delta = 0.99),
+                 backend = "cmdstanr"
+                 )
 ```
 
-### Model validation
-
-```{r fitModel5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
-##owls.brm8 |> SUYR_prior_and_posterior()
-
-
-owls.brm8 |> pp_check(type = 'dens_overlay', ndraws = 100) 
-owls.brm8 |> pp_check(type = 'dens_overlay', ndraws = 100) +
-  scale_x_log10()
-
-owls.resids <- make_brms_dharma_res(owls.brm8, integerResponse = TRUE)
-wrap_elements(~testUniformity(owls.resids)) +
-               wrap_elements(~plotResiduals(owls.resids, form = factor(rep(1, nrow(owls))))) +
-               wrap_elements(~plotResiduals(owls.resids, quantreg = TRUE)) +
-               wrap_elements(~testDispersion(owls.resids))
-
-owls.resids |> testZeroInflation()
-owls.resids |> testDispersion()
-owls.resids |> testUniformity()
-owls.resids |> testQuantiles()
-owls.resids |> testResiduals()
-
+```{r fitModel2h_5b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
+owls_brm5b <- update(owls_brm5a,
+                       sample_prior = 'yes',
+                       iter =  5000,
+                       warmup =  2500,
+                       control = list(adapt_delta = 0.99, max_treedepth = 20),
+                       backend =  "cmdstanr",
+                       refresh = 0)
+owls_brm5b |>
+  conditional_effects("FoodTreatment:SexParent") |>
+  plot(points = TRUE)
 ```
+```{r posterior2h_5c, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
+## owls_brm5b |> SUYR_prior_and_posterior() 
+```
+
+#### MCMC sampling diagnostics 
+
+```{r modelValidation5c_g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b |> get_variables()
+pars <- owls_brm5b |> get_variables()
+pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
+
+owls_brm5b$fit |>
+    stan_trace(pars = pars)
+```
+```{r modelValidation5c_h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b$fit |>
+    stan_ac(pars = pars)
+```
+```{r modelValidation5c_i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b$fit |> stan_rhat() 
+```
+```{r modelValidation5c_j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b$fit |> stan_ess()
+```
+```{r modelValidation5c_k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b$fit |>
+    stan_dens(separate_chains = TRUE, pars = pars)
+```
+
+
+#### Model validation
+
+::::: {.panel-tabset}
+
+##### pp check
+
+```{r modelValidation5c_s, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b |> pp_check(type = 'dens_overlay', ndraws = 100)
+```
+
+```{r modelValidation5c_t, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b |> pp_check(type = 'error_scatter_avg')
+```
+
+```{r modelValidation5c_u, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
+owls_brm5b |> pp_check(group = 'Nest', type = 'intervals')
+```
+
+##### DHARMa residuals
+
+```{r modelValidation5c_w, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+owls_resids <- make_brms_dharma_res(owls_brm5b, integerResponse = TRUE)
+wrap_elements(~testUniformity(owls_resids)) +
+               wrap_elements(~plotResiduals(owls_resids, form = factor(rep(1, nrow(owls))))) +
+               wrap_elements(~plotResiduals(owls_resids, quantreg = TRUE)) +
+               wrap_elements(~testDispersion(owls_resids))
+```
+
+:::::
+
 ::::
-## Comparisons
-```{r fitModel7a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=4}
-(l.1 <- loo::loo(owls.brm4))
-(l.2 <- loo::loo(owls.brm5))
-(l.3 <- loo::loo(owls.brm6))
-(l.4 <- loo::loo(owls.brm7))
-(l.5 <- loo::loo(owls.brm8))
-loo_compare(l.1, l.2, l.3, l.4, l.5)
+
+### Comparisons
+
+```{r modelValidation6a_1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+(loo_3 <- loo::loo(owls_brm3b))
+(loo_4 <- loo::loo(owls_brm4b))
+(loo_5 <- loo::loo(owls_brm5b))
+loo::loo_compare(loo_3, loo_4, loo_5)
+
 ```
+
+Conclusions:
+- evidently, the zero-inflated negative binomial model with random
+  intercepts/slopes (owls_brm5b) is the best model...
 
 :::
 <!-- END_PRIVATE-->
- 
+
+
 # Partial effects plots 
 
 <!-- START_PRIVATE-->
@@ -1461,11 +1598,13 @@ loo_compare(l.1, l.2, l.3, l.4, l.5)
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |>
+owls_brm5b |>
     conditional_effects("FoodTreatment:SexParent") |>
-    ## plot(points = TRUE, point.args = list(width=0.25))
-    ## plot(points = TRUE, jitter_width = c(0.25,0))
     plot(points = TRUE, jitter_width = 0.25)
+## If we want to present the conditional effects on the scale of calls
+## per chick, then we need to condition on a broodsize of 1
+owls_brm5b |>
+    conditional_effects("FoodTreatment:SexParent", conditions = list(BroodSize = 1)) 
 ```
 
 These predictions appear to be based on the mean BroodSize of approximately 
@@ -1475,7 +1614,7 @@ not per chick.  There does not appear to be a way to indicate the offset value.
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |>
+owls_brm5b |>
     ggpredict(~FoodTreatment*SexParent) |>
     plot(show_data = TRUE, jitter = c(0.25, 0))
 ```
@@ -1496,17 +1635,7 @@ choices:
   
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 off <- owls |> summarize(Mean=mean(BroodSize))
-## as.numeric(off)
-## owls.brm7 |>
-##     ggemmeans(~FoodTreatment*SexParent, offset=off$Mean) |>
-##     plot() 
-## owls.brm7 |>
-##     ggemmeans(~FoodTreatment*SexParent, offset=log(off$Mean)) |>
-##     plot() 
-## owls.brm8 |>
-##     ggemmeans(~FoodTreatment*SexParent, offset=log(1)) |>
-##     plot() 
-owls.brm8 |>
+owls_brm5b |>
     ggemmeans(~FoodTreatment*SexParent, offset = log(off$Mean)) |>
     plot() 
 ```
@@ -1532,44 +1661,44 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |> summary()
+owls_brm5b |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-owls.sum <- summary(owls.brm8)
+owls_sum <- summary(owls_brm5b)
 ```
 
 **Conclusions:**
 
 - the average number of calls made per food deprived owl chicks when the female
-  parent returns to the nest is `r as.numeric(round(owls.sum$fixed[1, 1],2))` (on the
-  link scale). When back-transformed, this is `r as.numeric(round(exp(owls.sum$fixed[1, 1]),2))`.
+  parent returns to the nest is `r as.numeric(round(owls_sum$fixed[1, 1],2))` (on the
+  link scale). When back-transformed, this is `r as.numeric(round(exp(owls_sum$fixed[1, 1]),2))`.
 - on average, satiated chicks negotiate 
-  `r as.numeric(round(owls.sum$fixed[3,1]),2)` (link scale) less when the female
+  `r as.numeric(round(owls_sum$fixed[3,1]),2)` (link scale) less when the female
   returns than deprived chicks.  This equates to
-  `r as.numeric(round(exp(owls.sum$fixed[3,1]),2))` fold fewer times and represents a
-  `r as.numeric(100*(1-round(exp(owls.sum$fixed[3,1]),2)))`% decline. 
+  `r as.numeric(round(exp(owls_sum$fixed[3,1]),2))` fold fewer times and represents a
+  `r as.numeric(100*(1-round(exp(owls_sum$fixed[3,1]),2)))`% decline. 
 - on average, when the male parent returns, deprived chicks negotiate 
-  `r as.numeric(round(owls.sum$fixed[4,1]),2)` (link scale) less when the female
-  returns.  This equates to `r as.numeric(round(exp(owls.sum$fixed[4,1]),2))` fold
+  `r as.numeric(round(owls_sum$fixed[4,1]),2)` (link scale) less when the female
+  returns.  This equates to `r as.numeric(round(exp(owls_sum$fixed[4,1]),2))` fold
   fewer times and represents a
-  `r as.numeric(100*(1-round(exp(owls.sum$fixed[4,1]),2)))`% decline (although this
+  `r as.numeric(100*(1-round(exp(owls_sum$fixed[4,1]),2)))`% decline (although this
   is not significant). 
 - there was not significantly detectable interaction suggesting that the effect
   of food treatment was consistent across both parents and vice versa.
 - the estimated rate of non-detection of calls (false zeros) for deprived chicks
-  when the female parent returns is `r as.numeric(round(owls.sum$fixed[2,1],2))` 
+  when the female parent returns is `r as.numeric(round(owls_sum$fixed[2,1],2))` 
   (logit scale).  When back-transformed to the odds scale, this equates to the
-  odds of a zero being false are `r as.numeric(round(exp(owls.sum$fixed[2,1]),2))`:1.
+  odds of a zero being false are `r as.numeric(round(exp(owls_sum$fixed[2,1]),2))`:1.
   Expressed on a probability scale, it would suggest that the probability of a
-  zero being false is `r round(plogis(as.numeric(owls.sum$fixed[2,1])),2)`.
+  zero being false is `r round(plogis(as.numeric(owls_sum$fixed[2,1])),2)`.
 - when the chicks are satiated, the odds not detecting a call (false zero) are 
-  increased `r as.numeric(round(exp(owls.sum$fixed[6,1]),2))` fold.  That is, the odds
-  increase by `r round(100*(1-plogis(as.numeric(owls.sum$fixed[6,1]))), 2)`%.
+  increased `r as.numeric(round(exp(owls_sum$fixed[6,1]),2))` fold.  That is, the odds
+  increase by `r round(100*(1-plogis(as.numeric(owls_sum$fixed[6,1]))), 2)`%.
 - when the returning parent is male (for deprived chicks), the odds of not
   detecting a call (false zeros) are reduced 
-  `r as.numeric(round(exp(owls.sum$fixed[7,1]),2))` fold.  That is, the odds decline
-  by `r round(100*(1-plogis(as.numeric(owls.sum$fixed[7,1]))), 2)`%.
+  `r as.numeric(round(exp(owls_sum$fixed[7,1]),2))` fold.  That is, the odds decline
+  by `r round(100*(1-plogis(as.numeric(owls_sum$fixed[7,1]))), 2)`%.
 - there is substantially more variation in sibling negotiations between food
   treatment effects within a nest than either between nests or between the sex
   of the parent effects within nests.
@@ -1581,8 +1710,8 @@ owls.sum <- summary(owls.brm8)
 ### as_draws_df (posteriors)
 
 ```{r summariseModel2bm, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-owls.brm8 |> as_draws_df()
-owls.brm8 |>
+owls_brm5b |> as_draws_df()
+owls_brm5b |>
   as_draws_df() |>
   mutate(across(everything(), exp)) |> 
   summarise_draws(
@@ -1605,13 +1734,13 @@ owls.brm8 |>
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8$fit |>
+owls_brm5b$fit |>
     tidyMCMC(estimate.method = 'median',
              conf.int = TRUE,  conf.method = 'HPDinterval',
              rhat = TRUE, ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-owls.tidy <- tidyMCMC(owls.brm8$fit, estimate.method='median',
+owls_tidy <- tidyMCMC(owls_brm5b$fit, estimate.method='median',
                          conf.int=TRUE,  conf.method='HPDinterval',
                          rhat=TRUE, ess=TRUE)
 ```
@@ -1625,24 +1754,24 @@ see above
 Due to the presence of a log transform in the predictor, it is better to use the
 regex version.
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |> get_variables()
-owls.draw <- owls.brm8 |>
+owls_brm5b |> get_variables()
+owls_draw <- owls_brm5b |>
     gather_draws(`b.Intercept.*|b_FoodTreatment.*|b_SexParent.*`,  regex=TRUE)
-owls.draw
+owls_draw
 ```
 
 We can then summarise this
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.draw |> median_hdci()
+owls_draw |> median_hdci()
 ## On a fractional scale
-owls.draw |> 
+owls_draw |> 
     mutate(.value = exp(.value)) |>
     median_hdci()
 ```
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-owls.gather <- owls.brm8 |>
+owls_gather <- owls_brm5b |>
     gather_draws(`b_Intercept.*|b_FoodTreatment.*|b_SexParent.*`,  regex=TRUE) |>
     mutate(.value = exp(.value)) |>
     median_hdci()
@@ -1652,7 +1781,7 @@ Lets plot the parameter posteriors (on the link scale - since we are
 including the intercept).
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-owls.brm8 |>
+owls_brm5b |>
     gather_draws(`b_Intercept.*|b_FoodTreatment.*|b_SexParent.*`, regex=TRUE) |> 
     ## mutate(.value = exp(.value)) |>
     ggplot() +
@@ -1664,7 +1793,7 @@ owls.brm8 |>
                               )), color='black') + 
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 
-owls.brm8 |> 
+owls_brm5b |> 
     gather_draws(`.Intercept.*|b_FoodTreatment.*|b_SexParent.*`, regex=TRUE) |> 
     ggplot() + 
     geom_vline(xintercept = 0, linetype='dashed') +
@@ -1675,13 +1804,13 @@ owls.brm8 |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8$fit |> plot(type='intervals') 
+owls_brm5b$fit |> plot(type='intervals') 
 ```
 
 ### half-eye (ggdist)
 
 ```{r summariseModel2ka, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-owls.brm8 |> 
+owls_brm5b |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1689,7 +1818,7 @@ owls.brm8 |>
     facet_wrap(~.variable, scales='free') +
     theme(axis.text.y = element_blank())
 
-owls.brm8 |> 
+owls_brm5b |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1700,14 +1829,14 @@ owls.brm8 |>
 ### density ridges (ggridges)
 
 ```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-owls.brm8 |> 
+owls_brm5b |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(str_detect(.variable, 'b_.*Intercept', negate = TRUE)) |>
     ggplot() +  
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or in colour
-owls.brm8 |> 
+owls_brm5b |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(str_detect(.variable, 'b_.*Intercept', negate = TRUE)) |>
     ggplot() + 
@@ -1722,7 +1851,7 @@ owls.brm8 |>
     scale_fill_viridis_c(option = "C") 
 
 ## Fractional scale
-owls.brm8 |> 
+owls_brm5b |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(str_detect(.variable, 'b_.*Intercept', negate = TRUE)) |>
     ggplot() + 
@@ -1742,30 +1871,30 @@ owls.brm8 |>
 This is purely a graphical depiction on the posteriors.
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |> tidy_draws()
+owls_brm5b |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |> spread_draws(`.*Intercept.*|b_FoodTreatment.*|b_SexParent.*`,  regex=TRUE)
+owls_brm5b |> spread_draws(`.*Intercept.*|b_FoodTreatment.*|b_SexParent.*`,  regex=TRUE)
 ```
 	
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |> posterior_samples() |> as_tibble()
+owls_brm5b |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-owls.brm8 |>
+owls_brm5b |>
     bayes_R2(re.form = NA, summary=FALSE) |>
     median_hdci()
-owls.brm8 |>
+owls_brm5b |>
     bayes_R2(re.form = ~(1|Nest), summary=FALSE) |>
     median_hdci()
-owls.brm8 |>
+owls_brm5b |>
     bayes_R2(re.form = ~(FoodTreatment*SexParent|Nest), summary=FALSE) |>
     median_hdci()
 ```
@@ -1777,7 +1906,7 @@ owls.brm8 |>
 #| eval: false
 #| echo: true
 #| cache: false
-owls.brm8 |> modelsummary(
+owls_brm5b |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = TRUE
@@ -1790,7 +1919,7 @@ owls.brm8 |> modelsummary(
 #| eval: false
 #| echo: true
 #| cache: false
-owls.brm8 |> modelplot(exponentiate = TRUE)
+owls_brm5b |> modelplot(exponentiate = TRUE)
 ```
 ::::
 :::
@@ -1805,15 +1934,15 @@ owls.brm8 |> modelplot(exponentiate = TRUE)
 ## ## The following should work, but there is a bug and therefore it does not
 ## ## (although it has been reported - so may get fixed at some point).
 ## ## The offset seems to get handled incorrectly
-## newdata <- owls.brm8 |>
+## newdata <- owls_brm5b |>
 ##     emmeans(~FoodTreatment|SexParent, offset=0, type='response') |>
 ##     as.data.frame()
-newdata <- owls.brm8 |>
+newdata <- owls_brm5b |>
     emmeans(~FoodTreatment|SexParent, type='response') |>
     as.data.frame()
 head(newdata)
 ## As an alternative, we can do the following...
-newdata <- owls.brm8 |>
+newdata <- owls_brm5b |>
     emmeans(~FoodTreatment|SexParent,
           at = list(BroodSize = 1), type='response') |>
     as.data.frame()
@@ -1927,94 +2056,94 @@ ggplot(newdata, aes(y=emmean, x=SITUATION)) +
 ## rstanarm
 
 ```{r fitModel, results='markdown', eval=FALSE, mhidden=TRUE, echo=FALSE}
-owls.rstanP <- stan_glmer(NCalls ~ FoodTreatment+SexParent +
+owls_rstanP <- stan_glmer(NCalls ~ FoodTreatment+SexParent +
                            offset(log(BroodSize)) + (1|Nest),
                          dat=owls,  family=poisson(link='log'), refresh=0, 
                          iter=5000,  warmup=2000,  thin=10,  chains=3, cores=3)
 
 
-owls.rstanP <- stan_glmer(NCalls ~ FoodTreatment+scale(ArrivalTime) +
+owls_rstanP <- stan_glmer(NCalls ~ FoodTreatment+scale(ArrivalTime) +
                            offset(log(BroodSize)) + (1|Nest),
                          dat=owls,  family=poisson(link='log'), refresh=0, 
                          iter=5000,  warmup=2000,  thin=10,  chains=3, cores=3)
 
-owls.rstanP %>% get_variables()
-plot(owls.rstanP,  'mcmc_trace', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
-plot(owls.rstanP,  'mcmc_acf_bar', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
-plot(owls.rstanP,  'mcmc_rhat_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
-plot(owls.rstanP,  'mcmc_neff_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+owls_rstanP %>% get_variables()
+plot(owls_rstanP,  'mcmc_trace', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+plot(owls_rstanP,  'mcmc_acf_bar', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+plot(owls_rstanP,  'mcmc_rhat_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+plot(owls_rstanP,  'mcmc_neff_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
 
 
-preds <- posterior_predict(owls.rstanP,  nsamples=250,  summary=FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(owls_rstanP,  nsamples=250,  summary=FALSE)
+owls_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = owls$NCalls,
                             fittedPredictedResponse = apply(preds, 2, median))
-plot(owls.resids)
+plot(owls_resids)
 
 
-owls.rstanNB <- stan_glmer(NCalls ~ FoodTreatment+SexParent +
+owls_rstanNB <- stan_glmer(NCalls ~ FoodTreatment+SexParent +
                            offset(log(BroodSize)) + (1|Nest),
                          dat=owls,  family=neg_binomial_2(link='log'), refresh=0, 
                          iter=5000,  warmup=2000,  thin=10,  chains=3, cores=3)
 
-owls.rstanNB <- stan_glmer(NCalls ~ FoodTreatment+scale(ArrivalTime) +
+owls_rstanNB <- stan_glmer(NCalls ~ FoodTreatment+scale(ArrivalTime) +
                            offset(log(BroodSize)) + (1|Nest),
                          dat=owls,  family=neg_binomial_2(link='log'), refresh=0, 
                          iter=5000,  warmup=2000,  thin=10,  chains=3, cores=3)
 
-owls.rstanNB %>% get_variables()
-plot(owls.rstanNB,  'mcmc_trace', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
-plot(owls.rstanNB,  'mcmc_acf_bar', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
-plot(owls.rstanNB,  'mcmc_rhat_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
-plot(owls.rstanNB,  'mcmc_neff_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+owls_rstanNB %>% get_variables()
+plot(owls_rstanNB,  'mcmc_trace', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+plot(owls_rstanNB,  'mcmc_acf_bar', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+plot(owls_rstanNB,  'mcmc_rhat_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
+plot(owls_rstanNB,  'mcmc_neff_hist', regex_pars='^.Intercept|Food|Arrival|[sS]igma')
 
 
-preds <- posterior_predict(owls.rstanNB,  nsamples=250,  summary=FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(owls_rstanNB,  nsamples=250,  summary=FALSE)
+owls_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = owls$NCalls,
                             fittedPredictedResponse = apply(preds, 2, median))
-plot(owls.resids)
-testZeroInflation(owls.resids)
+plot(owls_resids)
+testZeroInflation(owls_resids)
 
-testTemporalAutocorrelation(owls.resids,  time=owls$ArrivalTime)
-owls.resids1 <- recalculateResiduals(owls.resids,  group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = mean)
-testTemporalAutocorrelation(owls.resids1,  time=unique(owls$ArrivalTime))
+testTemporalAutocorrelation(owls_resids,  time=owls$ArrivalTime)
+owls_resids1 <- recalculateResiduals(owls_resids,  group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = mean)
+testTemporalAutocorrelation(owls_resids1,  time=unique(owls$ArrivalTime))
 
 ##Cant use zero inflation with glmer
 
-owls.rstan1 <- stan_glmer(NCalls ~ FoodTreatment+scale(ArrivalTime) +
+owls_rstan1 <- stan_glmer(NCalls ~ FoodTreatment+scale(ArrivalTime) +
                            offset(log(BroodSize)) + (FoodTreatment*scale(ArrivalTime)|Nest),
                          dat=owls,  family=neg_binomial_2(link='log'), refresh=0, 
                          iter=5000,  warmup=2000,  thin=10,  chains=3, cores=3)
 
-owls.rstan1 %>% get_variables()
-plot(owls.rstan1,  'mcmc_trace', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
-plot(owls.rstan1,  'mcmc_acf_bar', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
-plot(owls.rstan1,  'mcmc_rhat_hist', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
-plot(owls.rstan1,  'mcmc_neff_hist', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
+owls_rstan1 %>% get_variables()
+plot(owls_rstan1,  'mcmc_trace', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
+plot(owls_rstan1,  'mcmc_acf_bar', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
+plot(owls_rstan1,  'mcmc_rhat_hist', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
+plot(owls_rstan1,  'mcmc_neff_hist', regex_pars='^.Intercept|^Food|^scale.Arrival|[sS]igma')
 
-preds <- posterior_predict(owls.rstan1,  nsamples=250,  summary=FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(owls_rstan1,  nsamples=250,  summary=FALSE)
+owls_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = owls$NCalls,
                             fittedPredictedResponse = apply(preds, 2, median))
-plot(owls.resids)
+plot(owls_resids)
 
 ```
 
 ## brms
 
 ```{r fitModel.brms, results='markdown', eval=FALSE, mhidden=TRUE, echo=FALSE}
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
                     offset(log(BroodSize)) + (1|Nest),
                 family=poisson(link='log'))
-owls.brm1 <- brm(owls.form,
+owls_brm1 <- brm(owls_form,
                   data=owls,
                   sample_prior = 'yes',
                   iter=5000,  warmup=2000,
                   thin=10,  chains=3, cores=3,
                   refresh=0, 
                   )
-prior_summary(owls.brm1)
+prior_summary(owls_brm1)
 
 owls %>%
     group_by(FoodTreatment, SexParent) %>%
@@ -2023,10 +2152,10 @@ owls %>%
 priors <- prior(normal(1.8, 5), class='Intercept') +
     prior(normal(0, 2), class='b') +
     prior(gamma(2,1), class='sd') 
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
                     offset(log(BroodSize)) + (1|Nest),
                 family=poisson(link='log'))
-owls.brm1 <- brm(owls.form,
+owls_brm1 <- brm(owls_form,
                  data=owls,
                  prior = priors,
                  sample_prior = 'yes',
@@ -2035,10 +2164,10 @@ owls.brm1 <- brm(owls.form,
                  refresh=0, 
                  )
 
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
                     offset(log(BroodSize)) + (FoodTreatment*SexParent|Nest),
                 family=poisson(link='log'))
-owls.brm2 <- brm(owls.form,
+owls_brm2 <- brm(owls_form,
                  data=owls,
                  prior = priors,
                  sample_prior = 'yes',
@@ -2047,16 +2176,16 @@ owls.brm2 <- brm(owls.form,
                  refresh=0, 
                  )
 
-(l.1 <- loo(owls.brm1))
-(l.2 <- loo(owls.brm2))
+(l.1 <- loo(owls_brm1))
+(l.2 <- loo(owls_brm2))
 loo_compare(l.1, l.2)
 
 
-owls.brm2 %>% get_variables()
-owls.brm2 %>% hypothesis('FoodTreatmentSatiated=0') %>% plot()
-owls.brm2 %>% hypothesis('b_FoodTreatmentSatiated=0', class='') %>% plot()
+owls_brm2 %>% get_variables()
+owls_brm2 %>% hypothesis('FoodTreatmentSatiated=0') %>% plot()
+owls_brm2 %>% hypothesis('b_FoodTreatmentSatiated=0', class='') %>% plot()
 
-pars <- owls.brm2 %>% get_variables()
+pars <- owls_brm2 %>% get_variables()
 wch <- grepl('^b_.*|^sd_.*', pars, perl=TRUE)
 wch <- grepl('^[bsd]{1,2}_.*', pars, perl=TRUE)
 
@@ -2070,88 +2199,88 @@ for (i in pars[wch]) {
 for (i in pars[wch]) {
     print(i)
     if (i == 'b_Intercept') next
-    p <- owls.brm2 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
+    p <- owls_brm2 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
     g[[i]] <- p[[1]]
 }
 patchwork::wrap_plots(g)
 
-p <- owls.brm2 %>% hypothesis('FoodTreatmentSatiated=0') %>% plot()
+p <- owls_brm2 %>% hypothesis('FoodTreatmentSatiated=0') %>% plot()
 
 g <- vector('list', length=sum(wch)-1)
 names(g) <- pars[wch][-1]
 for (i in pars[wch]) {
     print(i)
     if (i == 'b_Intercept') next
-    p <- owls.brm2 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
+    p <- owls_brm2 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
     g[[i]] <- p[[1]]
 }
 patchwork::wrap_plots(g)
 
-stan_trace(owls.brm2$fit, pars = pars[wch])
-stan_ac(owls.brm2$fit, pars = pars[wch])
-stan_rhat(owls.brm2$fit, pars = pars[wch])
-stan_rhat(owls.brm2$fit)
-stan_ess(owls.brm2$fit)
+stan_trace(owls_brm2$fit, pars = pars[wch])
+stan_ac(owls_brm2$fit, pars = pars[wch])
+stan_rhat(owls_brm2$fit, pars = pars[wch])
+stan_rhat(owls_brm2$fit)
+stan_ess(owls_brm2$fit)
 
-##mcmc_plot(owls.brmsP,  type='trace')
-##mcmc_plot(owls.brmsP,  type='acf_bar')
-##mcmc_plot(owls.brmsP,  type='rhat_hist')
-##mcmc_plot(owls.brmsP,  type='neff_hist')
-##mcmc_plot(owls.brmsP,  type='trace', regex_pars='^b.Intercept|Food|Arrival|sd')
-##mcmc_plot(owls.brmsP,  type='acf_bar', regex_pars='^b.Intercept|Food|Arrival|sd')
-##mcmc_plot(owls.brmsP,  type='rhat_hist', regex_pars='^b.Intercept|Food|Arrival|sd')
-##mcmc_plot(owls.brmsP,  type='neff_hist', regex_pars='^b.Intercept|Food|Arrival|sd')
+##mcmc_plot(owls_brmsP,  type='trace')
+##mcmc_plot(owls_brmsP,  type='acf_bar')
+##mcmc_plot(owls_brmsP,  type='rhat_hist')
+##mcmc_plot(owls_brmsP,  type='neff_hist')
+##mcmc_plot(owls_brmsP,  type='trace', regex_pars='^b.Intercept|Food|Arrival|sd')
+##mcmc_plot(owls_brmsP,  type='acf_bar', regex_pars='^b.Intercept|Food|Arrival|sd')
+##mcmc_plot(owls_brmsP,  type='rhat_hist', regex_pars='^b.Intercept|Food|Arrival|sd')
+##mcmc_plot(owls_brmsP,  type='neff_hist', regex_pars='^b.Intercept|Food|Arrival|sd')
 
-preds <- posterior_predict(owls.brm2,  nsamples=250,  summary=FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(owls_brm2,  nsamples=250,  summary=FALSE)
+owls_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = owls$NCalls,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(owls.resids)
-testZeroInflation(owls.resids)
+plot(owls_resids)
+testZeroInflation(owls_resids)
 
 
 
-##owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+##owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
 ##                    offset(log(BroodSize)) + (FoodTreatment*SexParent|Nest),
 ##                family=negbinomial(link='log'))
-##owls.brmsNB <- brm(owls.form,  data=owls, refresh=0, 
+##owls_brmsNB <- brm(owls_form,  data=owls, refresh=0, 
 ##                  iter=5000,  warmup=2000,  thin=10,  chains=3, cores=3)
 
-##mcmc_plot(owls.brmsNB,  type='trace')
-##mcmc_plot(owls.brmsNB,  type='acf_bar')
-##mcmc_plot(owls.brmsNB,  type='rhat_hist')
-##mcmc_plot(owls.brmsNB,  type='neff_hist')
-##preds <- posterior_predict(owls.brmsNB,  nsamples=250,  summary=FALSE)
-##owls.resids <- createDHARMa(simulatedResponse = t(preds),
+##mcmc_plot(owls_brmsNB,  type='trace')
+##mcmc_plot(owls_brmsNB,  type='acf_bar')
+##mcmc_plot(owls_brmsNB,  type='rhat_hist')
+##mcmc_plot(owls_brmsNB,  type='neff_hist')
+##preds <- posterior_predict(owls_brmsNB,  nsamples=250,  summary=FALSE)
+##owls_resids <- createDHARMa(simulatedResponse = t(preds),
 ##                            observedResponse = owls$NCalls,
 ##                            fittedPredictedResponse = apply(preds, 2, median),
 ##                            integerResponse = TRUE)
-##plot(owls.resids)
-##testZeroInflation(owls.resids)
+##plot(owls_resids)
+##testZeroInflation(owls_resids)
 
 priors <- prior(normal(1.8, 5), class='Intercept') +
     prior(normal(0, 5), class='b') +
     prior(gamma(2,1), class='sd') +
     prior(logistic(0,1), class='Intercept', dpar='zi') +
     prior(normal(0,1), class='b', dpar='zi')
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
                     offset(log(BroodSize)) +
                     (FoodTreatment*SexParent|Nest),
                 zi ~ FoodTreatment+SexParent,
                 family=zero_inflated_poisson(link='log'))
                 ##family=zero_inflated_negbinomial(link='log'))
 
-owls.brm3 <- brm(owls.form,
+owls_brm3 <- brm(owls_form,
                  data=owls,
                  prior = priors,
                  sample_prior = 'yes',
                  iter=5000,  warmup=2500,
                  thin=10,  chains=3, cores=3,
                  refresh=0)
-prior_summary(owls.brm3)
+prior_summary(owls_brm3)
 
-pars <- owls.brm3 %>% get_variables()
+pars <- owls_brm3 %>% get_variables()
 pars
 wch <- grepl('^b_.*|^sd_.*', pars, perl=TRUE)
 
@@ -2159,7 +2288,7 @@ g <- vector('list', length=sum(wch))
 names(g) <- pars[wch]
 for (i in pars[wch]) {
     print(i)
-    p <- owls.brm3 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
+    p <- owls_brm3 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
     g[[i]] <- p[[1]]
 }
 patchwork::wrap_plots(g)
@@ -2169,27 +2298,27 @@ names(g) <- pars[wch][-1]
 for (i in pars[wch]) {
     print(i)
     if (i == 'b_Intercept') next
-    p <- owls.brm3 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
+    p <- owls_brm3 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
     g[[i]] <- p[[1]]
 }
 patchwork::wrap_plots(g[[2:5]])
 
-stan_trace(owls.brm3$fit, pars = pars[wch])
-stan_ac(owls.brm3$fit, pars = pars[wch])
-stan_rhat(owls.brm3$fit, pars = pars[wch])
-stan_rhat(owls.brm3$fit)
-stan_ess(owls.brm3$fit)
+stan_trace(owls_brm3$fit, pars = pars[wch])
+stan_ac(owls_brm3$fit, pars = pars[wch])
+stan_rhat(owls_brm3$fit, pars = pars[wch])
+stan_rhat(owls_brm3$fit)
+stan_ess(owls_brm3$fit)
 
 
 
-preds <- posterior_predict(owls.brm3,  nsamples=250,  summary=FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(owls_brm3,  nsamples=250,  summary=FALSE)
+owls_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = owls$NCalls,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(owls.resids)
-testZeroInflation(owls.resids)
-testDispersion(owls.resids)
+plot(owls_resids)
+testZeroInflation(owls_resids)
+testDispersion(owls_resids)
 
 priors <- prior(normal(1.8, 5), class='Intercept') +
     prior(normal(0, 5), class='b') +
@@ -2197,13 +2326,13 @@ priors <- prior(normal(1.8, 5), class='Intercept') +
     prior(logistic(0,1), class='Intercept', dpar='zi') +
     prior(normal(0,1), class='b', dpar='zi') +
     prior(gamma(0.01, 0.01), class='shape')
-owls.form <- bf(NCalls ~ FoodTreatment*SexParent +
+owls_form <- bf(NCalls ~ FoodTreatment*SexParent +
                     offset(log(BroodSize)) +
                     (FoodTreatment*SexParent|Nest),
                 zi ~ FoodTreatment+SexParent,
                 family=zero_inflated_negbinomial(link='log'))
 
-owls.brm4 <- brm(owls.form,
+owls_brm4 <- brm(owls_form,
                  data=owls,
                  prior = priors,
                  sample_prior = 'yes',
@@ -2211,7 +2340,7 @@ owls.brm4 <- brm(owls.form,
                  thin=10,  chains=3, cores=3,
                  refresh=0)
 
-pars <- owls.brm4 %>% get_variables()
+pars <- owls_brm4 %>% get_variables()
 pars
 wch <- grepl('^b_.*|^sd_.*', pars, perl=TRUE)
 
@@ -2219,52 +2348,52 @@ g <- vector('list', length=sum(wch))
 names(g) <- pars[wch]
 for (i in pars[wch]) {
     print(i)
-    p <- owls.brm4 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
+    p <- owls_brm4 %>% hypothesis(paste0(i,'=0'), class='') %>% plot()
     g[[i]] <- p[[1]]
 }
 patchwork::wrap_plots(g)
 
 wch <- grepl('^b_.*|^sd_.*|.*shape.*', pars, perl=TRUE)
-stan_trace(owls.brm4$fit, pars = pars[wch])
-stan_ac(owls.brm4$fit, pars = pars[wch])
-stan_rhat(owls.brm4$fit, pars = pars[wch])
-stan_rhat(owls.brm4$fit)
-stan_ess(owls.brm4$fit)
+stan_trace(owls_brm4$fit, pars = pars[wch])
+stan_ac(owls_brm4$fit, pars = pars[wch])
+stan_rhat(owls_brm4$fit, pars = pars[wch])
+stan_rhat(owls_brm4$fit)
+stan_ess(owls_brm4$fit)
 
-preds <- posterior_predict(owls.brm4,  nsamples=250,  summary=FALSE)
-owls.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- posterior_predict(owls_brm4,  nsamples=250,  summary=FALSE)
+owls_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = owls$NCalls,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = TRUE)
-plot(owls.resids)
-testZeroInflation(owls.resids)
-testDispersion(owls.resids)
+plot(owls_resids)
+testZeroInflation(owls_resids)
+testDispersion(owls_resids)
 
-testTemporalAutocorrelation(owls.resids,  time=owls$ArrivalTime)
-owls.resids1 <- recalculateResiduals(owls.resids,  group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = mean)
-testTemporalAutocorrelation(owls.resids1,  time=unique(owls$ArrivalTime))
+testTemporalAutocorrelation(owls_resids,  time=owls$ArrivalTime)
+owls_resids1 <- recalculateResiduals(owls_resids,  group=interaction(owls$ArrivalTime,  owls$Nest),  aggregateBy = mean)
+testTemporalAutocorrelation(owls_resids1,  time=unique(owls$ArrivalTime))
 
-g <- owls.brm4 %>%
+g <- owls_brm4 %>%
     conditional_effects() %>%
     plot(ask=FALSE, plot=FALSE, points=TRUE)
 patchwork::wrap_plots(g)
 
-summary(owls.brm4)
+summary(owls_brm4)
 
-tidyMCMC(owls.brmsZINB2$fit,  estimate.method='median',
+tidyMCMC(owls_brmsZINB2$fit,  estimate.method='median',
          conf.int=TRUE,  conf.method='HPDinterval',
          rhat=TRUE,  ess=TRUE)
 
-owls.brm4 %>% bayes_R2(re.form = NA, summary=FALSE) %>% median_hdci()
-owls.brm4 %>% bayes_R2(re.form = ~(1|Nest), summary=FALSE) %>% median_hdci()
-owls.brm4 %>% bayes_R2(re.form = ~(FoodTreatment*SexParent|Nest), summary=FALSE) %>% median_hdci()
+owls_brm4 %>% bayes_R2(re.form = NA, summary=FALSE) %>% median_hdci()
+owls_brm4 %>% bayes_R2(re.form = ~(1|Nest), summary=FALSE) %>% median_hdci()
+owls_brm4 %>% bayes_R2(re.form = ~(FoodTreatment*SexParent|Nest), summary=FALSE) %>% median_hdci()
 
-owls.brm4 %>%
+owls_brm4 %>%
     emmeans(~FoodTreatment, type='response') 
-owls.brm4 %>%
+owls_brm4 %>%
     emmeans(~FoodTreatment, offset=0, type='response') 
 
-newdata <- owls.brm4 %>%
+newdata <- owls_brm4 %>%
     emmeans(~FoodTreatment, offset=0, type='response') %>%
     as.data.frame
 head(newdata)

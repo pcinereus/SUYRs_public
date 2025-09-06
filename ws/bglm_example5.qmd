@@ -157,7 +157,7 @@ $$
 \begin{align}
 y_i &\sim{} \mathcal{Pois}(\lambda_i)\\
 ln(\mu_i) &= \boldsymbol{\beta} \bf{X_i}\\
-\beta_0 &\sim{} \mathcal{N}(3.1, 1)\\
+\beta_0 &\sim{} \mathcal{N}(3.1, 0.3)\\
 \beta_{1,2,3} &\sim{} \mathcal{N}(0,1)\\
 \end{align}
 $$

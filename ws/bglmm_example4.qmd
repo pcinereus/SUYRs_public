@@ -129,11 +129,39 @@ mckeon <- read_csv("../data/mckeon.csv", trim_ws = TRUE)
 
 # Exploratory data analysis
 
-Model formula:
+::: {.columns}
+:::: {.column width="50%"}
+
+Random intercepts model formula:
 $$
-y_i \sim{} \mathcal{N}(n, p_i)\\
-ln\left(\frac{p_i}{1-p_1}\right) =\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}
+\begin{align}
+y_i &\sim{} \mathcal{N}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_1}\right) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 &\sim{} \mathcal{N}(0, 2.5)\\
+\beta_1 &\sim{} \mathcal{N}(0, 3)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \sigma^2_b)\\
+\sigma^2_b &\sim{} t(3, 0, 1.5)\\
+\end{align}
 $$
+
+::::
+:::: {.column width="50%"}
+
+Random intercept/slope model formula:
+$$
+\begin{align}
+y_i &\sim{} \mathcal{N}(n, p_i)\\
+ln\left(\frac{p_i}{1-p_1}\right) &=\boldsymbol{\beta} \bf{X_i} + \boldsymbol{\gamma} \bf{Z_i}\\
+\beta_0 &\sim{} \mathcal{N}(0, 2)\\
+\beta_1 &\sim{} \mathcal{N}(0, 10)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_b^2})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_b^2})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_b^2 &\sim{} \mathcal{t}(3,0,1.5)\\
+\end{align}
+$$
+::::
+:::
 
 where $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ are vectors of the fixed and random effects parameters respectively 
 and $\bf{X}$ is the model matrix representing the overall intercept and effects of symbionts on the probability of the colony experiencing predation.
@@ -193,7 +221,6 @@ We need to supply:
 - simulated (predicted) responses associated with each observation.
 - observed values
 - fitted (predicted) responses (averaged) associated with each observation
-
 
 **Conclusions:**
 

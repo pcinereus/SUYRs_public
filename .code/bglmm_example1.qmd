@@ -285,20 +285,41 @@ pooled across all groups.
 
 <!-- END_PRIVATE-->
 
-Model formula:
+::: {.columns}
+:::: {.column width="50%"}
+
+Random intercepts model formula:
 $$
 \begin{align}
 y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
 \mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
-\beta_0 &\sim{} \mathcal{N}(35, 20)\\
+\beta_0 &\sim{} \mathcal{N}(35, 3)\\
 \beta_1 &\sim{} \mathcal{N}(0, 10)\\
-\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
-\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l})\\
-\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
-\sigma_j^2 &\sim{} \mathcal{Cauchy}(0,5)\\
-\sigma^2 &\sim{} Gamma(2,1)\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \sigma^2_l)\\
+\sigma^2_l &\sim{} t(3, 0, 5)\\
+\sigma^2 &\sim{} t(3, 0, 5)\
 \end{align}
 $$
+::::
+:::: {.column width="50%"}
+
+Random intercept/slope model formula:
+$$
+\begin{align}
+y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
+\mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
+\beta_0 &\sim{} \mathcal{N}(35, 3)\\
+\beta_1 &\sim{} \mathcal{N}(0, 10)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l^2})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_l^2 &\sim{} \mathcal{t}(3,0,5)\\
+\sigma^2 &\sim{} \mathcal{t}(3, 0, 5)\
+\end{align}
+$$
+::::
+:::
+
 
 where:
 
@@ -320,13 +341,17 @@ where:
   apply a prior on this covariance matrix, so instead, the covariance
   matrix is decomposed into a correlation matrix
   ($\boldsymbol{\Omega}$) and a vector of variances
-  ($\boldsymbol{\sigma_l}$) which are the diagonals ($\boldsymbol{D}$)
+  ($\boldsymbol{\sigma_l^2}$) which are the diagonals ($\boldsymbol{D}$)
   of the covariance matrix.
 - $\boldsymbol{\Omega}$ 
+
 $$
-\gamma \sim{} N(0,\Sigma)\\
-\Sigma -> \Omega, \tau\\
+\begin{align}
+\gamma &\sim{} N(0,\Sigma)\\
+\Sigma &-> \Omega, \tau\\
+\end{align}
 $$
+
 where $\Sigma$ is a covariance matrix.
 
 <!-- START_PRIVATE-->
@@ -383,7 +408,7 @@ are chosen to provide moderate regularlization (to help prevent overfitting) and
 help stabalise the computations.
 
 ```{r fitModel1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-tobacco.rstanarm <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
+tobacco_rstanarm <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
                                data = tobacco,
                                family = gaussian(), 
                                iter = 5000,
@@ -394,7 +419,7 @@ tobacco.rstanarm <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
 ```
 
 ```{r fitModel1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-tobacco.rstanarm |> prior_summary()
+tobacco_rstanarm |> prior_summary()
 ```
 This tells us:
 
@@ -436,11 +461,11 @@ Lets now run with priors only so that we can explore the range of values they
 allow in the posteriors.
 
 ```{r fitModel1f, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-tobacco.rstanarm1 <- update(tobacco.rstanarm,  prior_PD=TRUE)
+tobacco_rstanarm1 <- update(tobacco_rstanarm,  prior_PD=TRUE)
 ```
 
 ```{r fitModel1g, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-ggpredict(tobacco.rstanarm1) |> plot(show_data = TRUE)
+ggpredict(tobacco_rstanarm1) |> plot(show_data = TRUE)
 ```
 
 **Conclusions:**
@@ -479,7 +504,7 @@ thin air):
 I will also overlay the raw data for comparison.
 
 ```{r fitModel1h, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-tobacco.rstanarm2 <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
+tobacco_rstanarm2 <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
                                 data = tobacco,
                                 family = gaussian(), 
                                 prior_intercept = normal(35, 7, autoscale = FALSE),
@@ -496,7 +521,7 @@ tobacco.rstanarm2 <- stan_glmer(NUMBER ~ (1|LEAF) + TREATMENT,
 ```
 
 ```{r fitModel1i, results='markdown', eval=TRUE, mhidden=TRUE, cache=FALSE}
-tobacco.rstanarm2 |>
+tobacco_rstanarm2 |>
     ggpredict() |>
     plot(show_data = TRUE)
 ```
@@ -504,13 +529,13 @@ tobacco.rstanarm2 |>
 Now lets refit, conditioning on the data.
 
 ```{r fitModel1j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, dependson='fitModel1h'}
-tobacco.rstanarm3 <- update(tobacco.rstanarm2,  prior_PD=FALSE)
+tobacco_rstanarm3 <- update(tobacco_rstanarm2,  prior_PD=FALSE)
 ```
  
 ### Plotting prior and posterior
 
 ```{r modelFit1k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
-posterior_vs_prior(tobacco.rstanarm3, color_by='vs', group_by=TRUE,
+posterior_vs_prior(tobacco_rstanarm3, color_by='vs', group_by=TRUE,
                    facet_args=list(scales='free_y'))
 ```
 
@@ -520,8 +545,8 @@ posterior_vs_prior(tobacco.rstanarm3, color_by='vs', group_by=TRUE,
   that the posterior is not biased towards the prior.
   
 ```{r modelFit1l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggemmeans(tobacco.rstanarm3,  ~TREATMENT) |> plot(show_data=TRUE)
-ggpredict(tobacco.rstanarm3,  ~TREATMENT) |> plot(show_data=TRUE)
+ggemmeans(tobacco_rstanarm3,  ~TREATMENT) |> plot(show_data=TRUE)
+ggpredict(tobacco_rstanarm3,  ~TREATMENT) |> plot(show_data=TRUE)
 ```
 ::::
 ## brms 
@@ -536,13 +561,13 @@ Unlike `rstanarm`, `brms` models must be compiled before they start sampling.
 For most models, the compilation of the stan code takes around 45 seconds.
 
 ```{r fitModel2a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, paged.print=FALSE, tidy.opts = list(width.cutoff = 80), echo=c(-4,-6)}
-tobacco.form <- bf(NUMBER ~ (1|LEAF) + TREATMENT,
+tobacco_form <- bf(NUMBER ~ (1|LEAF) + TREATMENT,
                    family = gaussian() 
                    )
 options(width=100)
-tobacco.form |> get_prior(data=tobacco)
+tobacco_form |> get_prior(data=tobacco)
 options(width=80)
-## tobacco.brm <- brm(tobacco.form,
+## tobacco_brm <- brm(tobacco_form,
 ##                   data=tobacco,
 ##                   iter = 5000,
 ##                   warmup = 1000,
@@ -563,15 +588,15 @@ If we wanted to define our own priors that were less vague, yet still not likely
 to bias the outcomes, we could try the following priors (mainly plucket out of
 thin air):
 
-- $\beta_0$: normal centered at 31 with a standard deviation of 7
-  - mean of 31: since `mean(tobacco$NUMBER)`
-  - sd of 7: since `sd(tobacco$NUMBER)`
+- $\beta_0$: normal centered at 35 with a standard deviation of 3
+  - mean of 35: since `with(tobacco, tapply(NUMBER, TREATMENT, FUN = median))`
+  - sd of 3: since `with(tobacco, tapply(NUMBER, TREATMENT, FUN = mad))`
 - $\beta_1$: normal centred at 0 with a standard deviation of 13
-  - sd of 13: since `sd(tobacco$NUMBER) / apply(model.matrix(~TREATMENT, tobacco), 2, sd)`
-- $\sigma$: half-cauchy with parameters 0 and 6.5
-  - since `sd(tobacco$NUMBER)`
-- $\sigma_j$: half-cauchy with parameters 0 and 2.5
-  - since `sqrt(sd(tobacco$NUMBER))`
+  - sd of 10: since `mad(tobacco$NUMBER) / apply(model.matrix(~TREATMENT, tobacco), 2, mad)`
+- $\sigma$: half-cauchy with parameters 0 and 5
+  - since `with(tobacco, tapply(NUMBER, TREATMENT, FUN = mad))`
+- $\sigma_j$: half-cauchy with parameters 0 and 3
+  - since `with(tobacco, tapply(NUMBER, TREATMENT, FUN = mad))`
   - we want this prior to have most mass close to zero for the purpose
     of **regularisation**
 - $\Sigma$: decov with:
@@ -600,31 +625,22 @@ tobacco |>
     group_by(TREATMENT) |>
     summarise(median(NUMBER),
               mad(NUMBER))
-sd(tobacco$NUMBER)   # 6.5
 standist::visualize("normal(35,3)", xlim=c(-10,100))
 standist::visualize("normal(0, 10)", xlim=c(-20,20))
 standist::visualize(
-              "student_t(3,0,10)",
-              "gamma(2,1)",
-                    "gamma(2,0.5)",
-                    "gamma(5,0.1)",
-                    "exponential(1)",
-                    "exponential(0.15)",
-                    "cauchy(0,6.5)",
-                    "cauchy(0, 2.5)",  # since sqrt(6.5) = 2.5
-                    "cauchy(0,1)",
-                    xlim=c(-10,25))
+            "student_t(3,0,10)",
+            xlim=c(-30,50))
 ```
 
 ```{r fitModel2h1, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-priors <- prior(normal(35,10), class = 'Intercept') +
-    prior(normal(0, 8), class = 'b') +
-    prior(student_t(3,0,5), class = 'sigma') +
-    prior(student_t(3,0,5), class = 'sd') 
-tobacco.form <- bf(NUMBER ~ (TREATMENT|LEAF) + TREATMENT,
+priors <- prior(normal(35, 3), class = 'Intercept') +
+    prior(normal(0, 10), class = 'b') +
+    prior(student_t(3, 0, 5), class = 'sigma') +
+    prior(student_t(3, 0, 5), class = 'sd') 
+tobacco_form <- bf(NUMBER ~ (1|LEAF) + TREATMENT,
                      family = gaussian()
                    )
-tobacco.brm2 <- brm(tobacco.form, 
+tobacco_brm2 <- brm(tobacco_form, 
                   data = tobacco,
                   prior = priors,
                   sample_prior = 'only',
@@ -658,13 +674,13 @@ particular parameter, then it points to that dimension as the cause of
 divergent transitions.
 
 ```{r fitModel2h1a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE, fig.width = 8, fig.height = 3}
-tobacco.np <- nuts_params(tobacco.brm2)
-tobacco.mcmc <- as.array(tobacco.brm2)
-mcmc_parcoord(x = tobacco.mcmc, np = tobacco.np) +
+tobacco_np <- nuts_params(tobacco_brm2) 
+tobacco_mcmc <- as.array(tobacco_brm2)
+mcmc_parcoord(x = tobacco_mcmc, np = tobacco_np) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-tobacco.brm2 |> mcmc_parcoord(np = tobacco.np) +
+tobacco_brm2 |> mcmc_parcoord(np = tobacco_np) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-tobacco.brm2 |> mcmc_parcoord(regex_pars = "^b.*|^r.*") +
+tobacco_brm2 |> mcmc_parcoord(regex_pars = "^b.*|^r.*") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -681,7 +697,10 @@ Accordingly, these divergent transitions can be addressed by either:
   result in slower sampling speeds.
 
 ```{r partialPlot2h1a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm2 |>
+tobacco_brm2 |> 
+  conditional_effects() |>
+  plot(points = TRUE)
+tobacco_brm2 |>
     ggpredict() |>
     plot(show_data = TRUE)
 ```
@@ -689,7 +708,7 @@ tobacco.brm2 |>
 
 
 ```{r fitModel2h1b, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-tobacco.brm3 <- update(tobacco.brm2,  
+tobacco_brm3 <- update(tobacco_brm2,   
                        sample_prior = 'yes',
                        control = list(adapt_delta = 0.99, max_treedepth =  20),
                        refresh = 0, cores = 3) 
@@ -697,7 +716,10 @@ tobacco.brm3 <- update(tobacco.brm2,
 ```
 
 ```{r partialPlot2h1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |>
+tobacco_brm3 |> 
+  conditional_effects() |>
+  plot(points = TRUE)
+tobacco_brm3 |>
     ggpredict() |>
     plot(show_data = TRUE)
 ```
@@ -705,12 +727,12 @@ tobacco.brm3 |>
 ### Plotting prior and posterior
 
 ```{r posterior2h2, results='markdown', eval=TRUE}
-tobacco.brm3 |> get_variables()
-tobacco.brm3 |> hypothesis('TREATMENTWeak=0') |> plot()
+tobacco_brm3 |> get_variables() 
+tobacco_brm3 |> hypothesis('TREATMENTWeak=0') |> plot()
 ```
 
 ```{r posterior2h2a, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-tobacco.brm3 |> SUYR_prior_and_posterior()
+tobacco_brm3 |> SUYR_prior_and_posterior() 
 ```
 
 ### Random intercept/slope model
@@ -719,16 +741,16 @@ While we are here, we might like to explore a random intercept/slope model
 
 
 ```{r fitModel2h3, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-priors <- prior(normal(35,10), class = 'Intercept') +
-    prior(normal(0, 8), class = 'b') +
-    prior(student_t(3,0,5), class = 'sigma') +
-    prior(cauchy(0, 5), class = 'sd') +
+priors <- prior(normal(35, 3), class = 'Intercept') +
+    prior(normal(0, 10), class = 'b') +
+    prior(student_t(3, 0, 5), class = 'sigma') +
+    prior(student_t(3, 0, 5), class = 'sd') +
     prior(lkj_corr_cholesky(1), class = 'cor')
-tobacco.form <- bf(NUMBER ~ (TREATMENT|LEAF) + TREATMENT,
+tobacco_form <- bf(NUMBER ~ (TREATMENT|LEAF) + TREATMENT,
                      family = gaussian()
                    )
  
-tobacco.brm4 <-  brm(tobacco.form, 
+tobacco_brm4 <-  brm(tobacco_form, 
                   data = tobacco,
                   prior = priors,
                   sample_prior = 'yes',
@@ -744,16 +766,16 @@ tobacco.brm4 <-  brm(tobacco.form,
 ```
 
 ```{r posterior2k, results='markdown', eval=TRUE}
-tobacco.brm4 |> get_variables()
-tobacco.brm4 |> hypothesis('TREATMENTWeak=0') |> plot()
+tobacco_brm4 |> get_variables() 
+tobacco_brm4 |> hypothesis('TREATMENTWeak=0') |> plot()
 ```
 
 ```{r posterior2k1, results='markdown', eval=TRUE, fig.width = 7, fig.height = 5}
-tobacco.brm4 |> SUYR_prior_and_posterior()
+tobacco_brm4 |> SUYR_prior_and_posterior() 
 ```
 
 ```{r posterior2k2, results='markdown', eval=TRUE, fig.width=10, fig.height=4}
-tobacco.brm4 |>
+tobacco_brm4 |>
   posterior_samples() |>
   dplyr::select(-`lp__`) |>
   pivot_longer(everything(), names_to = 'key') |> 
@@ -779,8 +801,8 @@ tobacco.brm4 |>
 We can compare the two models using LOO
 
 ```{r fitModel2h3a, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE}
-(l.1 <- tobacco.brm3 |> loo()) 
-(l.2 <- tobacco.brm4 |> loo())
+(l.1 <- tobacco_brm3 |> loo())  
+(l.2 <- tobacco_brm4 |> loo())
 loo_compare(l.1, l.2)
 ```
 
@@ -832,16 +854,16 @@ Of these, we will focus on:
   or below any other trace for that parameter).
 
 ```{r modelValidation2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> mcmc_plot(type='trace')
+tobacco_brm3 |> mcmc_plot(type='trace')
 ```
   
    The chains appear well mixed and very similar
    
 - acf_bar (autocorrelation function): plots the autocorrelation between successive
   MCMC sample lags for each parameter and each chain
-  
+   
 ```{r modelValidation2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> mcmc_plot(type='acf_bar')
+tobacco_brm3 |> mcmc_plot(type='acf_bar')
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -852,7 +874,7 @@ tobacco.brm3 |> mcmc_plot(type='acf_bar')
   parameter estimated.
 
 ```{r modelValidation2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> mcmc_plot(type='rhat_hist')
+tobacco_brm3 |> mcmc_plot(type='rhat_hist')
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -867,15 +889,15 @@ tobacco.brm3 |> mcmc_plot(type='rhat_hist')
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm2 |> mcmc_plot(type='neff_hist')
+tobacco_brm2 |> mcmc_plot(type='neff_hist')
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> mcmc_plot(type='combo')
-tobacco.brm3 |> mcmc_plot(type='violin')
+tobacco_brm3 |> mcmc_plot(type='combo')
+tobacco_brm3 |> mcmc_plot(type='violin')
 ```
 </details>
 
@@ -894,11 +916,11 @@ Of these, we will focus on:
   any other trace for that parameter).
   
 ```{r modelValidation2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> get_variables()
-pars <- tobacco.brm3 |> get_variables()
+tobacco_brm3 |> get_variables()
+pars <- tobacco_brm3 |> get_variables()
 pars <- str_extract(pars, '^b_.*|^sigma$|^sd.*') |> na.omit()
 
-tobacco.brm3$fit |> stan_trace(pars = pars)
+tobacco_brm3$fit |> stan_trace(pars = pars)
 ```
 
    The chains appear well mixed and very similar
@@ -907,7 +929,7 @@ tobacco.brm3$fit |> stan_trace(pars = pars)
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2h, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3$fit |>
+tobacco_brm3$fit |>
     stan_ac(pars = pars)
 ```
 
@@ -919,7 +941,7 @@ tobacco.brm3$fit |>
   parameter estimated.
 
 ```{r modelValidation2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3$fit |> stan_rhat() 
+tobacco_brm3$fit |> stan_rhat() 
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -934,13 +956,13 @@ tobacco.brm3$fit |> stan_rhat()
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm2$fit |> stan_ess()
+tobacco_brm2$fit |> stan_ess()
 ```
 
   Ratios all very high.
 
 ```{r modelValidation2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3$fit |>
+tobacco_brm3$fit |>
     stan_dens(separate_chains = TRUE, pars = pars)
 ```
 
@@ -959,8 +981,8 @@ Of these, we will focus on:
   any other trace for that parameter).
 
 ```{r modelValidation2l, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-tobacco.ggs <- tobacco.brm3 |> ggs(burnin = FALSE, inc_warmup = FALSE)
-tobacco.ggs |> ggs_traceplot()
+tobacco_ggs <- tobacco_brm3 |> ggs(burnin = FALSE, inc_warmup = FALSE)
+tobacco_ggs |> ggs_traceplot()
 ``` 
 
    The chains appear well mixed and very similar
@@ -969,7 +991,7 @@ tobacco.ggs |> ggs_traceplot()
   MCMC sample lags for each parameter and each chain
   
 ```{r modelValidation2m, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=7}
-ggs_autocorrelation(tobacco.ggs)
+ggs_autocorrelation(tobacco_ggs)
 ```
 
    There is no evidence of autocorrelation in the MCMC samples
@@ -980,7 +1002,7 @@ ggs_autocorrelation(tobacco.ggs)
   parameter estimated.
 
 ```{r modelValidation2n, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_Rhat(tobacco.ggs)
+ggs_Rhat(tobacco_ggs)
 ```
 
   All Rhat values are below 1.05, suggesting the chains have converged.
@@ -995,18 +1017,18 @@ ggs_Rhat(tobacco.ggs)
   If the ratios are low, tightening the priors may help.
   
 ```{r modelValidation2o, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_effective(tobacco.ggs)
+ggs_effective(tobacco_ggs)
 ```
 
   Ratios all very high.
 
 <details><summary>More diagnostics</summary>
 ```{r modelValidation2p, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_crosscorrelation(tobacco.ggs)
+ggs_crosscorrelation(tobacco_ggs)
 ```
 
 ```{r modelValidation2q, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-ggs_grb(tobacco.ggs)
+ggs_grb(tobacco_ggs)
 ```
 </details>
 
@@ -1027,7 +1049,7 @@ overlayed ontop of 50 density distributions generated from draws from the model
 the observed data.
 
 ```{r modelValidation5b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> pp_check(type = 'dens_overlay', ndraws = 100)
+tobacco_brm3 |> pp_check(type = 'dens_overlay', ndraws = 100)
 ```
 The model draws appear to be consistent with the observed data.
 
@@ -1037,7 +1059,7 @@ The model draws appear to be consistent with the observed data.
   binomial response
 
 ```{r modelValidation5c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> pp_check(type = 'error_scatter_avg')
+tobacco_brm3 |> pp_check(type = 'error_scatter_avg')
 ```
 
 This is not really interpretable
@@ -1048,9 +1070,9 @@ all fall within the predictive intervals.
 
 
 ```{r modelValidation5e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
-tobacco.brm3 |> pp_check(group = 'TREATMENT', type = 'intervals')
-tobacco.brm3 |> pp_check(group = 'TREATMENT', type = 'intervals_grouped')
-tobacco.brm3 |> pp_check(group = 'TREATMENT', type = 'violin_grouped')
+tobacco_brm3 |> pp_check(group = 'TREATMENT', type = 'intervals')
+tobacco_brm3 |> pp_check(group = 'TREATMENT', type = 'intervals_grouped')
+tobacco_brm3 |> pp_check(group = 'TREATMENT', type = 'violin_grouped')
 ```
 
 The `shinystan` package allows the full suite of MCMC diagnostics and posterior
@@ -1058,7 +1080,7 @@ predictive checks to be accessed via a web interface.
 
 ```{r modelValidation5g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=6, fig.height=4}
 #library(shinystan)
-#launch_shinystan(tobacco.brm2)
+#launch_shinystan(tobacco_brm2)
 ```
 
 ### DHARMa residuals
@@ -1075,20 +1097,20 @@ We need to supply:
 - fitted (predicted) responses (averaged) associated with each observation
 
 ```{r modelValidation6a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-preds <- tobacco.brm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
-tobacco.resids <- createDHARMa(simulatedResponse = t(preds),
+preds <- tobacco_brm4 |> posterior_predict(ndraws = 250,  summary = FALSE)
+tobacco_resids <- createDHARMa(simulatedResponse = t(preds),
                             observedResponse = tobacco$NUMBER,
                             fittedPredictedResponse = apply(preds, 2, median),
                             integerResponse = FALSE)
-plot(tobacco.resids, quantreg = FALSE)
+plot(tobacco_resids, quantreg = FALSE)
 ```
 
 ```{r modelValidation6aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=10}
-tobacco.resids <- make_brms_dharma_res(tobacco.brm3, integerResponse = FALSE)
-wrap_elements(~testUniformity(tobacco.resids)) +
-               wrap_elements(~plotResiduals(tobacco.resids, form = factor(rep(1, nrow(tobacco))))) +
-               wrap_elements(~plotResiduals(tobacco.resids, quantreg = FALSE)) +
-               wrap_elements(~testDispersion(tobacco.resids)) 
+tobacco_resids <- make_brms_dharma_res(tobacco_brm3, integerResponse = FALSE)
+wrap_elements(~testUniformity(tobacco_resids)) +
+               wrap_elements(~plotResiduals(tobacco_resids, form = factor(rep(1, nrow(tobacco))))) +
+               wrap_elements(~plotResiduals(tobacco_resids, quantreg = FALSE)) +
+               wrap_elements(~testDispersion(tobacco_resids)) 
 ```
 
 
@@ -1110,7 +1132,7 @@ wrap_elements(~testUniformity(tobacco.resids)) +
 ### conditional_effects
 
 ```{r partialPlot2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |>
+tobacco_brm3 |>
     conditional_effects() |>
     plot(points = TRUE)
 ```
@@ -1118,7 +1140,7 @@ tobacco.brm3 |>
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |>
+tobacco_brm3 |>
     ggpredict() |>
     plot(show_data = TRUE)
 ```
@@ -1126,7 +1148,7 @@ tobacco.brm3 |>
 ### ggemmeans
 
 ```{r partialPlot2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |>
+tobacco_brm3 |>
     ggemmeans(~TREATMENT) |>
     plot(show_data = TRUE) +
     geom_point(data = tobacco, aes(y = NUMBER, x = as.numeric(TREATMENT)))
@@ -1135,12 +1157,12 @@ tobacco.brm3 |>
 ### fitted_draws
 
 ```{r partialPlot2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-Partial.obs <- tobacco.brm3$data |>
-    mutate(Pred = predict(tobacco.brm3)[,'Estimate'],
-           Resid = resid(tobacco.brm3)[,'Estimate'],
+Partial.obs <- tobacco_brm3$data |>
+    mutate(Pred = predict(tobacco_brm3)[,'Estimate'],
+           Resid = resid(tobacco_brm3)[,'Estimate'],
            Obs = Pred + Resid)
 
-tobacco.brm3 |>
+tobacco_brm3 |>
     fitted_draws(newdata = tobacco) |>
     median_hdci() |>
     ggplot(aes(x = TREATMENT, y = .value)) +
@@ -1151,7 +1173,7 @@ tobacco.brm3 |>
     geom_point(data = tobacco,  aes(y = NUMBER,  x = TREATMENT),
                position = position_nudge(x = 0.05))
 
-tobacco.brm3 |>
+tobacco_brm3 |>
     epred_draws(newdata = tobacco) |>
     ggplot() +
     geom_violin(data = tobacco, aes(y = NUMBER, x = TREATMENT), fill = 'blue', alpha = 0.2) +
@@ -1181,27 +1203,27 @@ The `summary()` method generates simple summaries (mean, standard deviation as
 well as 10, 50 and 90 percentiles).
 	
 ```{r summariseModel2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |> summary()
+tobacco_brm3 |> summary()
 ```
 
 ```{r summariseModel2a1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5, echo=FALSE}
-tobacco.sum <- summary(tobacco.brm3)
+tobacco_sum <- summary(tobacco_brm3)
 ```
 
 **Conclusions:**
 
 - the intercept indicates that the Strong treatment has an average of 
-  `r round(tobacco.sum$fixed[1,1], 2)` lesions.
-- the Weak treatment has `r round(-1*tobacco.sum$fixed[2,1], 2)` fewer lesions. 
+  `r round(tobacco_sum$fixed[1,1], 2)` lesions.
+- the Weak treatment has `r round(-1*tobacco_sum$fixed[2,1], 2)` fewer lesions. 
 - the variance in intercepts across all Leaves is 
-  `r round(tobacco.sum$random[[1]][1,1],2)`
+  `r round(tobacco_sum$random[[1]][1,1],2)`
 - the scale of variance between Leaves is very similar to the variance within Leaves 
-  (sigma, `r round(tobacco.sum$spec_pars[1,1], 2)`).
+  (sigma, `r round(tobacco_sum$spec_pars[1,1], 2)`).
 
 ### summarise_draws
 
 ```{r summariseModel2i2, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |>
+tobacco_brm3 |>
   summarise_draws(
     median,
     ~ HDInterval::hdi(.x),
@@ -1214,7 +1236,7 @@ tobacco.brm3 |>
   )
 
 ## or if you want to exclude some parameters
-tobacco.brm3 |>
+tobacco_brm3 |>
   summarise_draws(
     median,
     ~ HDInterval::hdi(.x),
@@ -1228,8 +1250,8 @@ tobacco.brm3 |>
 ### as_draws_df (posteriors)
 
 ```{r summariseModel2i, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |> as_draws_df()
-tobacco.brm3 |>
+tobacco_brm3 |> as_draws_df()
+tobacco_brm3 |>
   as_draws_df() |>
   dplyr::select(matches("^b_.*|^sigma$|^sd_.*")) |> 
   summarise_draws(
@@ -1242,7 +1264,7 @@ tobacco.brm3 |>
     ess_tail
   )
 ## or if you want to exclude some parameters
-tobacco.brm3 |>
+tobacco_brm3 |>
   as_draws_df() |>
   summarise_draws(
     median,
@@ -1257,13 +1279,13 @@ tobacco.brm3 |>
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3$fit |>
+tobacco_brm3$fit |>
     tidyMCMC(estimate.method = 'median',
              conf.int = TRUE,  conf.method = 'HPDinterval',
              rhat = TRUE, ess = TRUE)
 ```
 ```{r summariseModel2b1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-tobacco.tidy <- tidyMCMC(tobacco.brm3$fit, estimate.method='median',
+tobacco_tidy <- tidyMCMC(tobacco_brm3$fit, estimate.method='median',
                          conf.int=TRUE,  conf.method='HPDinterval',
                          rhat=TRUE, ess=TRUE)
 ```
@@ -1275,20 +1297,20 @@ see above
 ### gather_draws
 
 ```{r summariseModel2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |> get_variables()
-tobacco.draw <- tobacco.brm3 |>
+tobacco_brm3 |> get_variables()
+tobacco_draw <- tobacco_brm3 |>
     gather_draws(`b.Intercept.*|b_TREAT.*|sd_.*|sigma`,  regex=TRUE)
-tobacco.draw
+tobacco_draw
 ```
 
 We can then summarise this
 
 ```{r summariseModel2c1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.draw |> median_hdci()
+tobacco_draw |> median_hdci()
 ```
 
 ```{r summariseModel2c3, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=FALSE}
-tobacco.gather <- tobacco.brm3 |>
+tobacco_gather <- tobacco_brm3 |>
     gather_draws(`b_Intercept.*|b_TREAT.*|sd_.*|sigma`,  regex=TRUE) |>
   median_hdci()
 ```
@@ -1296,7 +1318,7 @@ tobacco.gather <- tobacco.brm3 |>
 ### slab
 
 ```{r summariseModel2c4, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-tobacco.brm3 |>
+tobacco_brm3 |>
     gather_draws(`b_Intercept.*|b_TREAT.*`, regex=TRUE) |> 
     ggplot() +
     geom_vline(xintercept=0, linetype='dashed') +
@@ -1307,13 +1329,13 @@ tobacco.brm3 |>
                            )), color='black') + 
     scale_fill_brewer('Interval', direction = -1, na.translate = FALSE) 
 
-tobacco.brm3 |> 
+tobacco_brm3 |> 
   gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
   stat_halfeye(aes(x=.value,  y=.variable)) +
   facet_wrap(~.variable, scales='free')
 
-tobacco.brm3 |> 
+tobacco_brm3 |> 
   gather_draws(`.Intercept.*|.*TREAT.*`, regex=TRUE) |> 
   ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
@@ -1323,20 +1345,20 @@ tobacco.brm3 |>
 ### bayesplot
 
 ```{r summariseModel2j, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3$fit |> plot(type='intervals') 
+tobacco_brm3$fit |> plot(type='intervals') 
 ```
 
 ### half-eye (ggdist)
 
 ```{r summariseModel2ka, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-tobacco.brm3 |> 
+tobacco_brm3 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
     stat_halfeye(aes(x=.value,  y=.variable)) +
     facet_wrap(~.variable, scales='free')
 
-tobacco.brm3 |> 
+tobacco_brm3 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1347,14 +1369,14 @@ tobacco.brm3 |>
 ### density ridges (ggridges)
 
 ```{r summariseModel2c7, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5,echo=TRUE}
-tobacco.brm3 |> 
+tobacco_brm3 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() +  
     geom_density_ridges(aes(x=.value, y = .variable), alpha=0.4) +
     geom_vline(xintercept = 0, linetype = 'dashed')
 ##Or in colour 
-tobacco.brm3 |> 
+tobacco_brm3 |> 
     gather_draws(`^b_.*`, regex=TRUE) |> 
     filter(.variable != 'b_Intercept') |>
     ggplot() + 
@@ -1372,30 +1394,30 @@ tobacco.brm3 |>
 ### tidy_draws
 
 ```{r summariseModel2d, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |> tidy_draws()
+tobacco_brm3 |> tidy_draws()
 ```
 
 ### spread_draws
 
 ```{r summariseModel2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |> spread_draws(`.*Intercept.*|.*TREAT.*`,  regex=TRUE)
+tobacco_brm3 |> spread_draws(`.*Intercept.*|.*TREAT.*`,  regex=TRUE)
 ```
 
 ### posterior_samples
 ```{r summariseModel2f, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |> posterior_samples() |> as_tibble()
+tobacco_brm3 |> posterior_samples() |> as_tibble()
 ```
 
 ### $R^2$
 
 ```{r summariseModel2g, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |>
+tobacco_brm3 |>
     bayes_R2(re.form = NA, summary=FALSE) |>
     median_hdci()
-tobacco.brm3 |>
+tobacco_brm3 |>
     bayes_R2(re.form = ~(1|LEAF), summary=FALSE) |>
     median_hdci()
-tobacco.brm3 |>
+tobacco_brm3 |>
      bayes_R2(re.form = ~(TREATMENT|LEAF), summary=FALSE) |>
      median_hdci()
 ```
@@ -1407,11 +1429,11 @@ Region of Practical Equivalence
 
 ```{r summariseModel2k, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 0.1 * sd(tobacco$NUMBER)
-tobacco.brm3 |> rope(range = c(-0.65, 0.65))
-rope(tobacco.brm3, range = c(-0.65, 0.65)) |> plot()
+tobacco_brm3 |> rope(range = c(-0.65, 0.65))
+rope(tobacco_brm3, range = c(-0.65, 0.65)) |> plot()
 
 ## Or based on fractional scale
-tobacco.brm3 |> emmeans(~TREATMENT) |>
+tobacco_brm3 |> emmeans(~TREATMENT) |>
     gather_emmeans_draws() |>
     group_by(.draw) |>
     arrange(desc(TREATMENT)) |>
@@ -1427,7 +1449,7 @@ tobacco.brm3 |> emmeans(~TREATMENT) |>
 #| eval: true
 #| echo: true
 #| cache: false
-tobacco.brm3 |> modelsummary(
+tobacco_brm3 |> modelsummary(
   statistic = c("conf.low", "conf.high"),
   shape = term ~ statistic,
   exponentiate = TRUE
@@ -1440,7 +1462,7 @@ tobacco.brm3 |> modelsummary(
 #| eval: true
 #| echo: true
 #| cache: false
-tobacco.brm3 |> modelplot(exponentiate = TRUE)
+tobacco_brm3 |> modelplot(exponentiate = TRUE)
 ```
 ::::
 :::
@@ -1455,7 +1477,7 @@ Express effect as a percentage rather than absolute
 ### Via emmeans
 
 ```{r predictions2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-tobacco.brm3 |> emmeans(~TREATMENT) |>
+tobacco_brm3 |> emmeans(~TREATMENT) |>
     gather_emmeans_draws() |>
     group_by(.draw) |>
     arrange(desc(TREATMENT)) |>
@@ -1469,7 +1491,7 @@ tobacco.brm3 |> emmeans(~TREATMENT) |>
         )
 
 ## Or via gather and pivot
-newdata <- tobacco.brm3 |>
+newdata <- tobacco_brm3 |>
     emmeans(~TREATMENT) |>
     gather_emmeans_draws() |>
     pivot_wider(names_from=TREATMENT,values_from=.value) |>
@@ -1482,13 +1504,13 @@ newdata |>
     dplyr::select(-.chain, -.iteration) |>
     hypothesis('PEff>20')
 
-newdata <- tobacco.brm3 |> emmeans(~TREATMENT) |> as.data.frame()
+newdata <- tobacco_brm3 |> emmeans(~TREATMENT) |> as.data.frame()
 head(newdata)
 ggplot(newdata, aes(y=emmean, x=TREATMENT)) +
     geom_pointrange(aes(ymin=lower.HPD, ymax=upper.HPD)) +
     theme_bw()
 
-tobacco.brm3 |>
+tobacco_brm3 |>
     emmeans(~TREATMENT) |>
     gather_emmeans_draws() |>
     ggplot() +
@@ -1502,7 +1524,7 @@ tobacco.brm3 |>
 
 ```{r predictions2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
 newdat <- tobacco |> tidyr::expand(TREATMENT)
-newdata <- tobacco.brm3 |>
+newdata <- tobacco_brm3 |>
     brms::posterior_epred(newdat, re_formula = NA) |>
     as.data.frame() |>
     rename_with(~as.character(newdat$TREATMENT)) |> 
@@ -1517,14 +1539,14 @@ newdata |> summarise(P = mean(PEff>20))
 ### Via emmeans and pairs
 
 ```{r predictions2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
-newdata <- tobacco.brm3 |>
+newdata <- tobacco_brm3 |>
     emmeans(~TREATMENT) |>
     pairs() |>
     gather_emmeans_draws()
 newdata |> median_hdci()
 
 ## OR on percentage scale
-newdata <- tobacco.brm3 |>
+newdata <- tobacco_brm3 |>
     emmeans(~TREATMENT) |>
     regrid(trans = 'log') |>
     pairs() |>

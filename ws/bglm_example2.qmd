@@ -181,10 +181,12 @@ identity.
 Model formula:
 $$
 \begin{align}
-y_i &\sim{} \mathcal{Bin}(n, p_i)\\
-ln\left(\frac{p_i}{1-p_i}\right) &= \beta_0 + \beta_1 x_i\\
-\beta_0 &\sim{} \mathcal{N}(0,2.5)\\
-\beta_1 &\sim{} \mathcal{N}(0,1)\\
+y_i &\sim{} \mathcal{Bin}(n, \pi_i)\\
+OR \\
+y_i &\sim{} \mathcal{Bernoulli}(\pi_i)\\
+ln\left(\frac{\pi_i}{1-\pi_i}\right) &= \beta_0 + \beta_1 x_i\\
+\beta_0 &\sim{} \mathcal{N}(0, 1)\\
+\beta_1 &\sim{} \mathcal{N}(0, 1)\\
 \end{align}
 $$
 

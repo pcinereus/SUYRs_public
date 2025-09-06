@@ -156,20 +156,41 @@ tobacco <- read_csv("../data/tobacco.csv", trim_ws = TRUE)
 
 # Exploratory data analysis
 
-Model formula:
+::: {.columns}
+:::: {.column width="50%"}
+
+Random intercepts model formula:
 $$
 \begin{align}
 y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
 \mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
-\beta_0 &\sim{} \mathcal{N}(35, 20)\\
+\beta_0 &\sim{} \mathcal{N}(35, 3)\\
 \beta_1 &\sim{} \mathcal{N}(0, 10)\\
-\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
-\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l})\\
-\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
-\sigma_j^2 &\sim{} \mathcal{Cauchy}(0,5)\\
-\sigma^2 &\sim{} Gamma(2,1)\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \sigma^2_l)\\
+\sigma^2_l &\sim{} t(3, 0, 5)\\
+\sigma^2 &\sim{} t(3, 0, 5)\
 \end{align}
 $$
+::::
+:::: {.column width="50%"}
+
+Random intercept/slope model formula:
+$$
+\begin{align}
+y_{i,j} &\sim{} \mathcal{N}(\mu_{i,j}, \sigma^2)\\
+\mu_{i,j} &=\beta_0 + \bf{Z_j}\boldsymbol{\gamma_j} + \bf{X_i}\boldsymbol{\beta} \\
+\beta_0 &\sim{} \mathcal{N}(35, 3)\\
+\beta_1 &\sim{} \mathcal{N}(0, 10)\\
+\boldsymbol{\gamma_j} &\sim{} \mathcal{N}(0, \boldsymbol{\Sigma})\\
+\boldsymbol{\Sigma} &= \boldsymbol{D}({\sigma_l})\boldsymbol{\Omega}\boldsymbol{D}({\sigma_l^2})\\
+\boldsymbol{\Omega} &\sim{} LKJ(\zeta)\\
+\sigma_l^2 &\sim{} \mathcal{t}(3,0,5)\\
+\sigma^2 &\sim{} \mathcal{t}(3, 0, 5)\
+\end{align}
+$$
+::::
+:::
+
 
 where:
 
@@ -191,13 +212,17 @@ where:
   apply a prior on this covariance matrix, so instead, the covariance
   matrix is decomposed into a correlation matrix
   ($\boldsymbol{\Omega}$) and a vector of variances
-  ($\boldsymbol{\sigma_l}$) which are the diagonals ($\boldsymbol{D}$)
+  ($\boldsymbol{\sigma_l^2}$) which are the diagonals ($\boldsymbol{D}$)
   of the covariance matrix.
 - $\boldsymbol{\Omega}$ 
+
 $$
-\gamma \sim{} N(0,\Sigma)\\
-\Sigma -> \Omega, \tau\\
+\begin{align}
+\gamma &\sim{} N(0,\Sigma)\\
+\Sigma &-> \Omega, \tau\\
+\end{align}
 $$
+
 where $\Sigma$ is a covariance matrix.
 
 # Fit the model
