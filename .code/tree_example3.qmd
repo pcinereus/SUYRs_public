@@ -1,0 +1,578 @@
+---
+title: "Regression trees example 1"
+author: "Murray Logan"
+date: today
+date-format: "DD/MM/YYYY"
+format:
+  html:
+    ## Format
+    theme: [default, ../resources/ws-style.scss]
+    css: ../resources/ws_style.css
+    html-math-method: mathjax
+    ## Table of contents
+    toc: true
+    toc-float: true
+    ## Numbering
+    number-sections: true
+    number-depth: 3
+    ## Layout
+    page-layout: full
+    fig-caption-location: "bottom"
+    fig-align: "center"
+    fig-width: 4
+    fig-height: 4
+    fig-dpi: 72
+    tbl-cap-location: top
+    ## Code
+    code-fold: false
+    code-tools: true
+    code-summary: "Show the code"
+    code-line-numbers: true
+    code-block-border-left: "#ccc"
+    code-copy: true
+    highlight-style: atom-one
+    ## Execution
+    execute:
+      echo: true
+      cache: true
+    ## Rendering
+    embed-resources: true
+crossref:
+  fig-title: '**Figure**'
+  fig-labels: arabic
+  tbl-title: '**Table**'
+  tbl-labels: arabic
+engine: knitr
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+bibliography: ../resources/references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(cache = TRUE, cache.lazy = FALSE, tidy='styler')
+```
+
+# Preparations
+
+Load the necessary libraries
+
+```{r}
+#| label: libraries
+#| output: false
+#| eval: true
+#| warning: false
+#| message: false
+#| cache: false
+
+library(gbm)         #for gradient boosted models
+## library(gbm3)         #for gradient boosted models
+library(car)
+library(pdp)
+library(ggfortify)
+library(randomForest)
+library(tidyverse)
+library(patchwork)
+```
+
+
+# Scenario
+@newman-2015 sought to investigate the relative importance of reef habitat
+complexity and structural components of the benthos to the total
+richness of fish species in Caribbean reefs. To do so, they recorded
+they surveyed fish and benthos from one hundred 25m^2 plots within
+three marine reserves. Plots were haphazardly selected within three
+Countries (St Vincent and the Grenadines, Puerto Rico and Bonaire) and
+to represent a range of structural and complexity conditions which
+comprised:
+
+- the number of corals
+- the number of tall corals
+- slope angle
+- maximum sponge height
+- maximum octocoral height
+- reef complexity
+
+
+Format of newman.csv data file
+
+| total_rich | Reef_complexity | No_tall_corals | No_corals | Sponge_max_height | Octocoral_max_height | Slope_angle | Country |
+|------------|-----------------|----------------|-----------|-------------------|----------------------|-------------|---------|
+|            |                 |                |           |                   |                      |             |         |
+| 25         | 1               | 0              | 14        | 5                 | 13                   | 0           | SVG     |
+| 39         | 1               | 0              | 17        | 6                 | 24                   | 0           | SVG     |
+| 52         | 1               | 0              | 28        | 12                | 15                   | 0           | SVG     |
+| 42         | 1               | 0              | 17        | 11                | 121                  | 5           | SVG     |
+| 51         | 1               | 0              | 23        | 13                | 27                   | 5           | SVG     |
+| 51         | 1               | 0              | 21        | 38                | 18                   | 0           | SVG     |
+| 49         | 1               | 0              | 22        | 31                | 91                   | 5           | SVG     |
+| 50         | 1               | 0              | 12        | 14                | 47                   | 5           | SVG     |
+| 51         | 1               | 1              | 20        | 34                | 29                   | 0           | SVG     |
+| 52         | 2               | 2              | 114       | 0                 | 0                    | 25          | SVG     |
+
+
+
+# Read in the data
+
+```{r readData, results='markdown', eval=TRUE}
+newman <- read_csv('../data/newman.csv', trim_ws=TRUE)
+glimpse(newman)
+```
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+## glimpse
+```{r}
+#| label: examinData
+#| dependson: readData
+
+newman |> glimpse()
+```
+
+## head
+```{r}
+#| label: headData
+#| dependson: readData
+## Explore the first 6 rows of the data
+newman |> head()
+```
+
+## str
+```{r}
+#| label: strData
+#| dependson: readData
+newman |> str()
+```
+
+## Easystats (datawizard)
+
+```{r}
+#| label: easyData
+#| dependson: readData
+newman |> datawizard::data_codebook()
+```
+:::
+
+<!-- END_PRIVATE-->
+
+# Exploratory data analysis
+
+<!-- START_PRIVATE-->
+
+```{r}
+#| label: process data
+#| results: markup
+#| eval: true
+#| echo: true
+#| cache: false
+names(newman) <- str_replace_all(names(newman), " ", "_")
+newman <- newman |>
+  mutate(
+    fCountry = factor(Country),
+    nCountry = as.numeric(fCountry),
+    fReef_complexity = factor(Reef_complexity)
+  )
+```
+
+
+
+::: {.panel-tabset}
+## Scatterplot matrix
+
+A scatterplot matrix plots each variable against each other.  It is useful to
+provide boxplots in the diagonals to help explore the distributions.
+
+
+```{r EDA, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=8}
+#| dependson: readData
+scatterplotMatrix(~total_rich + Reef_complexity + No_tall_corals +
+                    No_corals + Sponge_max_height + Octocoral_max_height +
+                    Slope_angle + nCountry, data = newman,
+                    diagonal = list(method='boxplot'))
+```
+
+**Conclusions:**
+
+- on the top row, total_rich is on the y-axis of each plot
+- the second plot from the top left has Reef_complexity on the x-axis
+- we mainly want to pay attention to the polarity of any trends to use
+  for monotonic specifications
+
+:::
+
+
+<!-- END_PRIVATE-->
+
+# Fit the model
+
+<!-- START_PRIVATE-->
+::: {.panel-tabset}
+
+Now we will specify the gradient boosted model with:
+
+- Poisson distribution.  This is not the same as the usual 'family'.  It does
+  not directly nominate a modelling family.  Instead it determines the **loss**
+  function that is used to evaluate the tree splits.
+- **var.monotone**: indicates which of the predictors should be constrained to
+  monotonic trends (0: not monotonic, 1: positive monotonic, -1: negative
+  monotonic)
+- **n.trees**: the total number of trees to sequentially fit
+- **interaction.depth**: the number of splits within each tree.  This roughly
+  equates to the order of interactions.  The higher the number, the more complex
+  the interactions can be, however, the faster the potential rate of learning
+- **bag.fraction**: random fraction of data used to fit a single tree
+- **shrinkage**: rate of learning.  The smaller the value, the slower the
+  learning rate.  Typically, values should be between 0.001 and 0.01.
+- **train.fraction**: the proportion of the data used to train the tree. This is
+  for the purpose of determining the balance between over and underfitting and
+  evaluate the accuracy of the fit, however for the former purpose, this is a
+  cruder approach than either out-of-bag or cross validation. Therefore, it is
+  arguably better to set this fraction to 1 (use 100 percent of the data for
+  training) and use either out-of-bag or cross validation and (as we have done
+  here), withhold a fraction of the full data and perform our own accuracy
+  checking.
+- **cv.folds**: the number of cross validation folds.
+
+The values of `n.trees`, `interaction.depth` and `shrinkage` used below are
+purely based on what are typically good starting points.  Nevertheless, they
+will be data set dependent.  We will start off with those values and then evaluate
+whether they are appropriate.
+
+## Fit model
+
+```{r fitModel1, results='hide', eval=TRUE, mhidden=TRUE, cache=TRUE}
+newman_gbm <- gbm(fish_rich ~ fReef_complexity +
+                   No_tall_corals +
+                   No_corals +
+                   Sponge_max_height +
+                   Octocoral_max_height +
+                   Slope_angle +
+                  fCountry,
+  data = newman,
+  distribution = "poisson",
+  n.trees = 10000,
+  var.monotone = c(0, 1, 1, 1, 0, 1, 0),
+  interaction.depth = 5,
+  shrinkage = 0.001,
+  bag.fraction = 0.5,
+  train.fraction = 1,
+  n.minobsinnode = 10,
+  verbose = FALSE,
+  cv.folds = 10,
+  n.cores = 1
+)
+```
+
+## Determine optimum number of trees
+
+We will now determine the optimum number of trees estimated to be required in
+order to achieve a balance between bias (biased towards the exact observations)
+and precision (variability in estimates). Ideally, the optimum number of trees
+should be close to 1000. If it is much less (as in this case), it could imply
+that the tree learned too quickly. On the other hand, if the optimum number of
+trees is very close to the total number of fitted trees, then it suggests that
+the optimum may not actually have occured yet and that more trees should be used
+(or a faster learning rate).
+
+```{r fitModel2, results='markdown', eval=TRUE, mhidden=TRUE}
+(best.iter <- gbm::gbm.perf(newman_gbm, method='OOB'))
+(best.iter <- gbm::gbm.perf(newman_gbm, method = 'cv'))
+#OR
+#(best_iter <- gbm3::gbmt_performance(newman_gbm, method = "cv"))
+#plot(best_iter)
+```
+
+:::
+
+
+<!-- END_PRIVATE-->
+
+# Explore relative influence
+
+<!-- START_PRIVATE-->
+
+If a predictor is an important driver of the patterns in the response, then many
+of the tree splits should feature this predictor.  It thus follows that the
+number of proportion of total splits that features each predictor will be a
+measure of the relative influence of each of the predictors.
+
+```{r relativeInfluence1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=10}
+#| dependson: fitModel3
+summary(newman_gbm, n.trees = best.iter)
+## summary(newman_gbm, num_trees = best.iter)
+100 / 7
+
+```
+
+**Conclusions:**
+
+- the most influential predictor is Country.  This is a categorical
+  predictor that is going to act as a proxy for all the various
+  characteristics that differ between the different countries.  Corals
+  do not respond directly to countries, rather they are likely to be
+  responding to the underlying differences in characteristics.
+- as a categorical predictor (and one that is going to be a proxy for
+  a large number of characteristics), Country will outcompete the
+  individual characteristics
+- if we want to explore the relative impact of the characteristics,
+  then we need to exclude Country.
+
+
+```{r fitModel2a, results='hide', eval=TRUE, mhidden=TRUE, cache=TRUE}
+newman_gbm <- gbm(fish_rich ~ fReef_complexity +
+                   No_tall_corals +
+                   No_corals +
+                   Sponge_max_height +
+                   Octocoral_max_height +
+                   Slope_angle,
+  data = newman,
+  distribution = "poisson",
+  n.trees = 10000,
+  var.monotone = c(0, 1, 1, 1, 0, 1),
+  interaction.depth = 5,
+  shrinkage = 0.001,
+  bag.fraction = 0.5,
+  train.fraction = 1,
+  n.minobsinnode = 10,
+  verbose = FALSE,
+  cv.folds = 10,
+  n.cores = 1
+)
+```
+
+```{r fitModel2b, results='markdown', eval=TRUE, mhidden=TRUE}
+(best.iter <- gbm::gbm.perf(newman_gbm, method='OOB'))
+(best.iter <- gbm::gbm.perf(newman_gbm, method = 'cv'))
+#OR
+#(best_iter <- gbm3::gbmt_performance(newman_gbm, method = "cv"))
+#plot(best_iter)
+```
+
+```{r relativeInfluence1b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=7, fig.height=10}
+#| dependson: fitModel3
+summary(newman_gbm, n.trees = best.iter)
+100 / 6
+
+```
+
+
+
+
+<!-- END_PRIVATE-->
+
+# Explore partial effects
+
+<!-- START_PRIVATE-->
+
+::: {.panel-tabset}
+
+## Autoplot
+
+```{r partialEffects1, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=4, fig.height=4}
+#| dependson: fitModel3
+
+attr(newman_gbm$Terms,"term.labels")
+
+interact.gbm(newman_gbm, newman, c(1,5), n.tree=best.iter)
+
+attr(newman_gbm$Terms,"term.labels")
+plot(newman_gbm, 5, n.tree = best.iter)
+plot(newman_gbm, 1, n.tree = best.iter, log = 'x')
+## plot(newman_gbm, 7, num.tree = best.iter)
+## plot(newman_gbm, 1, num.tree = best.iter, log = 'x')
+newman_gbm |>
+    pdp::partial(pred.var='fReef_complexity',
+                 n.trees = best.iter,
+                 type = "regression",
+                 recursive = FALSE,
+                 ice = TRUE,
+                 inv.link = exp) |>
+  autoplot()
+## newman_gbm |>
+##     pdp::partial(pred.var='fCountry',
+##                  n.trees = best.iter,
+##                  type = "regression",
+##                  recursive = FALSE,
+##                  ice = TRUE,
+##                  inv.link = exp) |>
+##   autoplot()
+
+newman_gbm |>
+    pdp::partial(pred.var='Octocoral_max_height',
+                 n.trees = best.iter,
+                 type = "regression",
+                 recursive = FALSE,
+                 ice = TRUE,
+                 inv.link = exp) |>
+  autoplot()
+```
+
+:::
+<!-- END_PRIVATE-->
+
+# Bootstrapping
+
+<!-- START_PRIVATE-->
+```{r bootstrapping, results='markdown', eval=TRUE, mhidden=TRUE, fig.width = 7, fig.height = 5}
+
+## define a function that resamples the data
+resample_data <- function(dat) {
+  dat <- dat |> sample_n(size = n(), replace = TRUE)
+  return(dat)
+}
+
+fit_tree <- function(dat) {
+  mod_gbm <- gbm(fish_rich ~ fReef_complexity +
+                      No_tall_corals +
+                      No_corals +
+                      Sponge_max_height +
+                      Octocoral_max_height +
+                      Slope_angle,
+                      ## fCountry,
+                      data = dat,
+                      distribution = "poisson",
+                      n.trees = 10000,
+                      var.monotone = c(0, 1, 1, 1, 0, 1),
+                      interaction.depth = 5,
+                      shrinkage = 0.001,
+                      bag.fraction = 0.5,
+                      train.fraction = 1,
+                      n.minobsinnode = 10,
+                      verbose = FALSE,
+                      cv.folds = 10,
+                      n.cores = 1
+  )
+  return(mod_gbm)
+}
+
+## newdata <- with(newman,
+##   expand.grid(
+##     Octocoral_max_height = seq(min(Octocoral_max_height), max(Octocoral_max_height), len = 100),
+##     fCountry = levels(fCountry),
+##     fReef_complexity =  NA,
+##     No_tall_corals = NA,
+##     No_corals = NA,
+##     Sponge_max_height =  NA,
+##     Slope_angle = NA)
+## ) |>
+##   mutate(fCountry = factor(fCountry))
+
+newdata <- with(
+  newman,
+  expand.grid(
+    fReef_complexity = levels(fReef_complexity),
+    Octocoral_max_height = seq(min(Octocoral_max_height), max(Octocoral_max_height), len = 100),
+    ## fCountry = levels(fCountry),
+    No_tall_corals = NA,
+    No_corals = NA,
+    Sponge_max_height = NA,
+    Slope_angle = NA
+  )
+) |>
+  mutate(
+    ## fCountry = factor(fCountry),
+    fReef_complexity = factor(fReef_complexity))
+
+nBoot <- 10
+pred.list <- vector('list', nBoot)
+rel.inf.list <- vector('list', nBoot)
+
+for (i in 1:nBoot) {
+  print(paste0('Boot number: ', i))
+  ## Resample the data
+  dat <- resample_data(newman)
+  ## Fit the tree
+  mod <- fit_tree(dat)
+  ## Determine the best number of trees
+  best.iter <- gbm.perf(mod, method = 'cv')
+  ## predict based on shell weight
+  fit <- predict(mod, newdata = newdata, n.trees = best.iter)
+  pred.list[[i]] <- data.frame(newdata, Boot = i, Fit = fit)
+  ## relative influence
+  rel.inf.list[[i]] <- summary(mod, n.trees = best.iter)
+}
+
+newman.fit <- do.call('rbind', pred.list)
+## newman.fit <- newman.fit |>
+##     group_by(Octocoral_max_height, fCountry) |>
+##     ggdist::median_hdci(Fit)
+newman.fit <- newman.fit |>
+    group_by(fReef_complexity, Octocoral_max_height) |>
+    tidybayes::median_hdci(Fit)
+
+## g1 <-
+##   newman.fit |> ggplot(aes(y=Fit, x = Octocoral_max_height,
+##   fill = fCountry, colour = fCountry)) +
+##   geom_ribbon(aes(ymin=.lower, ymax=.upper), alpha=0.3, color=NA) +
+##   geom_line() +
+##   scale_fill_viridis_d() +
+##   scale_colour_viridis_d() +
+##   scale_x_log10() +
+##   theme_classic()
+g1 <-
+  newman.fit |>
+  ggplot(aes(y=Fit, x = Octocoral_max_height, color = fReef_complexity)) +
+  ## fill = fCountry, colour = fCountry)) +
+  geom_ribbon(aes(ymin =.lower, ymax =.upper, fill = fReef_complexity),
+    colour = NA, alpha = 0.3) +
+  geom_line() +
+  scale_colour_viridis_d("Reef\ncomplexity") +
+  scale_fill_viridis_d("Reef\ncomplexity") +
+  theme_classic()
+
+rel.inf<- do.call('rbind', rel.inf.list)
+rel.inf <- rel.inf |>
+    group_by(var) |>
+    tidybayes::median_hdci(rel.inf)
+
+g2 <-
+  rel.inf |>
+  arrange(rel.inf) |>
+  mutate(var =  factor(var, levels = unique(var))) |>
+  ggplot(aes(y=var, x=rel.inf)) +
+    geom_vline(xintercept=12.5, linetype='dashed') +
+    geom_pointrange(aes(xmin=.lower, xmax=.upper)) +
+    theme_classic()
+
+g2 + patchwork::inset_element(g1, left=0.4, bottom=0.01, right=1, top=0.4)
+g1 + patchwork::inset_element(g2, left=0.01, bottom=0.01, right=0.5, top=0.35)
+```
+
+```{r}
+library(randomForest)
+newman.rf <- randomForest(
+  fish_rich ~ fReef_complexity +
+                      No_tall_corals +
+                      No_corals +
+                      Sponge_max_height +
+                      Octocoral_max_height +
+                      Slope_angle,
+                      ## fCountry,
+                       data=newman, importance=TRUE,
+                       ntree=1000)
+newman.imp <- randomForest::importance(newman.rf)
+
+
+## Rank by either:
+## *MSE (mean decrease in accuracy)
+## For each tree, calculate OOB prediction error.
+## This also done after permuting predictors.
+## Then average diff of prediction errors for each tree
+## *NodePurity (mean decrease in node impurity)
+## Measure of the total decline of impurity due to each
+## predictor averaged over trees
+100*newman.imp/sum(newman.imp)
+varImpPlot(newman.rf)
+## use brute force
+newman.rf |>
+    pdp::partial("No_tall_corals") |>
+    autoplot()
+```
