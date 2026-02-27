@@ -15,32 +15,34 @@ options(tinytex.engine = "xelatex")
 #| message: false
 #| cache: false
 
-library(tidyverse)     #for data wrangling etc
-library(rstanarm)      #for fitting models in STAN
-library(cmdstanr)      #for cmdstan
-library(brms)          #for fitting models in STAN
-library(standist)      #for exploring distributions
-library(coda)          #for diagnostics
-library(bayesplot)     #for diagnostics
-library(ggmcmc)        #for MCMC diagnostics
-library(DHARMa)        #for residual diagnostics
-library(rstan)         #for interfacing with STAN
-library(emmeans)       #for marginal means etc
-library(broom)         #for tidying outputs
-library(tidybayes)     #for more tidying outputs
-library(HDInterval)    #for HPD intervals
-library(ggeffects)     #for partial plots
-library(broom.mixed)   #for summarising models
-library(posterior)     #for posterior draws
-library(ggeffects)     #for partial effects plots
-library(patchwork)     #for multi-panel figures
-library(bayestestR)    #for ROPE
-library(see)           #for some plots
-library(easystats)     #framework for stats, modelling and visualisation
-library(INLA)          #for approximate Bayes
-library(INLAutils)     #for additional INLA outputs
-library(modelsummary)  #for data and model summaries
-theme_set(theme_grey()) #put the default ggplot theme back
+library(tidyverse)       #for data wrangling etc
+library(rstanarm)        #for fitting models in STAN
+library(cmdstanr)        #for cmdstan
+library(brms)            #for fitting models in STAN
+library(standist)        #for exploring distributions
+library(coda)            #for diagnostics
+library(bayesplot)       #for diagnostics
+library(ggmcmc)          #for MCMC diagnostics
+library(DHARMa)          #for residual diagnostics
+library(rstan)           #for interfacing with STAN
+library(emmeans)         #for marginal means etc
+library(broom)           #for tidying outputs
+library(tidybayes)       #for more tidying outputs
+library(HDInterval)      #for HPD intervals
+library(ggeffects)       #for partial plots
+library(broom.mixed)     #for summarising models
+library(posterior)       #for posterior draws
+library(ggeffects)       #for partial effects plots
+library(patchwork)       #for multi-panel figures
+library(bayestestR)      #for ROPE
+library(see)             #for some plots
+library(easystats)       #framework for stats, modelling and visualisation
+library(INLA)            #for approximate Bayes
+library(INLAutils)       #for additional INLA outputs
+library(modelsummary)    #for data and model summaries
+library(marginaleffects) #for partial effect plots
+library(tinytable)       #for tidy tables
+theme_set(theme_grey())  #put the default ggplot theme back
 source('helperFunctions.R')
 bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 
@@ -70,6 +72,31 @@ fert |> datawizard::data_codebook()
 
 ## -----------------------------------------------------------------------------
 fert |> modelsummary::datasummary_skim()
+
+
+## -----------------------------------------------------------------------------
+#| label: tbl-data
+#| tbl-cap: Yield of grass conditional on fertiliser concentration.
+fert |>
+    tt()
+
+
+## -----------------------------------------------------------------------------
+fert |>
+    tt()
+
+
+## -----------------------------------------------------------------------------
+#| label: tbl-data3
+#| tbl-cap: Yield of grass conditional on fertiliser concentration.
+plot_data <- list(fert$FERTILIZER, fert$YIELD)
+dat <- data.frame(
+  Variables = colnames(fert),
+  Histogram = ""
+)
+dat |>
+    tt() |>
+    plot_tt(j = 2, fun = "histogram", data = plot_data)
 
 
 ## -----------------------------------------------------------------------------
@@ -277,13 +304,17 @@ fert_brm1 |> ggemmeans(~FERTILIZER) |> plot(show_data=TRUE)
 fert_brm1 |> conditional_effects() |>  plot(points=TRUE)
 
 
+## ----fitModel2e4, results='markdown', eval=TRUE, mhidden=TRUE-----------------
+fert_brm1 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
+
+
 ## ----priors, results='markdown', eval=TRUE------------------------------------
 standist::visualize("normal(164, 90)", xlim = c(-100, 500))
 
 standist::visualize("normal(0, 90)", xlim = c(-400, 400))
 
 standist::visualize("student_t(3, 0, 90)",
-                    "normal(0, 90)",
                     "gamma(2, 0.1)",
                     xlim = c(0, 400))
 
@@ -323,6 +354,11 @@ fert_brm2 |>
     plot(points = TRUE)
 
 
+## ----fitModel2i4, results='markdown', eval=TRUE, mhidden=TRUE-----------------
+fert_brm2 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
+
+
 ## ----fitModel2j, results='markdown', eval=TRUE, mhidden=TRUE, cache=TRUE------
 fert_brm3 <- update(fert_brm2, sample_prior = 'yes', refresh = 0)
 #OR
@@ -358,6 +394,11 @@ fert_brm3 |>
 fert_brm3 |>
     conditional_effects() |>
     plot(points = TRUE)
+
+
+## ----fitModel2k4, results='markdown', eval=TRUE, mhidden=TRUE-----------------
+fert_brm3 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
 
 
 ## ----posterior2, results='markdown', eval=TRUE--------------------------------
@@ -867,6 +908,11 @@ fert_brm3 |>
     plot(points = TRUE)
 
 
+## ----partialPlot2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----
+fert_brm3 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
+
+
 ## ----partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----
 fert_brm3 |> ggpredict() |> plot(show_data=TRUE)
 
@@ -1046,6 +1092,12 @@ fert_brm3 |> summary()
 fert.sum <- summary(fert_brm3)
 
 
+## ----summariseModel2aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----
+fert_brm3 |>
+  parameters::model_parameters() |>
+  tt()
+
+
 ## ----summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----
 fert_brm3$fit |>
     tidyMCMC(estimate.method = 'median',
@@ -1204,6 +1256,11 @@ fert_brm3 |> modelsummary(
 #| echo: true
 #| cache: false
 fert_brm3 |> modelplot()
+
+
+## ----summariseModel2az, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----
+fert_brm3 |>
+  avg_slopes()
 
 
 ## ----summariseModel3a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----
@@ -1398,6 +1455,13 @@ fert_brm3 |>
       HDInterval::hdi,
       Pg = ~ mean(.x > 120)
     )
+
+
+## ----predictions2cd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----
+fert_brm3 |> marginaleffects::predictions(newdata)
+dg <- datagrid(model = fert_brm3, FERTILIZER = 110)
+fert_brm3 |> marginaleffects::predictions(newdata = dg)     #conditional
+fert_brm3 |> marginaleffects::avg_predictions(newdata = dg) #marginal
 
 
 ## ----predictions2c, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5----

@@ -75,26 +75,28 @@ Load the necessary libraries
 #| message: false
 #| cache: false
 
-library(tidyverse)     #for data wrangling etc
-library(cmdstanr)      #for cmdstan
-library(brms)          #for fitting models in STAN
-library(standist)      #for exploring distributions
-library(coda)          #for diagnostics
-library(bayesplot)     #for diagnostics
-library(DHARMa)        #for residual diagnostics
-library(rstan)         #for interfacing with STAN
-library(emmeans)       #for marginal means etc
-library(broom)         #for tidying outputs
-library(tidybayes)     #for more tidying outputs
-library(HDInterval)    #for HPD intervals
-library(ggeffects)     #for partial plots
-library(broom.mixed)   #for summarising models
-library(posterior)     #for posterior draws
-library(ggeffects)     #for partial effects plots
-library(patchwork)     #for multi-panel figures
-library(bayestestR)    #for ROPE
-library(easystats)     #framework for stats, modelling and visualisation
-theme_set(theme_grey()) #put the default ggplot theme back
+library(tidyverse)       #for data wrangling etc
+library(cmdstanr)        #for cmdstan
+library(brms)            #for fitting models in STAN
+library(standist)        #for exploring distributions
+library(coda)            #for diagnostics
+library(bayesplot)       #for diagnostics
+library(DHARMa)          #for residual diagnostics
+library(rstan)           #for interfacing with STAN
+library(emmeans)         #for marginal means etc
+library(broom)           #for tidying outputs
+library(tidybayes)       #for more tidying outputs
+library(HDInterval)      #for HPD intervals
+library(ggeffects)       #for partial plots
+library(broom.mixed)     #for summarising models
+library(posterior)       #for posterior draws
+library(ggeffects)       #for partial effects plots
+library(patchwork)       #for multi-panel figures
+library(bayestestR)      #for ROPE
+library(easystats)       #framework for stats, modelling and visualisation
+library(marginaleffects) #for partial effect plots
+library(tinytable)       #for tidy tables
+theme_set(theme_grey())  #put the default ggplot theme back
 source('helperFunctions.R')
 bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 ```
@@ -184,6 +186,51 @@ fert |> datawizard::data_codebook()
 ```{r}
 fert |> modelsummary::datasummary_skim()
 ```
+
+## tinytable
+
+https://vincentarelbundock.github.io/tinytable/
+
+```{r}
+#| label: tbl-data
+#| tbl-cap: Yield of grass conditional on fertiliser concentration.
+fert |>
+    tt()
+```
+
+Bla bla @tbl-data
+
+OR with more flexible caption and label
+
+Bla bla @tbl-data2.
+
+::: {#tbl-data2}
+
+```{r}
+fert |>
+    tt()
+```
+
+Yield of grass conditional on fertiliser concentration.
+
+:::
+
+
+OR with sparklines
+
+```{r}
+#| label: tbl-data3
+#| tbl-cap: Yield of grass conditional on fertiliser concentration.
+plot_data <- list(fert$FERTILIZER, fert$YIELD)
+dat <- data.frame(
+  Variables = colnames(fert),
+  Histogram = ""
+)
+dat |>
+    tt() |>
+    plot_tt(j = 2, fun = "histogram", data = plot_data)
+```
+
 
 :::
 # Exploratory data analysis

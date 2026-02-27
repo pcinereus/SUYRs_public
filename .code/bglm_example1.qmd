@@ -75,32 +75,34 @@ Load the necessary libraries
 #| message: false
 #| cache: false
 
-library(tidyverse)     #for data wrangling etc
-library(rstanarm)      #for fitting models in STAN
-library(cmdstanr)      #for cmdstan
-library(brms)          #for fitting models in STAN
-library(standist)      #for exploring distributions
-library(coda)          #for diagnostics
-library(bayesplot)     #for diagnostics
-library(ggmcmc)        #for MCMC diagnostics
-library(DHARMa)        #for residual diagnostics
-library(rstan)         #for interfacing with STAN
-library(emmeans)       #for marginal means etc
-library(broom)         #for tidying outputs
-library(tidybayes)     #for more tidying outputs
-library(HDInterval)    #for HPD intervals
-library(ggeffects)     #for partial plots
-library(broom.mixed)   #for summarising models
-library(posterior)     #for posterior draws
-library(ggeffects)     #for partial effects plots
-library(patchwork)     #for multi-panel figures
-library(bayestestR)    #for ROPE
-library(see)           #for some plots
-library(easystats)     #framework for stats, modelling and visualisation
-library(INLA)          #for approximate Bayes
-library(INLAutils)     #for additional INLA outputs
-library(modelsummary)  #for data and model summaries
-theme_set(theme_grey()) #put the default ggplot theme back
+library(tidyverse)       #for data wrangling etc
+library(rstanarm)        #for fitting models in STAN
+library(cmdstanr)        #for cmdstan
+library(brms)            #for fitting models in STAN
+library(standist)        #for exploring distributions
+library(coda)            #for diagnostics
+library(bayesplot)       #for diagnostics
+library(ggmcmc)          #for MCMC diagnostics
+library(DHARMa)          #for residual diagnostics
+library(rstan)           #for interfacing with STAN
+library(emmeans)         #for marginal means etc
+library(broom)           #for tidying outputs
+library(tidybayes)       #for more tidying outputs
+library(HDInterval)      #for HPD intervals
+library(ggeffects)       #for partial plots
+library(broom.mixed)     #for summarising models
+library(posterior)       #for posterior draws
+library(ggeffects)       #for partial effects plots
+library(patchwork)       #for multi-panel figures
+library(bayestestR)      #for ROPE
+library(see)             #for some plots
+library(easystats)       #framework for stats, modelling and visualisation
+library(INLA)            #for approximate Bayes
+library(INLAutils)       #for additional INLA outputs
+library(modelsummary)    #for data and model summaries
+library(marginaleffects) #for partial effect plots
+library(tinytable)       #for tidy tables
+theme_set(theme_grey())  #put the default ggplot theme back
 source('helperFunctions.R')
 bayesplot_theme_set(theme_bw(base_size = 8, base_family = "sans"))
 ```
@@ -199,6 +201,51 @@ fert |> datawizard::data_codebook()
 ```{r}
 fert |> modelsummary::datasummary_skim()
 ```
+
+## tinytable
+
+https://vincentarelbundock.github.io/tinytable/
+
+```{r}
+#| label: tbl-data
+#| tbl-cap: Yield of grass conditional on fertiliser concentration.
+fert |>
+    tt()
+```
+
+Bla bla @tbl-data
+
+OR with more flexible caption and label
+
+Bla bla @tbl-data2.
+
+::: {#tbl-data2}
+
+```{r}
+fert |>
+    tt()
+```
+
+Yield of grass conditional on fertiliser concentration.
+
+:::
+
+
+OR with sparklines
+
+```{r}
+#| label: tbl-data3
+#| tbl-cap: Yield of grass conditional on fertiliser concentration.
+plot_data <- list(fert$FERTILIZER, fert$YIELD)
+dat <- data.frame(
+  Variables = colnames(fert),
+  Histogram = ""
+)
+dat |>
+    tt() |>
+    plot_tt(j = 2, fun = "histogram", data = plot_data)
+```
+
 
 :::
 # Exploratory data analysis
@@ -927,6 +974,21 @@ fert_brm1 |> conditional_effects() |>  plot(points=TRUE)
 - nevertheless, negative yields are considered possible, even though these are
   clearly not logical.
 
+#### plot_predictions
+
+```{r fitModel2e4, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_brm1 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is fairly wide and the slope could range
+  from strongly negative to strongly positive.
+- at the same time, massive yields are not supported, so there is some
+  constraints on the parameters space
+- nevertheless, negative yields are considered possible, even though these are
+  clearly not logical.
 :::::
 
 ### Defining priors
@@ -955,7 +1017,6 @@ standist::visualize("normal(164, 90)", xlim = c(-100, 500))
 standist::visualize("normal(0, 90)", xlim = c(-400, 400))
 
 standist::visualize("student_t(3, 0, 90)",
-                    "normal(0, 90)",
                     "gamma(2, 0.1)",
                     xlim = c(0, 400))
 ```
@@ -1010,6 +1071,30 @@ fert_brm2 |>
     plot(points = TRUE)
 ```
 
+**Conclusions:**
+
+- we see that the range of predictions is fairly wide and the slope could range
+  from strongly negative to strongly positive.
+- at the same time, massive yields are not supported, so there is some
+  constraints on the parameters space
+- nevertheless, negative yields are considered possible, even though these are
+  clearly not logical.
+
+##### plot_predictions
+
+```{r fitModel2i4, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_brm2 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
+```
+
+**Conclusions:**
+
+- we see that the range of predictions is fairly wide and the slope could range
+  from strongly negative to strongly positive.
+- at the same time, massive yields are not supported, so there is some
+  constraints on the parameters space
+- nevertheless, negative yields are considered possible, even though these are
+  clearly not logical.
 ::::::
 
 #### Sample prior and posterior
@@ -1058,6 +1143,13 @@ fert_brm3 |>
 fert_brm3 |>
     conditional_effects() |>
     plot(points = TRUE)
+```
+
+##### plot_predictions
+
+```{r fitModel2k4, results='markdown', eval=TRUE, mhidden=TRUE}
+fert_brm3 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
 ```
 
 ::::::
@@ -2343,6 +2435,14 @@ fert_brm3 |>
     plot(points = TRUE)
 ```
 
+### plot_predictions
+
+```{r partialPlot2e, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert_brm3 |>
+  marginaleffects::plot_predictions(condition = "FERTILIZER", points = 1)
+```
+
+
 ### ggpredict
 
 ```{r partialPlot2a, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
@@ -2773,6 +2873,16 @@ fert.sum <- summary(fert_brm3)
 - Rhat and number of effective samples for each parameter are also provided as
   MCMC diagnostics and all look good.
 
+
+### model_parameters
+
+```{r summariseModel2aa, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert_brm3 |>
+  parameters::model_parameters() |>
+  tt()
+```
+
+
 ### tidyMCMC
 
 ```{r summariseModel2b, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
@@ -3005,6 +3115,13 @@ fert_brm3 |> modelsummary(
 fert_brm3 |> modelplot()
 ```
 
+### model_parameters
+
+```{r summariseModel2az, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert_brm3 |>
+  avg_slopes()
+```
+
 ::::
 
 ## INLA
@@ -3213,18 +3330,18 @@ So while fitted values represent the expected underlying processes occurring in
 the system, predicted values represent our expectations from sampling from such
 processes.
 
-| Package         | Function              | Description                                                                                                | Summarise with  |
-| ---             | ---                   | ------                                                                                                     | ---             |
-| `rstantools`    | `posterior_predict`   | Draw from the posterior of a prediction (includes sigma) - _predicts single observations_                  | `tidyMCMC()`    |
-| `rstantools`    | `posterior_linpred`   | Draw from the posterior of the fitted values (**on the link scale**) - _predicts average observations_     | `tidyMCMC()`    |
-| `rstantools`    | `posterior_epred`     | Draw from the posterior of the fitted values (**on the response scale**) - _predicts average observations_ | `tidyMCMC()`    |
-| `tidybayes`     | `predicted_draws`     | Extract the posterior of _prediction_ values                                                               | `median_hdci()` |
-| `tidybayes`     | `epred_draws`         | Extract the posterior of _expected_ values                                                                 | `median_hdci()` |
-| ~~`tidybayes`~~ | ~~`fitted_draws`~~    | ~~Extract the posterior of _fitted_ values~~                                                               | `median_hdci()` |
-| `tidybayes`     | `add_predicted_draws` | Adds draws from the posterior of _predictions_ to a data frame (of prediction data)                        | `median_hdci()` |
-| `tidybayes`     | `add_fitted_draws`    | Adds draws from the posterior of _fitted_ values to a data frame (of prediction data)                      | `median_hdci()` |
-| `emmeans`       | `emmeans`             | Estimated marginal means from which posteriors can be drawn (via `tidy_draws`                              | `median_hdci()` |
-|                 |                       |                                                                                                            |                 |
+| Package           | Function              | Description                                                                                                | Summarise with  |
+|-------------------|-----------------------|------------------------------------------------------------------------------------------------------------|-----------------|
+| `rstantools`      | `posterior_predict`   | Draw from the posterior of a prediction (includes sigma) - _predicts single observations_                  | `tidyMCMC()`    |
+| `rstantools`      | `posterior_linpred`   | Draw from the posterior of the fitted values (**on the link scale**) - _predicts average observations_     | `tidyMCMC()`    |
+| `rstantools`      | `posterior_epred`     | Draw from the posterior of the fitted values (**on the response scale**) - _predicts average observations_ | `tidyMCMC()`    |
+| `tidybayes`       | `predicted_draws`     | Extract the posterior of _prediction_ values                                                               | `median_hdci()` |
+| `tidybayes`       | `epred_draws`         | Extract the posterior of _expected_ values                                                                 | `median_hdci()` |
+| ~~`tidybayes`~~   | ~~`fitted_draws`~~    | ~~Extract the posterior of _fitted_ values~~                                                               | `median_hdci()` |
+| `tidybayes`       | `add_predicted_draws` | Adds draws from the posterior of _predictions_ to a data frame (of prediction data)                        | `median_hdci()` |
+| `tidybayes`       | `add_fitted_draws`    | Adds draws from the posterior of _fitted_ values to a data frame (of prediction data)                      | `median_hdci()` |
+| `emmeans`         | `emmeans`             | Estimated marginal means from which posteriors can be drawn (via `tidy_draws`                              | `median_hdci()` |
+| `marginaleffects` | 'predictions`         | Estimated marginal effects                                                                                 | `median_hdci()`                |
 
 For simple models prediction is essentially taking the model formula complete
 with parameter (coefficient) estimates and solving for new values of the
@@ -3351,6 +3468,16 @@ fert_brm3 |>
       HDInterval::hdi,
       Pg = ~ mean(.x > 120)
     )
+```
+
+
+### predictions
+
+```{r predictions2cd, results='markdown', eval=TRUE, mhidden=TRUE, fig.width=8, fig.height=5}
+fert_brm3 |> marginaleffects::predictions(newdata)
+dg <- datagrid(model = fert_brm3, FERTILIZER = 110)
+fert_brm3 |> marginaleffects::predictions(newdata = dg)     #conditional
+fert_brm3 |> marginaleffects::avg_predictions(newdata = dg) #marginal
 ```
 
 ### predicted values
